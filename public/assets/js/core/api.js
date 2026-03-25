@@ -2,6 +2,14 @@
  * API client — handles fetch calls, CSRF tokens, and auth headers.
  */
 
+// Derive the application base path from this module's URL.
+// This module lives at <basePath>/assets/js/core/api.js, so we strip that suffix.
+const _basePath = new URL(import.meta.url).pathname.replace(/\/assets\/js\/core\/api\.js$/, '') || '';
+
+export function getBasePath() {
+  return _basePath;
+}
+
 let csrfToken = '';
 let apiToken = '';
 
@@ -32,7 +40,8 @@ export async function api(path, options = {}) {
     headers['Authorization'] = `Bearer ${apiToken}`;
   }
 
-  const response = await fetch(path, { ...options, headers });
+  const url = path.startsWith('/') ? _basePath + path : path;
+  const response = await fetch(url, { ...options, headers });
 
   // Handle non-JSON responses (CSV downloads, etc.)
   const ct = response.headers.get('Content-Type') || '';

@@ -1,7 +1,7 @@
 /**
  * Landing Pages page module.
  */
-import { api } from '../core/api.js';
+import { api, getBasePath } from '../core/api.js';
 import { $, formatDate } from '../core/utils.js';
 import { toast } from '../core/toast.js';
 
@@ -18,7 +18,7 @@ async function loadPages() {
     const data = await api('/api/landing-pages');
     const el = $('landingPageList');
     if (!el) return;
-    const base = window.location.origin;
+    const base = window.location.origin + getBasePath();
     el.innerHTML = data.map(p => {
       const url = `${base}/p/${p.slug}`;
       const rate = p.views > 0 ? ((p.conversions / p.views) * 100).toFixed(1) : '0.0';

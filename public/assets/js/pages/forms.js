@@ -1,7 +1,7 @@
 /**
  * Form Builder page module.
  */
-import { api } from '../core/api.js';
+import { api, getBasePath } from '../core/api.js';
 import { $, formatDate } from '../core/utils.js';
 import { toast } from '../core/toast.js';
 
@@ -19,13 +19,13 @@ async function loadForms() {
     const data = await api('/api/forms');
     const el = $('formList');
     if (!el) return;
-    const base = window.location.origin;
+    const base = window.location.origin + getBasePath();
     el.innerHTML = data.map(f => {
       const embedUrl = `${base}/f/${f.slug}`;
       const fieldCount = (JSON.parse(f.fields || '[]')).length;
       return `<div class="card">
         <div class="flex-between"><h3>${esc(f.name)}</h3><span class="badge badge-${f.status === 'active' ? 'success' : 'muted'}">${f.status}</span></div>
-        <p class="text-muted text-small mt-1">${fieldCount} fields &middot; ${f.submissions} submissions &middot; /f/${esc(f.slug)}</p>
+        <p class="text-muted text-small mt-1">${fieldCount} fields &middot; ${f.submissions} submissions &middot; ${getBasePath()}/f/${esc(f.slug)}</p>
         <div class="btn-group mt-1">
           <a href="${embedUrl}" target="_blank" class="btn btn-sm btn-outline">Preview</a>
           <button class="btn btn-sm btn-outline" onclick="window._copyFormEmbed(${f.id})">Embed Code</button>

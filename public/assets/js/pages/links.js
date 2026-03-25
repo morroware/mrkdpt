@@ -1,7 +1,7 @@
 /**
  * Links & UTM Builder page module.
  */
-import { api } from '../core/api.js';
+import { api, getBasePath } from '../core/api.js';
 import { $, formatDate } from '../core/utils.js';
 import { toast } from '../core/toast.js';
 
@@ -38,11 +38,11 @@ async function loadShortLinks() {
     const data = await api('/api/links');
     const tb = $('shortLinkTable');
     if (!tb) return;
-    const base = window.location.origin;
+    const base = window.location.origin + getBasePath();
     tb.innerHTML = data.map(l => {
       const shortUrl = `${base}/s/${l.code}`;
       return `<tr>
-        <td><a href="${shortUrl}" target="_blank">/s/${esc(l.code)}</a></td>
+        <td><a href="${shortUrl}" target="_blank">${getBasePath()}/s/${esc(l.code)}</a></td>
         <td>${esc(l.title)}</td>
         <td class="text-small" style="max-width:250px;overflow:hidden;text-overflow:ellipsis">${esc(l.destination_url)}</td>
         <td><strong>${l.clicks}</strong></td>
@@ -70,7 +70,7 @@ async function handleUtmCreate(e) {
 
     const shortEl = $('utmShortUrl');
     if (shortEl && result.short_link) {
-      const shortUrl = `${window.location.origin}/s/${result.short_link.code}`;
+      const shortUrl = `${window.location.origin}${getBasePath()}/s/${result.short_link.code}`;
       shortEl.innerHTML = `<strong>Short URL:</strong> <span class="token-display">${shortUrl}</span>`;
     } else if (shortEl) {
       shortEl.innerHTML = '';

@@ -8,6 +8,14 @@ import { toast } from '../core/toast.js';
 export function init() {
   $('abTestForm')?.addEventListener('submit', handleCreate);
 
+  // AI Analyze button in the form area
+  const aiAnalyzeBtn = document.getElementById('aiAnalyzeAb');
+  if (aiAnalyzeBtn) {
+    aiAnalyzeBtn.addEventListener('click', () => {
+      toast('Select a test from the list below and click "AI Analyze" on it', 'info');
+    });
+  }
+
   // AI Generate A/B Test Variants
   const aiBtn = document.getElementById('aiGenerateVariant');
   if (aiBtn) {
@@ -138,12 +146,6 @@ window._aiAnalyzeTest = async (id) => {
   } catch (e) { toast(e.message, 'error'); }
 };
 
-// AI Analyze button in the form area
-const aiAnalyzeBtn = document.getElementById('aiAnalyzeAb');
-if (aiAnalyzeBtn) {
-  aiAnalyzeBtn.addEventListener('click', () => {
-    toast('Select a test from the list below and click "AI Analyze" on it', 'info');
-  });
-}
+// AI Analyze button - wired in init() via event delegation
 
 function esc(s) { return (s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }

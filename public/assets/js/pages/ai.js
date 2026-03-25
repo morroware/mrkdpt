@@ -342,7 +342,12 @@ export function init() {
         const preview = $('aiImagePreview');
         if (preview) {
           preview.classList.remove('hidden');
-          preview.innerHTML = `<img src="data:image/png;base64,${item.image_base64}" style="max-width:100%;border-radius:8px" alt="AI Generated" />`;
+          preview.textContent = '';
+          const img = document.createElement('img');
+          img.src = `data:image/png;base64,${item.image_base64}`;
+          img.style.cssText = 'max-width:100%;border-radius:8px';
+          img.alt = 'AI Generated';
+          preview.appendChild(img);
         }
         success('Image generated');
       } else if (item?.url) {

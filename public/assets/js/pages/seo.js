@@ -49,7 +49,7 @@ export function init() {
           outline: $('seoBlogOutline')?.value || null,
         }),
       });
-      output(item.content || item);
+      output(item.post || item.content || item);
       success('Blog post generated');
     } catch (err) {
       output('Error: ' + err.message);

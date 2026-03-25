@@ -38,7 +38,8 @@ async function loadForms() {
 
 async function loadListOptions() {
   try {
-    const lists = await api('/api/email/lists');
+    const resp = await api('/api/email-lists');
+    const lists = resp.items || resp;
     const sel = $('formListSelect');
     if (!sel) return;
     sel.innerHTML = '<option value="">None</option>' + lists.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');

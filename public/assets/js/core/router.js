@@ -3,6 +3,7 @@
  */
 
 import { $ } from './utils.js';
+import { api } from './api.js';
 
 const pageModules = {};
 let currentPage = null;
@@ -251,11 +252,10 @@ function initAiCommandBar() {
     if (metaEl) metaEl.textContent = 'Working on it...';
 
     try {
-      const { item } = await (await fetch('/api/ai/content', {
+      const { item } = await api('/api/ai/content', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || sessionStorage.getItem('csrf_token') || '' },
         body: JSON.stringify({ content_type: contentType, platform, topic, tone: 'professional', goal: 'engage audience' }),
-      })).json();
+      });
 
       if (item?.content) {
         if (resultEl) resultEl.textContent = item.content;

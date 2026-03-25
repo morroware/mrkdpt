@@ -101,7 +101,8 @@ async function loadFormOptions() {
 
 async function loadCampaignOptions() {
   try {
-    const camps = await api('/api/campaigns');
+    const resp = await api('/api/campaigns');
+    const camps = resp.items || resp;
     const sel = $('lpCampaignSelect');
     if (!sel) return;
     sel.innerHTML = '<option value="">None</option>' + camps.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');

@@ -57,7 +57,7 @@ export async function refresh() {
       const ideas = dashData.recent_ideas || [];
       ideasEl.innerHTML = ideas.length
         ? ideas.map((i) =>
-            `<div class="list-item"><strong>${escapeHtml(i.topic)}</strong> <span class="badge">${escapeHtml(i.platform)}</span><div class="text-small text-muted">${truncate(i.output, 120)}</div></div>`
+            `<div class="list-item"><strong>${escapeHtml(i.topic)}</strong> <span class="badge">${escapeHtml(i.platform)}</span><div class="text-small text-muted">${escapeHtml(truncate(i.output, 120))}</div></div>`
           ).join('')
         : '<p class="text-muted">No ideas generated yet</p>';
     }

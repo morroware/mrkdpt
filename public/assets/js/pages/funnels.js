@@ -15,7 +15,8 @@ export async function refresh() {
 
 async function loadCampaignOptions() {
   try {
-    const camps = await api('/api/campaigns');
+    const resp = await api('/api/campaigns');
+    const camps = resp.items || resp;
     const sel = $('funnelCampaignSelect');
     if (!sel) return;
     sel.innerHTML = '<option value="">None</option>' + camps.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');

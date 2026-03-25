@@ -97,6 +97,12 @@ src/
 - **OpenAI** (`AI_PROVIDER=openai`) - Chat completions API
 - **Anthropic** (`AI_PROVIDER=anthropic`) - Messages API
 - **Google Gemini** (`AI_PROVIDER=gemini`) - GenerativeAI API
+- **DeepSeek** (`AI_PROVIDER=deepseek`) - OpenAI-compatible, best cost/quality ratio
+- **Groq** (`AI_PROVIDER=groq`) - Ultra-fast inference, OpenAI-compatible
+- **Mistral** (`AI_PROVIDER=mistral`) - OpenAI-compatible, strong multilingual
+- **OpenRouter** (`AI_PROVIDER=openrouter`) - Meta-provider, 100+ models via one key
+- **xAI** (`AI_PROVIDER=xai`) - Grok models, OpenAI-compatible
+- **Together AI** (`AI_PROVIDER=together`) - Open models (Llama, Mixtral, Qwen), OpenAI-compatible
 
 ### AiService.php Methods
 Each maps to an `/api/ai/*` endpoint:
@@ -225,16 +231,37 @@ AI-specific styling uses purple gradient: `linear-gradient(135deg, #6366f1, #8b5
 
 ## Social Publishing
 
-`SocialPublisher.php` supports: Twitter (API v2), Bluesky (AT Protocol), Mastodon (ActivityPub), Facebook (Graph API), Instagram (Graph API). Unified `publish(post, account)` interface.
+`SocialPublisher.php` supports 15 platforms with unified `publish(post, account)` interface:
+- **Twitter/X** (API v2) - OAuth 2.0 Bearer token
+- **Bluesky** (AT Protocol) - identifier + password auth
+- **Mastodon** (ActivityPub) - instance URL + OAuth token
+- **Facebook Pages** (Graph API v19.0) - Page Access Token
+- **Instagram** (Graph API) - requires public image URL
+- **LinkedIn** (REST API v2) - OAuth 2.0, URN-based author
+- **Threads** (Meta Graph API) - two-step container publish
+- **Pinterest** (REST API v5) - board_id + image URL required
+- **TikTok** (Content Posting API) - video/photo upload
+- **Reddit** (REST API) - subreddit targeting, self/link posts
+- **Telegram** (Bot API) - bot token + chat_id
+- **Discord** (Webhooks) - webhook URL, no OAuth needed
+- **Slack** (Incoming Webhooks) - webhook URL, no OAuth needed
+- **WordPress** (WP REST API) - Application Passwords auth
+- **Medium** (REST API) - Integration token
 
 ## Configuration (.env)
 
 ```
 BUSINESS_NAME, BUSINESS_INDUSTRY, TIMEZONE
-AI_PROVIDER=openai|anthropic|gemini
+AI_PROVIDER=openai|anthropic|gemini|deepseek|groq|mistral|openrouter|xai|together
 OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL
 ANTHROPIC_API_KEY, ANTHROPIC_MODEL
 GEMINI_API_KEY, GEMINI_MODEL
+DEEPSEEK_API_KEY, DEEPSEEK_MODEL
+GROQ_API_KEY, GROQ_MODEL
+MISTRAL_API_KEY, MISTRAL_MODEL
+OPENROUTER_API_KEY, OPENROUTER_MODEL
+XAI_API_KEY, XAI_MODEL
+TOGETHER_API_KEY, TOGETHER_MODEL
 APP_URL, MAX_UPLOAD_MB, CRON_KEY
 SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM
 ```

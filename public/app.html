@@ -232,7 +232,7 @@
           <form id="postForm" class="stack card">
             <div class="row2">
               <div><label>Campaign</label><select name="campaign_id" id="campaignSelect"><option value="">None</option></select></div>
-              <div><label>Platform</label><select name="platform"><option>instagram</option><option>facebook</option><option>twitter</option><option>linkedin</option><option>bluesky</option><option>mastodon</option><option>tiktok</option><option>youtube</option></select></div>
+              <div><label>Platform</label><select name="platform"><option>instagram</option><option>facebook</option><option>twitter</option><option>linkedin</option><option>bluesky</option><option>mastodon</option><option>threads</option><option>pinterest</option><option>tiktok</option><option>reddit</option><option>telegram</option><option>discord</option><option>slack</option><option>wordpress</option><option>medium</option><option>youtube</option></select></div>
             </div>
             <div class="row2">
               <div><label>Content Type</label><select name="content_type"><option value="social_post">Social Post</option><option value="caption">Caption</option><option value="ad_copy">Ad Copy</option><option value="video_script">Video Script</option><option value="email">Email</option><option value="blog_post">Blog Post</option></select></div>
@@ -749,8 +749,8 @@ Tip: Use the provider selector above to compare results from different AI models
       <!-- Social Accounts -->
       <section id="page-social" class="page">
         <form id="socialForm" class="stack card">
-          <div class="row3"><div><label>Platform</label><select name="platform"><option>twitter</option><option>bluesky</option><option>mastodon</option><option>facebook</option><option>instagram</option></select></div><div><label>Account Name</label><input name="account_name" placeholder="@username" required /></div><div><label>Access Token</label><input name="access_token" placeholder="Token/password" /></div></div>
-          <div><label>Meta (JSON)</label><input name="meta_json" placeholder='{"instance_url":"https://mastodon.social"}' /></div>
+          <div class="row3"><div><label>Platform</label><select name="platform" id="socialPlatformSelect"><option>twitter</option><option>bluesky</option><option>mastodon</option><option>facebook</option><option>instagram</option><option>linkedin</option><option>threads</option><option>pinterest</option><option>tiktok</option><option>reddit</option><option>telegram</option><option>discord</option><option>slack</option><option>wordpress</option><option>medium</option></select></div><div><label>Account Name</label><input name="account_name" placeholder="@username" required /></div><div><label>Access Token</label><input name="access_token" placeholder="Token/password/webhook URL" /></div></div>
+          <div><label>Meta (JSON)</label><input name="meta_json" placeholder='{"instance_url":"https://mastodon.social"}' /><small id="socialMetaHint" class="text-muted"></small></div>
           <button type="submit">Connect Account</button>
         </form>
         <div id="socialList" class="card-grid mt-1"></div>

@@ -25,6 +25,18 @@ $defaults = [
     'ANTHROPIC_MODEL' => 'claude-sonnet-4-20250514',
     'GEMINI_API_KEY' => '',
     'GEMINI_MODEL' => 'gemini-2.5-flash',
+    'DEEPSEEK_API_KEY' => '',
+    'DEEPSEEK_MODEL' => 'deepseek-chat',
+    'GROQ_API_KEY' => '',
+    'GROQ_MODEL' => 'llama-3.3-70b-versatile',
+    'MISTRAL_API_KEY' => '',
+    'MISTRAL_MODEL' => 'mistral-large-latest',
+    'OPENROUTER_API_KEY' => '',
+    'OPENROUTER_MODEL' => 'anthropic/claude-sonnet-4',
+    'XAI_API_KEY' => '',
+    'XAI_MODEL' => 'grok-3-fast',
+    'TOGETHER_API_KEY' => '',
+    'TOGETHER_MODEL' => 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
     'APP_URL' => '',
     'CRON_KEY' => bin2hex(random_bytes(16)),
     'SMTP_HOST' => '',
@@ -80,8 +92,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    if (!in_array($values['AI_PROVIDER'], ['openai', 'anthropic', 'gemini'], true)) {
-        $errors[] = 'AI_PROVIDER must be openai, anthropic, or gemini.';
+    if (!in_array($values['AI_PROVIDER'], ['openai', 'anthropic', 'gemini', 'deepseek', 'groq', 'mistral', 'openrouter', 'xai', 'together'], true)) {
+        $errors[] = 'AI_PROVIDER must be one of: openai, anthropic, gemini, deepseek, groq, mistral, openrouter, xai, together.';
     }
 
     // Validate admin user if provided
@@ -164,7 +176,7 @@ function esc(string $value): string
 // Mask sensitive values when displaying after installation
 $displayValues = $values;
 if ($installed) {
-    $sensitiveKeys = ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GEMINI_API_KEY', 'SMTP_PASS'];
+    $sensitiveKeys = ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GEMINI_API_KEY', 'DEEPSEEK_API_KEY', 'GROQ_API_KEY', 'MISTRAL_API_KEY', 'OPENROUTER_API_KEY', 'XAI_API_KEY', 'TOGETHER_API_KEY', 'SMTP_PASS'];
     foreach ($sensitiveKeys as $sk) {
         if (!empty($displayValues[$sk])) {
             $displayValues[$sk] = substr($displayValues[$sk], 0, 6) . '••••••••';
@@ -273,8 +285,9 @@ if ($installed) {
       <div>
         <label for="AI_PROVIDER">Primary AI provider</label>
         <select id="AI_PROVIDER" name="AI_PROVIDER">
-          <?php foreach (['openai', 'anthropic', 'gemini'] as $p): ?>
-            <option value="<?= esc($p) ?>" <?= $values['AI_PROVIDER'] === $p ? 'selected' : '' ?>><?= esc(ucfirst($p)) ?></option>
+          <?php foreach (['openai', 'anthropic', 'gemini', 'deepseek', 'groq', 'mistral', 'openrouter', 'xai', 'together'] as $p): ?>
+            <?php $labels = ['openai'=>'OpenAI','anthropic'=>'Anthropic','gemini'=>'Google Gemini','deepseek'=>'DeepSeek','groq'=>'Groq','mistral'=>'Mistral','openrouter'=>'OpenRouter','xai'=>'xAI (Grok)','together'=>'Together AI']; ?>
+            <option value="<?= esc($p) ?>" <?= $values['AI_PROVIDER'] === $p ? 'selected' : '' ?>><?= esc($labels[$p] ?? ucfirst($p)) ?></option>
           <?php endforeach; ?>
         </select>
       </div>
@@ -305,6 +318,58 @@ if ($installed) {
       <div>
         <label for="GEMINI_API_KEY">Gemini API key</label>
         <input id="GEMINI_API_KEY" name="GEMINI_API_KEY" value="<?= esc($displayValues['GEMINI_API_KEY']) ?>" />
+      </div>
+    </div>
+
+    <h2>Additional AI Providers <small>(optional)</small></h2>
+    <div class="grid">
+      <div>
+        <label for="DEEPSEEK_API_KEY">DeepSeek API key</label>
+        <input id="DEEPSEEK_API_KEY" name="DEEPSEEK_API_KEY" value="<?= esc($displayValues['DEEPSEEK_API_KEY']) ?>" placeholder="sk-..." />
+      </div>
+      <div>
+        <label for="DEEPSEEK_MODEL">DeepSeek model</label>
+        <input id="DEEPSEEK_MODEL" name="DEEPSEEK_MODEL" value="<?= esc($values['DEEPSEEK_MODEL']) ?>" />
+      </div>
+      <div>
+        <label for="GROQ_API_KEY">Groq API key</label>
+        <input id="GROQ_API_KEY" name="GROQ_API_KEY" value="<?= esc($displayValues['GROQ_API_KEY']) ?>" placeholder="gsk_..." />
+      </div>
+      <div>
+        <label for="GROQ_MODEL">Groq model</label>
+        <input id="GROQ_MODEL" name="GROQ_MODEL" value="<?= esc($values['GROQ_MODEL']) ?>" />
+      </div>
+      <div>
+        <label for="MISTRAL_API_KEY">Mistral API key</label>
+        <input id="MISTRAL_API_KEY" name="MISTRAL_API_KEY" value="<?= esc($displayValues['MISTRAL_API_KEY']) ?>" />
+      </div>
+      <div>
+        <label for="MISTRAL_MODEL">Mistral model</label>
+        <input id="MISTRAL_MODEL" name="MISTRAL_MODEL" value="<?= esc($values['MISTRAL_MODEL']) ?>" />
+      </div>
+      <div>
+        <label for="OPENROUTER_API_KEY">OpenRouter API key</label>
+        <input id="OPENROUTER_API_KEY" name="OPENROUTER_API_KEY" value="<?= esc($displayValues['OPENROUTER_API_KEY']) ?>" placeholder="sk-or-..." />
+      </div>
+      <div>
+        <label for="OPENROUTER_MODEL">OpenRouter model</label>
+        <input id="OPENROUTER_MODEL" name="OPENROUTER_MODEL" value="<?= esc($values['OPENROUTER_MODEL']) ?>" />
+      </div>
+      <div>
+        <label for="XAI_API_KEY">xAI (Grok) API key</label>
+        <input id="XAI_API_KEY" name="XAI_API_KEY" value="<?= esc($displayValues['XAI_API_KEY']) ?>" />
+      </div>
+      <div>
+        <label for="XAI_MODEL">xAI model</label>
+        <input id="XAI_MODEL" name="XAI_MODEL" value="<?= esc($values['XAI_MODEL']) ?>" />
+      </div>
+      <div>
+        <label for="TOGETHER_API_KEY">Together AI API key</label>
+        <input id="TOGETHER_API_KEY" name="TOGETHER_API_KEY" value="<?= esc($displayValues['TOGETHER_API_KEY']) ?>" />
+      </div>
+      <div>
+        <label for="TOGETHER_MODEL">Together AI model</label>
+        <input id="TOGETHER_MODEL" name="TOGETHER_MODEL" value="<?= esc($values['TOGETHER_MODEL']) ?>" />
       </div>
     </div>
 

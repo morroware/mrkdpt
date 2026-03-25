@@ -53,6 +53,16 @@ final class SocialPublisher
             'mastodon'  => $this->publishToMastodon($account, $text, $mediaPath),
             'facebook'  => $this->publishToFacebook($account, $text, $mediaPath),
             'instagram' => $this->publishToInstagram($account, $text, $mediaUrl),
+            'linkedin'  => $this->publishToLinkedIn($account, $text, $mediaPath),
+            'threads'   => $this->publishToThreads($account, $text, $mediaUrl),
+            'pinterest' => $this->publishToPinterest($account, $text, $mediaUrl),
+            'tiktok'    => $this->publishToTikTok($account, $text, $mediaPath),
+            'reddit'    => $this->publishToReddit($account, $text, $mediaUrl),
+            'telegram'  => $this->publishToTelegram($account, $text, $mediaUrl),
+            'discord'   => $this->publishToDiscord($account, $text, $mediaUrl),
+            'slack'     => $this->publishToSlack($account, $text),
+            'wordpress' => $this->publishToWordPress($account, $text, $mediaPath),
+            'medium'    => $this->publishToMedium($account, $text),
             default     => ['success' => false, 'external_id' => null, 'error' => "Unsupported platform: {$platform}"],
         };
 
@@ -530,6 +540,695 @@ final class SocialPublisher
             return ['success' => false, 'external_id' => null, 'error' => "Instagram publish error: {$error}"];
         } catch (\Throwable $e) {
             return ['success' => false, 'external_id' => null, 'error' => "Instagram exception: {$e->getMessage()}"];
+        }
+    }
+
+    // =========================================================================
+    //  LinkedIn  (REST API v2 — Community Management)
+    // =========================================================================
+
+    /**
+     * Publish a post to LinkedIn via the REST API v2.
+     *
+     * Auth: OAuth 2.0 Bearer token with w_member_social or w_organization_social scope.
+     * meta_json must contain 'urn' — the author URN (e.g. "urn:li:person:xxx" or "urn:li:organization:xxx").
+     */
+    public function publishToLinkedIn(array $account, string $text, ?string $mediaPath = null): array
+    {
+        try {
+            $meta  = $account['meta_json'] ?? [];
+            $token = (string)($account['access_token'] ?? '');
+            $urn   = (string)($meta['urn'] ?? '');
+
+            if ($urn === '' || $token === '') {
+                return ['success' => false, 'external_id' => null, 'error' => 'LinkedIn URN or access_token missing'];
+            }
+
+            $authHeaders = [
+                "Authorization: Bearer {$token}",
+                'LinkedIn-Version: 202405',
+                'X-Restli-Protocol-Version: 2.0.0',
+            ];
+
+            // Upload image if provided.
+            $imageUrn = null;
+            if ($mediaPath !== null && is_file($mediaPath)) {
+                $imageUrn = $this->linkedInUploadImage($authHeaders, $urn, $mediaPath);
+            }
+
+            $payload = [
+                'author'          => $urn,
+                'lifecycleState'  => 'PUBLISHED',
+                'specificContent' => [
+                    'com.linkedin.ugc.ShareContent' => [
+                        'shareCommentary' => ['text' => $text],
+                        'shareMediaCategory' => $imageUrn ? 'IMAGE' : 'NONE',
+                    ],
+                ],
+                'visibility' => [
+                    'com.linkedin.ugc.MemberNetworkVisibility' => 'PUBLIC',
+                ],
+            ];
+
+            if ($imageUrn) {
+                $payload['specificContent']['com.linkedin.ugc.ShareContent']['media'] = [[
+                    'status' => 'READY',
+                    'media'  => $imageUrn,
+                ]];
+            }
+
+            $data = $this->postJson('https://api.linkedin.com/v2/ugcPosts', $authHeaders, $payload);
+
+            if (!empty($data['id'])) {
+                return ['success' => true, 'external_id' => (string)$data['id'], 'error' => null];
+            }
+
+            $error = $data['message'] ?? json_encode($data);
+            return ['success' => false, 'external_id' => null, 'error' => "LinkedIn API error: {$error}"];
+        } catch (\Throwable $e) {
+            return ['success' => false, 'external_id' => null, 'error' => "LinkedIn exception: {$e->getMessage()}"];
+        }
+    }
+
+    /**
+     * Upload an image to LinkedIn and return the asset URN.
+     */
+    private function linkedInUploadImage(array $authHeaders, string $ownerUrn, string $filePath): ?string
+    {
+        // Step 1: Register the upload.
+        $register = $this->postJson('https://api.linkedin.com/v2/assets?action=registerUpload', $authHeaders, [
+            'registerUploadRequest' => [
+                'recipes'      => ['urn:li:digitalmediaRecipe:feedshare-image'],
+                'owner'        => $ownerUrn,
+                'serviceRelationships' => [[
+                    'relationshipType' => 'OWNER',
+                    'identifier'       => 'urn:li:userGeneratedContent',
+                ]],
+            ],
+        ]);
+
+        $uploadUrl = $register['value']['uploadMechanism']['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest']['uploadUrl'] ?? null;
+        $asset     = $register['value']['asset'] ?? null;
+
+        if (!$uploadUrl || !$asset) {
+            return null;
+        }
+
+        // Step 2: Upload the binary.
+        $fileData = file_get_contents($filePath);
+        if ($fileData === false) {
+            return null;
+        }
+
+        $ch = curl_init($uploadUrl);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CUSTOMREQUEST  => 'PUT',
+            CURLOPT_HTTPHEADER     => array_merge($authHeaders, [
+                'Content-Type: ' . (mime_content_type($filePath) ?: 'application/octet-stream'),
+            ]),
+            CURLOPT_POSTFIELDS     => $fileData,
+            CURLOPT_TIMEOUT        => self::UPLOAD_TIMEOUT,
+        ]);
+
+        curl_exec($ch);
+        $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        return ($httpCode >= 200 && $httpCode < 300) ? (string)$asset : null;
+    }
+
+    // =========================================================================
+    //  Threads  (Meta Graph API)
+    // =========================================================================
+
+    /**
+     * Publish to Threads via Meta's Threads API (Graph API-based).
+     *
+     * Two-step flow similar to Instagram:
+     *   1. Create media container: POST /{threads_user_id}/threads
+     *   2. Publish: POST /{threads_user_id}/threads_publish
+     *
+     * meta_json must contain 'threads_user_id'. Requires publicly accessible image URL for media.
+     */
+    public function publishToThreads(array $account, string $text, ?string $mediaUrl = null): array
+    {
+        try {
+            $meta     = $account['meta_json'] ?? [];
+            $userId   = (string)($meta['threads_user_id'] ?? '');
+            $token    = (string)($account['access_token'] ?? '');
+
+            if ($userId === '' || $token === '') {
+                return ['success' => false, 'external_id' => null, 'error' => 'Threads user_id or access_token missing'];
+            }
+
+            $baseUrl = "https://graph.threads.net/v1.0/{$userId}";
+
+            // Step 1: Create container.
+            $containerFields = [
+                'text'          => $text,
+                'media_type'    => ($mediaUrl !== null && $mediaUrl !== '') ? 'IMAGE' : 'TEXT',
+                'access_token'  => $token,
+            ];
+            if ($mediaUrl !== null && $mediaUrl !== '') {
+                $containerFields['image_url'] = $mediaUrl;
+            }
+
+            $container = $this->postForm("{$baseUrl}/threads", [], $containerFields);
+            $creationId = $container['id'] ?? null;
+            if ($creationId === null) {
+                $error = $container['error']['message'] ?? json_encode($container);
+                return ['success' => false, 'external_id' => null, 'error' => "Threads container error: {$error}"];
+            }
+
+            // Step 2: Publish.
+            $publish = $this->postForm("{$baseUrl}/threads_publish", [], [
+                'creation_id'  => (string)$creationId,
+                'access_token' => $token,
+            ]);
+
+            if (!empty($publish['id'])) {
+                return ['success' => true, 'external_id' => (string)$publish['id'], 'error' => null];
+            }
+
+            $error = $publish['error']['message'] ?? json_encode($publish);
+            return ['success' => false, 'external_id' => null, 'error' => "Threads publish error: {$error}"];
+        } catch (\Throwable $e) {
+            return ['success' => false, 'external_id' => null, 'error' => "Threads exception: {$e->getMessage()}"];
+        }
+    }
+
+    // =========================================================================
+    //  Pinterest  (REST API v5)
+    // =========================================================================
+
+    /**
+     * Create a Pin on Pinterest.
+     *
+     * Auth: OAuth 2.0 Bearer token with pins:write scope.
+     * meta_json must contain 'board_id'. Requires publicly accessible image URL.
+     */
+    public function publishToPinterest(array $account, string $text, ?string $mediaUrl = null): array
+    {
+        try {
+            $meta    = $account['meta_json'] ?? [];
+            $boardId = (string)($meta['board_id'] ?? '');
+            $token   = (string)($account['access_token'] ?? '');
+
+            if ($boardId === '' || $token === '') {
+                return ['success' => false, 'external_id' => null, 'error' => 'Pinterest board_id or access_token missing'];
+            }
+
+            if ($mediaUrl === null || $mediaUrl === '') {
+                return ['success' => false, 'external_id' => null, 'error' => 'Pinterest requires an image URL'];
+            }
+
+            $payload = [
+                'board_id'    => $boardId,
+                'media_source' => [
+                    'source_type' => 'image_url',
+                    'url'         => $mediaUrl,
+                ],
+                'description' => $text,
+            ];
+
+            // Use title from first line if present.
+            $lines = explode("\n", $text, 2);
+            if (count($lines) > 1) {
+                $payload['title']       = trim($lines[0]);
+                $payload['description'] = trim($lines[1]);
+            }
+
+            // Optional link from meta.
+            if (!empty($meta['link'])) {
+                $payload['link'] = $meta['link'];
+            }
+
+            $data = $this->postJson('https://api.pinterest.com/v5/pins', [
+                "Authorization: Bearer {$token}",
+            ], $payload);
+
+            if (!empty($data['id'])) {
+                return ['success' => true, 'external_id' => (string)$data['id'], 'error' => null];
+            }
+
+            $error = $data['message'] ?? json_encode($data);
+            return ['success' => false, 'external_id' => null, 'error' => "Pinterest API error: {$error}"];
+        } catch (\Throwable $e) {
+            return ['success' => false, 'external_id' => null, 'error' => "Pinterest exception: {$e->getMessage()}"];
+        }
+    }
+
+    // =========================================================================
+    //  TikTok  (Content Posting API)
+    // =========================================================================
+
+    /**
+     * Publish to TikTok using the Content Posting API (photo or video).
+     *
+     * Auth: OAuth 2.0 Bearer token. Requires 'video.publish' scope for video,
+     * or 'video.upload' for photo mode.
+     *
+     * TikTok's API uses a two-step init + upload flow.
+     */
+    public function publishToTikTok(array $account, string $text, ?string $mediaPath = null): array
+    {
+        try {
+            $token = (string)($account['access_token'] ?? '');
+            if ($token === '') {
+                return ['success' => false, 'external_id' => null, 'error' => 'TikTok access_token missing'];
+            }
+
+            if ($mediaPath === null || !is_file($mediaPath)) {
+                return ['success' => false, 'external_id' => null, 'error' => 'TikTok requires a media file (photo or video)'];
+            }
+
+            $authHeaders = ["Authorization: Bearer {$token}"];
+            $fileSize = filesize($mediaPath);
+
+            // Step 1: Initialize the upload.
+            $initPayload = [
+                'post_info' => [
+                    'title'           => mb_substr($text, 0, 150),
+                    'privacy_level'   => 'SELF_ONLY',  // Default to private; user changes in TikTok app
+                    'disable_comment' => false,
+                    'disable_duet'    => false,
+                    'disable_stitch'  => false,
+                ],
+                'source_info' => [
+                    'source'         => 'FILE_UPLOAD',
+                    'video_size'     => $fileSize,
+                    'chunk_size'     => $fileSize,
+                    'total_chunk_count' => 1,
+                ],
+            ];
+
+            $init = $this->postJson(
+                'https://open.tiktokapis.com/v2/post/publish/video/init/',
+                $authHeaders,
+                $initPayload,
+            );
+
+            $uploadUrl = $init['data']['upload_url'] ?? null;
+            $publishId = $init['data']['publish_id'] ?? null;
+
+            if (!$uploadUrl || !$publishId) {
+                $error = $init['error']['message'] ?? json_encode($init);
+                return ['success' => false, 'external_id' => null, 'error' => "TikTok init error: {$error}"];
+            }
+
+            // Step 2: Upload the file.
+            $fileData = file_get_contents($mediaPath);
+            if ($fileData === false) {
+                return ['success' => false, 'external_id' => null, 'error' => 'Failed to read media file'];
+            }
+
+            $ch = curl_init($uploadUrl);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_CUSTOMREQUEST  => 'PUT',
+                CURLOPT_HTTPHEADER     => [
+                    'Content-Type: video/mp4',
+                    "Content-Length: {$fileSize}",
+                    'Content-Range: bytes 0-' . ($fileSize - 1) . "/{$fileSize}",
+                ],
+                CURLOPT_POSTFIELDS     => $fileData,
+                CURLOPT_TIMEOUT        => self::UPLOAD_TIMEOUT,
+            ]);
+
+            curl_exec($ch);
+            $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode >= 200 && $httpCode < 300) {
+                return ['success' => true, 'external_id' => (string)$publishId, 'error' => null];
+            }
+
+            return ['success' => false, 'external_id' => null, 'error' => "TikTok upload failed (HTTP {$httpCode})"];
+        } catch (\Throwable $e) {
+            return ['success' => false, 'external_id' => null, 'error' => "TikTok exception: {$e->getMessage()}"];
+        }
+    }
+
+    // =========================================================================
+    //  Reddit  (REST API)
+    // =========================================================================
+
+    /**
+     * Submit a post to a Reddit subreddit.
+     *
+     * Auth: OAuth 2.0 Bearer token. meta_json must contain 'subreddit'.
+     * Supports link posts (with media URL) or self posts (text only).
+     */
+    public function publishToReddit(array $account, string $text, ?string $mediaUrl = null): array
+    {
+        try {
+            $meta      = $account['meta_json'] ?? [];
+            $token     = (string)($account['access_token'] ?? '');
+            $subreddit = (string)($meta['subreddit'] ?? '');
+
+            if ($token === '' || $subreddit === '') {
+                return ['success' => false, 'external_id' => null, 'error' => 'Reddit access_token or subreddit missing'];
+            }
+
+            // Extract title from first line, body from rest.
+            $lines = explode("\n", $text, 2);
+            $title = trim($lines[0]);
+            $body  = trim($lines[1] ?? '');
+
+            $fields = [
+                'sr'    => $subreddit,
+                'title' => $title,
+                'api_type' => 'json',
+            ];
+
+            if ($mediaUrl !== null && $mediaUrl !== '') {
+                $fields['kind'] = 'link';
+                $fields['url']  = $mediaUrl;
+            } else {
+                $fields['kind'] = 'self';
+                $fields['text'] = $body;
+            }
+
+            $data = $this->postForm(
+                'https://oauth.reddit.com/api/submit',
+                ["Authorization: Bearer {$token}", 'User-Agent: MarketingSuite/1.0'],
+                $fields,
+            );
+
+            $postId = $data['json']['data']['id'] ?? null;
+            if ($postId) {
+                return ['success' => true, 'external_id' => (string)$postId, 'error' => null];
+            }
+
+            $errors = $data['json']['errors'] ?? [];
+            $error = !empty($errors) ? json_encode($errors) : json_encode($data);
+            return ['success' => false, 'external_id' => null, 'error' => "Reddit API error: {$error}"];
+        } catch (\Throwable $e) {
+            return ['success' => false, 'external_id' => null, 'error' => "Reddit exception: {$e->getMessage()}"];
+        }
+    }
+
+    // =========================================================================
+    //  Telegram  (Bot API)
+    // =========================================================================
+
+    /**
+     * Send a message to a Telegram channel or group via Bot API.
+     *
+     * Auth: Bot token in access_token. meta_json must contain 'chat_id'
+     * (channel username like @mychannel or numeric chat ID).
+     */
+    public function publishToTelegram(array $account, string $text, ?string $mediaUrl = null): array
+    {
+        try {
+            $meta   = $account['meta_json'] ?? [];
+            $token  = (string)($account['access_token'] ?? '');
+            $chatId = (string)($meta['chat_id'] ?? '');
+
+            if ($token === '' || $chatId === '') {
+                return ['success' => false, 'external_id' => null, 'error' => 'Telegram bot token or chat_id missing'];
+            }
+
+            $baseUrl = "https://api.telegram.org/bot{$token}";
+
+            if ($mediaUrl !== null && $mediaUrl !== '') {
+                // Send photo with caption.
+                $data = $this->postJson("{$baseUrl}/sendPhoto", [], [
+                    'chat_id'    => $chatId,
+                    'photo'      => $mediaUrl,
+                    'caption'    => mb_substr($text, 0, 1024),
+                    'parse_mode' => 'HTML',
+                ]);
+            } else {
+                // Text-only message.
+                $data = $this->postJson("{$baseUrl}/sendMessage", [], [
+                    'chat_id'    => $chatId,
+                    'text'       => $text,
+                    'parse_mode' => 'HTML',
+                ]);
+            }
+
+            if (!empty($data['ok']) && !empty($data['result']['message_id'])) {
+                return ['success' => true, 'external_id' => (string)$data['result']['message_id'], 'error' => null];
+            }
+
+            $error = $data['description'] ?? json_encode($data);
+            return ['success' => false, 'external_id' => null, 'error' => "Telegram API error: {$error}"];
+        } catch (\Throwable $e) {
+            return ['success' => false, 'external_id' => null, 'error' => "Telegram exception: {$e->getMessage()}"];
+        }
+    }
+
+    // =========================================================================
+    //  Discord  (Webhook)
+    // =========================================================================
+
+    /**
+     * Post a message to a Discord channel via webhook.
+     *
+     * Auth: Webhook URL stored in access_token (no OAuth needed).
+     * Format: https://discord.com/api/webhooks/{id}/{token}
+     */
+    public function publishToDiscord(array $account, string $text, ?string $mediaUrl = null): array
+    {
+        try {
+            $webhookUrl = (string)($account['access_token'] ?? '');
+
+            if ($webhookUrl === '' || !str_contains($webhookUrl, 'discord.com/api/webhooks/')) {
+                return ['success' => false, 'external_id' => null, 'error' => 'Discord webhook URL missing or invalid'];
+            }
+
+            $payload = ['content' => mb_substr($text, 0, 2000)];
+
+            if ($mediaUrl !== null && $mediaUrl !== '') {
+                $payload['embeds'] = [[
+                    'image' => ['url' => $mediaUrl],
+                ]];
+            }
+
+            $data = $this->postJson($webhookUrl . '?wait=true', [], $payload);
+
+            if (!empty($data['id'])) {
+                return ['success' => true, 'external_id' => (string)$data['id'], 'error' => null];
+            }
+
+            $error = $data['message'] ?? json_encode($data);
+            return ['success' => false, 'external_id' => null, 'error' => "Discord API error: {$error}"];
+        } catch (\Throwable $e) {
+            return ['success' => false, 'external_id' => null, 'error' => "Discord exception: {$e->getMessage()}"];
+        }
+    }
+
+    // =========================================================================
+    //  Slack  (Incoming Webhook)
+    // =========================================================================
+
+    /**
+     * Post a message to a Slack channel via incoming webhook.
+     *
+     * Auth: Webhook URL stored in access_token (no OAuth needed).
+     */
+    public function publishToSlack(array $account, string $text): array
+    {
+        try {
+            $webhookUrl = (string)($account['access_token'] ?? '');
+
+            if ($webhookUrl === '' || !str_contains($webhookUrl, 'hooks.slack.com/')) {
+                return ['success' => false, 'external_id' => null, 'error' => 'Slack webhook URL missing or invalid'];
+            }
+
+            $payload = ['text' => $text];
+
+            $ch = curl_init($webhookUrl);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST           => true,
+                CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+                CURLOPT_POSTFIELDS     => json_encode($payload),
+                CURLOPT_TIMEOUT        => self::TIMEOUT,
+            ]);
+
+            $raw = curl_exec($ch);
+            $error = curl_error($ch);
+            curl_close($ch);
+
+            if ($error !== '') {
+                return ['success' => false, 'external_id' => null, 'error' => "Slack error: {$error}"];
+            }
+
+            // Slack webhooks return "ok" as plain text on success.
+            if ($raw === 'ok') {
+                return ['success' => true, 'external_id' => null, 'error' => null];
+            }
+
+            return ['success' => false, 'external_id' => null, 'error' => "Slack error: {$raw}"];
+        } catch (\Throwable $e) {
+            return ['success' => false, 'external_id' => null, 'error' => "Slack exception: {$e->getMessage()}"];
+        }
+    }
+
+    // =========================================================================
+    //  WordPress  (REST API)
+    // =========================================================================
+
+    /**
+     * Create a post on a WordPress site via the WP REST API.
+     *
+     * Auth: Application password in access_token (format: "username:app_password").
+     * meta_json must contain 'site_url' (e.g. "https://myblog.com").
+     */
+    public function publishToWordPress(array $account, string $text, ?string $mediaPath = null): array
+    {
+        try {
+            $meta    = $account['meta_json'] ?? [];
+            $siteUrl = rtrim((string)($meta['site_url'] ?? ''), '/');
+            $creds   = (string)($account['access_token'] ?? '');
+
+            if ($siteUrl === '' || $creds === '') {
+                return ['success' => false, 'external_id' => null, 'error' => 'WordPress site_url or credentials missing'];
+            }
+
+            $authHeaders = ['Authorization: Basic ' . base64_encode($creds)];
+
+            // Extract title from first line.
+            $lines   = explode("\n", $text, 2);
+            $title   = trim($lines[0]);
+            $content = trim($lines[1] ?? $text);
+
+            $payload = [
+                'title'   => $title,
+                'content' => $content,
+                'status'  => ($meta['status'] ?? 'draft'),  // 'draft' or 'publish'
+            ];
+
+            if (!empty($meta['categories'])) {
+                $payload['categories'] = array_map('intval', (array)$meta['categories']);
+            }
+
+            // Upload featured image if provided.
+            if ($mediaPath !== null && is_file($mediaPath)) {
+                $mediaId = $this->wordPressUploadMedia($siteUrl, $authHeaders, $mediaPath);
+                if ($mediaId !== null) {
+                    $payload['featured_media'] = $mediaId;
+                }
+            }
+
+            $data = $this->postJson("{$siteUrl}/wp-json/wp/v2/posts", $authHeaders, $payload);
+
+            if (!empty($data['id'])) {
+                return ['success' => true, 'external_id' => (string)$data['id'], 'error' => null];
+            }
+
+            $error = $data['message'] ?? json_encode($data);
+            return ['success' => false, 'external_id' => null, 'error' => "WordPress API error: {$error}"];
+        } catch (\Throwable $e) {
+            return ['success' => false, 'external_id' => null, 'error' => "WordPress exception: {$e->getMessage()}"];
+        }
+    }
+
+    /**
+     * Upload a media file to WordPress and return the media ID.
+     */
+    private function wordPressUploadMedia(string $siteUrl, array $authHeaders, string $filePath): ?int
+    {
+        $mimeType = mime_content_type($filePath) ?: 'application/octet-stream';
+        $fileName = basename($filePath);
+        $fileData = file_get_contents($filePath);
+        if ($fileData === false) {
+            return null;
+        }
+
+        $ch = curl_init("{$siteUrl}/wp-json/wp/v2/media");
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_HTTPHEADER     => array_merge($authHeaders, [
+                "Content-Type: {$mimeType}",
+                "Content-Disposition: attachment; filename=\"{$fileName}\"",
+            ]),
+            CURLOPT_POSTFIELDS     => $fileData,
+            CURLOPT_TIMEOUT        => self::UPLOAD_TIMEOUT,
+        ]);
+
+        $raw = curl_exec($ch);
+        curl_close($ch);
+
+        if (!is_string($raw)) {
+            return null;
+        }
+
+        $decoded = json_decode($raw, true);
+        return isset($decoded['id']) ? (int)$decoded['id'] : null;
+    }
+
+    // =========================================================================
+    //  Medium  (REST API)
+    // =========================================================================
+
+    /**
+     * Publish an article to Medium.
+     *
+     * Auth: Integration token in access_token.
+     * First line of text becomes the title.
+     */
+    public function publishToMedium(array $account, string $text): array
+    {
+        try {
+            $token = (string)($account['access_token'] ?? '');
+            if ($token === '') {
+                return ['success' => false, 'external_id' => null, 'error' => 'Medium integration token missing'];
+            }
+
+            $authHeaders = ["Authorization: Bearer {$token}"];
+
+            // Get authenticated user ID.
+            $ch = curl_init('https://api.medium.com/v1/me');
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER     => $authHeaders,
+                CURLOPT_TIMEOUT        => self::TIMEOUT,
+            ]);
+            $raw = curl_exec($ch);
+            curl_close($ch);
+
+            $me = is_string($raw) ? json_decode($raw, true) : [];
+            $userId = $me['data']['id'] ?? null;
+            if (!$userId) {
+                return ['success' => false, 'external_id' => null, 'error' => 'Failed to get Medium user ID'];
+            }
+
+            // Extract title from first line.
+            $lines   = explode("\n", $text, 2);
+            $title   = trim($lines[0]);
+            $content = trim($lines[1] ?? $text);
+            $meta    = $account['meta_json'] ?? [];
+
+            $payload = [
+                'title'         => $title,
+                'contentFormat' => 'html',
+                'content'       => nl2br(htmlspecialchars($content, ENT_QUOTES, 'UTF-8')),
+                'publishStatus' => ($meta['publish_status'] ?? 'draft'),  // 'draft' or 'public'
+            ];
+
+            if (!empty($meta['tags'])) {
+                $payload['tags'] = array_slice((array)$meta['tags'], 0, 5);
+            }
+
+            $data = $this->postJson(
+                "https://api.medium.com/v1/users/{$userId}/posts",
+                $authHeaders,
+                $payload,
+            );
+
+            if (!empty($data['data']['id'])) {
+                return ['success' => true, 'external_id' => (string)$data['data']['id'], 'error' => null];
+            }
+
+            $error = $data['errors'][0]['message'] ?? json_encode($data);
+            return ['success' => false, 'external_id' => null, 'error' => "Medium API error: {$error}"];
+        } catch (\Throwable $e) {
+            return ['success' => false, 'external_id' => null, 'error' => "Medium exception: {$e->getMessage()}"];
         }
     }
 

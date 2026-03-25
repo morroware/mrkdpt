@@ -39,6 +39,40 @@ final class AiService
             'gemini-2.5-flash' => 'Gemini 2.5 Flash (Fast)',
             'gemini-2.0-flash' => 'Gemini 2.0 Flash (Fastest)',
         ],
+        'deepseek' => [
+            'deepseek-chat'     => 'DeepSeek V3 (Best quality)',
+            'deepseek-reasoner' => 'DeepSeek R1 (Reasoning)',
+        ],
+        'groq' => [
+            'llama-3.3-70b-versatile'  => 'Llama 3.3 70B (Best quality)',
+            'llama-3.1-8b-instant'     => 'Llama 3.1 8B (Fastest)',
+            'mixtral-8x7b-32768'       => 'Mixtral 8x7B (Balanced)',
+            'gemma2-9b-it'             => 'Gemma 2 9B (Fast)',
+        ],
+        'mistral' => [
+            'mistral-large-latest'  => 'Mistral Large (Best quality)',
+            'mistral-medium-latest' => 'Mistral Medium (Balanced)',
+            'mistral-small-latest'  => 'Mistral Small (Fast)',
+            'open-mistral-nemo'     => 'Mistral Nemo (Fastest)',
+        ],
+        'openrouter' => [
+            'anthropic/claude-sonnet-4'     => 'Claude Sonnet 4 via OpenRouter',
+            'google/gemini-2.5-flash'       => 'Gemini 2.5 Flash via OpenRouter',
+            'deepseek/deepseek-chat'        => 'DeepSeek V3 via OpenRouter',
+            'meta-llama/llama-3.3-70b'      => 'Llama 3.3 70B via OpenRouter',
+            'mistralai/mistral-large'       => 'Mistral Large via OpenRouter',
+        ],
+        'xai' => [
+            'grok-3'      => 'Grok 3 (Best quality)',
+            'grok-3-fast' => 'Grok 3 Fast (Balanced)',
+            'grok-2'      => 'Grok 2',
+        ],
+        'together' => [
+            'meta-llama/Llama-3.3-70B-Instruct-Turbo'  => 'Llama 3.3 70B Turbo',
+            'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo' => 'Llama 3.1 8B Turbo (Fastest)',
+            'mistralai/Mixtral-8x7B-Instruct-v0.1'     => 'Mixtral 8x7B',
+            'Qwen/Qwen2.5-72B-Instruct-Turbo'          => 'Qwen 2.5 72B Turbo',
+        ],
     ];
 
     public function __construct(
@@ -78,16 +112,28 @@ final class AiService
     {
         return [
             'active_provider'    => $this->provider,
-            'supports'           => ['openai', 'anthropic', 'gemini'],
+            'supports'           => ['openai', 'anthropic', 'gemini', 'deepseek', 'groq', 'mistral', 'openrouter', 'xai', 'together'],
             'has_openai_key'     => !empty($this->config['openai_api_key']),
             'has_anthropic_key'  => !empty($this->config['anthropic_api_key']),
             'has_gemini_key'     => !empty($this->config['gemini_api_key']),
+            'has_deepseek_key'   => !empty($this->config['deepseek_api_key']),
+            'has_groq_key'       => !empty($this->config['groq_api_key']),
+            'has_mistral_key'    => !empty($this->config['mistral_api_key']),
+            'has_openrouter_key' => !empty($this->config['openrouter_api_key']),
+            'has_xai_key'        => !empty($this->config['xai_api_key']),
+            'has_together_key'   => !empty($this->config['together_api_key']),
             'has_banana_key'     => !empty($this->config['banana_api_key']),
             'models'             => self::MODELS,
             'current_models'     => [
-                'openai'    => $this->config['openai_model'] ?? 'gpt-4.1-mini',
-                'anthropic' => $this->config['anthropic_model'] ?? 'claude-sonnet-4-20250514',
-                'gemini'    => $this->config['gemini_model'] ?? 'gemini-2.5-flash',
+                'openai'     => $this->config['openai_model'] ?? 'gpt-4.1-mini',
+                'anthropic'  => $this->config['anthropic_model'] ?? 'claude-sonnet-4-20250514',
+                'gemini'     => $this->config['gemini_model'] ?? 'gemini-2.5-flash',
+                'deepseek'   => $this->config['deepseek_model'] ?? 'deepseek-chat',
+                'groq'       => $this->config['groq_model'] ?? 'llama-3.3-70b-versatile',
+                'mistral'    => $this->config['mistral_model'] ?? 'mistral-large-latest',
+                'openrouter' => $this->config['openrouter_model'] ?? 'anthropic/claude-sonnet-4',
+                'xai'        => $this->config['xai_model'] ?? 'grok-3-fast',
+                'together'   => $this->config['together_model'] ?? 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
             ],
         ];
     }
@@ -156,9 +202,15 @@ final class AiService
     ): string {
         $p = $provider ?? $this->provider;
         return match ($p) {
-            'anthropic' => $this->callAnthropicAdv($system, $prompt, $model, $maxTokens, $temperature),
-            'gemini'    => $this->callGeminiAdv($system, $prompt, $model, $maxTokens, $temperature),
-            default     => $this->callOpenAiAdv($system, $prompt, $model, $maxTokens, $temperature),
+            'anthropic'  => $this->callAnthropicAdv($system, $prompt, $model, $maxTokens, $temperature),
+            'gemini'     => $this->callGeminiAdv($system, $prompt, $model, $maxTokens, $temperature),
+            'deepseek'   => $this->callOpenAiCompatible('deepseek', $system, $prompt, $model, $maxTokens, $temperature),
+            'groq'       => $this->callOpenAiCompatible('groq', $system, $prompt, $model, $maxTokens, $temperature),
+            'mistral'    => $this->callOpenAiCompatible('mistral', $system, $prompt, $model, $maxTokens, $temperature),
+            'openrouter' => $this->callOpenAiCompatible('openrouter', $system, $prompt, $model, $maxTokens, $temperature),
+            'xai'        => $this->callOpenAiCompatible('xai', $system, $prompt, $model, $maxTokens, $temperature),
+            'together'   => $this->callOpenAiCompatible('together', $system, $prompt, $model, $maxTokens, $temperature),
+            default      => $this->callOpenAiAdv($system, $prompt, $model, $maxTokens, $temperature),
         };
     }
 
@@ -259,6 +311,107 @@ final class AiService
 
         $content = $data['choices'][0]['message']['content'] ?? null;
         return is_string($content) && $content !== '' ? $content : '';
+    }
+
+    /* ------------------------------------------------------------------ */
+    /*  Provider call — OpenAI-compatible (DeepSeek, Groq, Mistral, etc) */
+    /* ------------------------------------------------------------------ */
+
+    /** Base URLs for OpenAI-compatible providers. */
+    private const COMPAT_URLS = [
+        'deepseek'   => 'https://api.deepseek.com/v1',
+        'groq'       => 'https://api.groq.com/openai/v1',
+        'mistral'    => 'https://api.mistral.ai/v1',
+        'openrouter' => 'https://openrouter.ai/api/v1',
+        'xai'        => 'https://api.x.ai/v1',
+        'together'   => 'https://api.together.xyz/v1',
+    ];
+
+    /** Default models for OpenAI-compatible providers. */
+    private const COMPAT_DEFAULTS = [
+        'deepseek'   => 'deepseek-chat',
+        'groq'       => 'llama-3.3-70b-versatile',
+        'mistral'    => 'mistral-large-latest',
+        'openrouter' => 'anthropic/claude-sonnet-4',
+        'xai'        => 'grok-3-fast',
+        'together'   => 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+    ];
+
+    /**
+     * Unified call for all OpenAI chat-completions-compatible providers.
+     */
+    private function callOpenAiCompatible(
+        string $providerName,
+        string $system,
+        string $prompt,
+        ?string $model = null,
+        int $maxTokens = 4096,
+        float $temperature = 0.7,
+    ): string {
+        $apiKey = $this->config["{$providerName}_api_key"] ?? '';
+        if (empty($apiKey)) {
+            return $this->fallback($prompt);
+        }
+
+        $baseUrl = rtrim(
+            (string)($this->config["{$providerName}_base_url"] ?? self::COMPAT_URLS[$providerName] ?? ''),
+            '/',
+        );
+        $url = $baseUrl . '/chat/completions';
+
+        $payload = [
+            'model'       => $model ?? $this->config["{$providerName}_model"] ?? self::COMPAT_DEFAULTS[$providerName] ?? '',
+            'messages'    => [
+                ['role' => 'system', 'content' => $system],
+                ['role' => 'user',   'content' => $prompt],
+            ],
+            'temperature' => $temperature,
+            'max_tokens'  => $maxTokens,
+        ];
+
+        $headers = ["Authorization: Bearer {$apiKey}"];
+
+        // OpenRouter requires extra headers for ranking/attribution.
+        if ($providerName === 'openrouter') {
+            $headers[] = 'HTTP-Referer: ' . (env_value('APP_URL', '') ?: 'https://marketing-suite.local');
+            $headers[] = 'X-Title: Marketing Suite';
+        }
+
+        $data = $this->postJson($url, $headers, $payload);
+
+        $content = $data['choices'][0]['message']['content'] ?? null;
+        return is_string($content) && $content !== '' ? $content : $this->fallback($prompt);
+    }
+
+    /**
+     * Chat with full message history for OpenAI-compatible providers.
+     */
+    public function chatOpenAiCompatible(string $providerName, array $messages, ?string $model = null, float $temperature = 0.7): string
+    {
+        $apiKey = $this->config["{$providerName}_api_key"] ?? '';
+        if (empty($apiKey)) {
+            return '';
+        }
+
+        $baseUrl = rtrim(
+            (string)($this->config["{$providerName}_base_url"] ?? self::COMPAT_URLS[$providerName] ?? ''),
+            '/',
+        );
+
+        $payload = [
+            'model'       => $model ?? $this->config["{$providerName}_model"] ?? self::COMPAT_DEFAULTS[$providerName] ?? '',
+            'messages'    => $messages,
+            'temperature' => $temperature,
+        ];
+
+        $headers = ["Authorization: Bearer {$apiKey}"];
+        if ($providerName === 'openrouter') {
+            $headers[] = 'HTTP-Referer: ' . (env_value('APP_URL', '') ?: 'https://marketing-suite.local');
+            $headers[] = 'X-Title: Marketing Suite';
+        }
+
+        $data = $this->postJson($baseUrl . '/chat/completions', $headers, $payload);
+        return $data['choices'][0]['message']['content'] ?? '';
     }
 
     /* ------------------------------------------------------------------ */

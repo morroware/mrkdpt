@@ -59,10 +59,16 @@ RULES:
         $messages[] = ['role' => 'user', 'content' => $userMessage];
 
         // Route to the right provider
-        $reply = match ($p) {
-            'anthropic' => $this->ai->chatAnthropic($system, $messages, $model),
-            'gemini'    => $this->chatViaGemini($system, $messages, $model),
-            default     => $this->chatViaOpenAi($system, $messages, $model),
+        $compatProviders = ['deepseek', 'groq', 'mistral', 'openrouter', 'xai', 'together'];
+        $reply = match (true) {
+            $p === 'anthropic' => $this->ai->chatAnthropic($system, $messages, $model),
+            $p === 'gemini'    => $this->chatViaGemini($system, $messages, $model),
+            in_array($p, $compatProviders, true) => $this->ai->chatOpenAiCompatible(
+                $p,
+                array_merge([['role' => 'system', 'content' => $system]], $messages),
+                $model,
+            ),
+            default => $this->chatViaOpenAi($system, $messages, $model),
         };
 
         if ($reply === '') {

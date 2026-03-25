@@ -1,21 +1,10 @@
-# Marketing Suite v3.0-beta
+# Marketing Suite
 
-A full-stack marketing operations platform built with vanilla JS, PHP 8+, and SQLite. Zero external dependencies — no Composer, no npm, no frameworks. Deploy anywhere PHP runs.
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| **Backend** | PHP 8+ (pure procedural, no framework) |
-| **Frontend** | Vanilla HTML/CSS/JavaScript (SPA with hash-based router) |
-| **Database** | SQLite via PDO (WAL mode, auto-migrating schema) |
-| **AI** | OpenAI, Anthropic (Claude), Google Gemini |
-| **Email** | Built-in SMTP client (RFC 5321, STARTTLS, MIME multipart) |
-| **Social** | Twitter/X API v2, Bluesky AT Protocol, Mastodon ActivityPub, Facebook/Instagram Graph API |
+An all-in-one marketing operations platform with deep AI integration. Zero-dependency PHP 8.1+ backend with vanilla JavaScript SPA frontend, SQLite database, and no build step.
 
 ## Quick Start
 
-### Option A: PHP built-in server (development)
+### Development
 
 ```bash
 git clone <repo-url> marketing
@@ -23,473 +12,134 @@ cd marketing
 php -S localhost:8080 -t public
 ```
 
-Open `http://localhost:8080/install.php` to configure, or `http://localhost:8080` if already set up.
+Open `http://localhost:8080/install.php` to run the setup wizard.
 
-### Option B: Web installer (shared hosting)
+### Production
 
-1. Upload files to your web root (point document root to `public/`).
-2. Visit `https://yourdomain.com/install.php`.
-3. Fill in business name, AI keys, SMTP settings.
-4. The installer writes `.env`, initializes the database, and creates your admin account.
+**Nginx:** Copy `nginx.example.conf` and adjust paths. Point root to `public/`.
 
-### Option C: Production (Nginx/Apache)
+**Apache:** The included `public/.htaccess` handles rewriting and security headers automatically.
 
-- **Nginx:** Copy `nginx.example.conf` to `/etc/nginx/sites-available/` and adjust paths.
-- **Apache:** The included `public/.htaccess` handles URL rewriting and security headers automatically.
+**Shared Hosting:** Upload files, point document root to `public/`, visit `/install.php`.
 
 ## Requirements
 
-- PHP 8.1+ with extensions: `pdo_sqlite`, `curl`, `mbstring`
-- Optional: `gd` (for image thumbnail generation)
-- No Composer, no npm, no build step
+- PHP 8.1+ with `pdo_sqlite`, `curl`, `mbstring`
+- Optional: `gd` for image thumbnails
 - Write permission on `data/` directory
+- No Composer, npm, or build step required
 
-## Configuration (.env)
+## Features
+
+| Category | Highlights |
+|----------|-----------|
+| **AI Studio** | 25+ AI tools across content creation, analysis, and strategy — powered by 9 configurable providers |
+| **Content Management** | Post creation, calendar view, approval workflows, bulk operations, recurring posts |
+| **Social Publishing** | 15-platform publishing with queue, optimal timing, and retry logic |
+| **Email Marketing** | List management, campaign composer, 6 built-in templates, open/click tracking |
+| **CRM** | Contact management with pipeline stages, scoring, activity timeline, CSV import/export |
+| **Analytics** | Dashboard metrics, content performance, charts, CSV exports |
+| **Campaigns** | Budget tracking, ROI calculation, campaign comparison |
+| **A/B Testing** | Variant creation, impression/conversion tracking |
+| **Forms & Landing Pages** | Dynamic form builder, 5 landing page templates, embeddable forms |
+| **Automations** | 9 trigger events, 6 action types, conditional execution |
+| **Segments** | Dynamic audience segmentation with 10 criteria types |
+| **Links & UTM** | Short links, UTM builder, click analytics |
+| **Sales Funnels** | Multi-stage funnel builder with conversion tracking |
+| **WordPress Plugin** | Content sync, AI generation, dashboard widget for WordPress |
+
+## AI Providers
+
+Supports 9 AI providers out of the box:
+
+| Provider | Config Key | Models |
+|----------|-----------|--------|
+| OpenAI | `openai` | GPT-4.1, GPT-4.1-mini, GPT-4o, o3-mini |
+| Anthropic | `anthropic` | Claude Sonnet 4, Claude Haiku 4.5, Claude Opus 4 |
+| Google Gemini | `gemini` | Gemini 2.5 Pro, 2.5 Flash, 2.0 Flash |
+| DeepSeek | `deepseek` | deepseek-chat, deepseek-reasoner |
+| Groq | `groq` | Llama 3.3 70B, Llama 3.1 8B, Mixtral 8x7B |
+| Mistral | `mistral` | Large, Medium, Small, Nemo |
+| OpenRouter | `openrouter` | Meta-provider with 100+ models |
+| xAI | `xai` | Grok-3, Grok-3-fast, Grok-2 |
+| Together AI | `together` | Llama, Mixtral, Qwen variants |
+
+## Configuration
 
 The `.env` file is created by the web installer or manually:
 
 ```env
-# Business
 BUSINESS_NAME="My Business"
-BUSINESS_INDUSTRY="Local services"
+BUSINESS_INDUSTRY="Technology"
 TIMEZONE="America/New_York"
 
-# AI Provider (openai | anthropic | gemini)
 AI_PROVIDER=openai
 OPENAI_API_KEY=sk-...
-OPENAI_BASE_URL=https://api.openai.com/v1
-AI_MODEL=gpt-4.1-mini
-ANTHROPIC_API_KEY=
-ANTHROPIC_MODEL=claude-sonnet-4-20250514
-GEMINI_API_KEY=
-GEMINI_MODEL=gemini-2.5-flash
 
-# App
 APP_URL=https://yourdomain.com
 MAX_UPLOAD_MB=10
 CRON_KEY=<random-hex>
 
-# SMTP (for email marketing)
 SMTP_HOST=smtp.example.com
 SMTP_PORT=587
 SMTP_USER=user@example.com
 SMTP_PASS=password
 SMTP_FROM=noreply@example.com
-SMTP_FROM_NAME="My Business"
 ```
 
-If AI keys are missing, the app returns deterministic fallback output so all workflows remain functional without paid API access.
-
-## Features
-
-### Content Management
-- **Content Studio** with calendar view, list view, and post creator
-- **Publishing workflow:** draft → pending review → approved → scheduled → published
-- **Content approval system** with approve/reject/request-review actions and review notes
-- **Content notes/comments** for team collaboration on posts
-- **Bulk operations:** publish, schedule, or delete multiple posts at once
-- **Recurring posts:** daily, weekly, biweekly, monthly recurrence
-- **Evergreen content** flagging
-- **AI-powered content generation** directly from the post form
-- **AI inline toolbar** on body field: one-click improve, expand, shorten, persuasive, emojis
-- **One-click AI repurpose** from post list to AI Studio
-
-### AI Studio (25+ tools)
-| Tool | Endpoint | Description |
-|------|----------|-------------|
-| Market Research | `POST /api/ai/research` | ICP, pain points, objections, 30-day plan |
-| Content Ideas | `POST /api/ai/ideas` | 8 platform-specific ideas with hooks and CTAs |
-| Content Writer | `POST /api/ai/content` | Social posts, captions, ad copy, emails |
-| Blog Generator | `POST /api/ai/blog-post` | 1200-1800 word SEO blog with meta tags and FAQ |
-| Content Brief | `POST /api/ai/brief` | Full content brief with outline, SEO keywords, distribution plan |
-| Headline Optimizer | `POST /api/ai/headlines` | 10 headline variations with psychological triggers and CTR predictions |
-| SEO Keywords | `POST /api/ai/seo-keywords` | 20 keywords with intent, difficulty, content type |
-| Hashtag Research | `POST /api/ai/hashtags` | 30 hashtags in 3 volume tiers |
-| Content Repurpose | `POST /api/ai/repurpose` | Convert content across formats (tweet, LinkedIn, email, etc.) |
-| Ad Variations | `POST /api/ai/ad-variations` | 5+ ad angles (pain, benefit, proof, urgency, story) |
-| Email Subject Lines | `POST /api/ai/subject-lines` | 10 subjects with predicted open rate and psychological trigger |
-| Audience Persona | `POST /api/ai/persona` | Detailed buyer persona with messaging dos/don'ts |
-| Content Scorer | `POST /api/ai/score` | 1-100 score across 5 categories with improvement tips |
-| Tone Analyzer | `POST /api/ai/tone-analysis` | Sentiment, readability, emotion map, brand alignment |
-| Content Refiner | `POST /api/ai/refine` | 12 refinement actions (improve, expand, shorten, tone changes, etc.) |
-| Posting Calendar | `POST /api/ai/calendar` | 14-day schedule with times, channels, KPIs |
-| Monthly Calendar | `POST /api/ai/calendar-month` | Full month content plan with topics, channels, posting times |
-| Smart Posting Times | `POST /api/ai/smart-times` | Platform-specific optimal posting schedule |
-| Video Script | `POST /api/ai/video-script` | Scene-by-scene script with hooks, overlays, captions |
-| Caption Batch | `POST /api/ai/caption-batch` | Multi-platform captions in one request |
-| SEO Audit | `POST /api/ai/seo-audit` | 10-point page audit with scores and quick wins |
-| Social Strategy | `POST /api/ai/social-strategy` | Full strategy with content pillars, schedule, KPIs |
-| Campaign Optimizer | `POST /api/ai/campaign-optimizer` | Budget, channel mix, and creative optimization |
-| Competitor Analysis | `POST /api/ai/competitor-analysis` | Deep competitive analysis with counter-strategies |
-| Weekly Report | `POST /api/ai/report` | AI-generated performance summary from your data |
-| AI Insights | `POST /api/ai/insights` | Proactive recommendations based on marketing data |
-
-### AI Writing Assistant
-A floating side panel accessible from any page via the purple FAB button (bottom-right) or from within any textarea:
-- **12 Quick Refinement Actions:** Improve, Expand, Shorten, Add Hooks, Add CTA, Bullet Points, Add Emojis, Simplify, Formal, Casual, Persuasive, Storytelling
-- **Analysis Tools:** Tone Analysis, Content Score, Headline Ideas
-- **Custom Instructions:** Free-form AI refinement with any prompt
-- **Apply to Field:** One-click replacement of active textarea content
-- **Context Aware:** Automatically detects the focused textarea on the current page
-
-### AI Inline Toolbar
-Contextual AI action buttons rendered directly above textarea fields:
-- **Content Studio:** Improve, Expand, Shorten, Persuasive, Emojis buttons above post body
-- **Email Compose:** Improve, Expand, Shorten, Persuasive buttons above HTML body
-- One-click refinement without leaving the form
-
-### AI Dashboard Insights
-Proactive AI-powered recommendation cards on the dashboard:
-- Priority-coded badges (high/medium/low)
-- Category icons (content, engagement, growth, optimization)
-- Specific action items based on your marketing data
-- Refresh on demand
-
-### Campaign Management
-- Campaign CRUD with budget, date range, channel, objective
-- **ROI tracking:** log daily spend, revenue, impressions, clicks, conversions
-- **Performance metrics:** ROI %, CTR, conversion rate, CPA, ROAS — all auto-calculated
-- **Campaign comparison:** compare multiple campaigns side-by-side
-- Budget utilization progress bars
-- **AI Campaign Optimizer** for budget, channel mix, and creative recommendations
-
-### Social Media Publishing
-- **Multi-platform publishing:** Twitter/X, Bluesky, Mastodon, Facebook Pages, Instagram
-- **Publish Queue:** queue posts with priority and optimal time scheduling
-- **Best posting times:** analytics based on historical publish success data
-- **AI Smart Posting Times:** AI-powered schedule recommendations per platform and audience
-- Social account management with token handling
-- Automatic retry with exponential backoff on failures
-- Publish log with success/error tracking
-
-### Email Marketing
-- **List management** with subscriber counts
-- **Campaign composer** with HTML and plain text editors
-- **6 built-in responsive email templates:** Welcome, Newsletter, Promotional, Event, Follow-Up, Product Announcement
-- **Template system:** preview, use-in-campaign one-click loading, custom template creation
-- **Merge tags:** `{{name}}`, `{{email}}`, `{{unsubscribe_url}}`, `{{tracking_pixel}}`, `{{date}}`
-- **Tracking:** open pixel, click tracking with redirect URLs
-- **HMAC-signed unsubscribe URLs** for security
-- **Campaign stats:** open rate, click rate, unique opens/clicks
-- CSV subscriber import
-- Test email sending
-
-### Contacts / Mini CRM
-- Contact database with lead → MQL → SQL → opportunity → customer stages
-- Contact scoring (manual + automation-driven)
-- Activity timeline per contact
-- **CSV import/export** for bulk operations
-- **Bulk actions:** delete, update stage, add tags, add score points
-- Source tracking (form, manual, CSV import, email, etc.)
-- Custom fields (JSON)
-- Auto-creation from form submissions
-
-### Audience Segments
-- **Dynamic segmentation** with 10 criteria types:
-  - Stage (multi-select), score range, tags, source, company
-  - Created date range, active since, inactive since
-- Auto-computed contact counts
-- View matching contacts in modal
-- Refresh/recompute on demand
-
-### Forms & Landing Pages
-- **Dynamic form builder** with configurable field types
-- Form submissions auto-create contacts and fire automations
-- Embeddable forms via iframe (`/f/slug`)
-- **Landing page editor** with 5 templates (Dark, Startup Purple, Minimal Light, Bold Red, Nature Green)
-- Hero section with CTA, body HTML, custom CSS
-- Built-in form integration on landing pages
-- View and conversion tracking
-- Public rendering at `/p/slug`
-
-### Links & UTM
-- **UTM link builder** with auto-generated short links
-- **Link shortener** with custom codes
-- Click tracking with date, IP hash, user agent, referer
-- Short link redirects at `/s/code`
-
-### A/B Testing
-- Create tests with multiple variants
-- Track impressions and conversions per variant
-- Auto-calculated conversion rates
-- Winner selection
-
-### Sales Funnels
-- Multi-stage funnel builder with color-coded stages
-- Target vs. actual count tracking
-- Conversion rate calculation between stages
-- Campaign association
-
-### Automations
-- **9 trigger events:** form submitted, contact created, stage changed, post published, post scheduled, subscriber added, email sent, landing page conversion, link clicked
-- **6 action types:** tag contact, update stage, add score, add to email list, send webhook, log activity
-- Conditional execution based on context
-- Run count and last-run tracking
-
-### Analytics & Reporting
-- Dashboard with 30-day metrics overview
-- Posts by platform, content type, and status
-- Weekly posting trends
-- AI usage tracking
-- Email engagement metrics
-- Social publishing stats
-- **CSV export:** posts, campaigns, KPIs, subscribers, publish log, contacts
-
-### Additional Features
-- **RSS feed reader** with auto-fetch on cron and item curation
-- **Webhooks** with HMAC-SHA256 signing for 6 event types
-- **Cron scheduler** for scheduled posts, recurring posts, RSS fetching
-- **Media library** with file upload, thumbnail generation, alt text, and tagging
-- **Content templates** with variable substitution
-- **Brand voice profiles** for consistent AI-generated content
-- **Dark/light theme** toggle
-- **Responsive design** — works on desktop and mobile
-- **AI Writing Assistant** — floating panel for content refinement from any page
-- **AI Dashboard Insights** — proactive recommendations based on marketing data
-- **Global AI Command Bar** (Ctrl+K) with 10 quick actions
-
-## Architecture
-
-```
-marketing/
-├── public/                  # Web root (point your server here)
-│   ├── index.php            # Entry point — routing, middleware, dispatch
-│   ├── app.html             # SPA shell — all page templates
-│   ├── install.php          # Web installer
-│   ├── cron.php             # External cron trigger endpoint
-│   ├── .htaccess            # Apache rewrite rules + security
-│   └── assets/
-│       ├── styles.css       # Full CSS (dark/light themes, responsive)
-│       └── js/
-│           ├── app.js       # Boot sequence, page registration
-│           ├── core/
-│           │   ├── router.js   # Hash-based SPA router
-│           │   ├── api.js      # Fetch wrapper with CSRF + auth
-│           │   ├── toast.js    # Notification system
-│           │   └── utils.js    # DOM helpers, formatters, escaping
-│           └── pages/         # 22 page modules (one per feature, + AI assistant)
-├── src/
-│   ├── bootstrap.php        # Helper functions (env, JSON response, security headers)
-│   ├── Database.php         # SQLite schema (35+ tables, auto-migration)
-│   ├── Auth.php             # Session + bearer token auth, CSRF, rate limiting
-│   ├── Router.php           # Lightweight router with middleware support
-│   ├── Repositories.php     # Campaign, Post, Competitor, KPI, Email repos
-│   ├── Templates.php        # Template + Brand Profile repos
-│   ├── Analytics.php        # Dashboard metrics, charts, CSV export
-│   ├── AiService.php        # Multi-provider AI (26 methods)
-│   ├── EmailService.php     # SMTP client + tracking + merge tags
-│   ├── SocialPublisher.php  # Multi-platform publishing (5 platforms)
-│   ├── MediaLibrary.php     # File uploads + thumbnails
-│   ├── Contacts.php         # Contact CRM repo
-│   ├── FormBuilder.php      # Form builder + submissions
-│   ├── LandingPages.php     # Landing page editor + renderer
-│   ├── UtmBuilder.php       # UTM link generator
-│   ├── LinkShortener.php    # Short links + click analytics
-│   ├── RssFetcher.php       # RSS/Atom parser
-│   ├── Webhooks.php         # Webhook dispatch + HMAC signing
-│   ├── Scheduler.php        # Cron task runner
-│   ├── Automations.php      # Trigger-action workflow engine
-│   ├── AbTesting.php        # A/B test variants + conversion tracking
-│   ├── Funnels.php          # Sales funnel stages
-│   ├── Segments.php         # Dynamic audience segments
-│   ├── SocialQueue.php      # Publish queue + best times
-│   ├── EmailTemplates.php   # Email template library (6 built-in)
-│   ├── CampaignMetrics.php  # ROI tracking + campaign comparison
-│   └── routes/              # 24 route modules
-├── data/                    # Runtime data (gitignored)
-│   ├── marketing.sqlite     # Database (auto-created)
-│   └── uploads/             # Uploaded media files
-└── nginx.example.conf       # Production Nginx config
-```
-
-## API Reference
-
-All API endpoints are prefixed with `/api/`. Authentication is required for all endpoints except `/api/health`, `/api/login`, `/api/setup-status`, and form submissions.
-
-### Authentication
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/login` | Login (returns session + CSRF token) |
-| POST | `/api/logout` | Logout |
-| GET | `/api/setup-status` | Check if setup is complete |
-
-### Content
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/posts` | List posts (filter: `status`, `platform`, `campaign_id`) |
-| POST | `/api/posts` | Create post |
-| GET | `/api/posts/{id}` | Get single post |
-| PATCH | `/api/posts/{id}` | Update post |
-| DELETE | `/api/posts/{id}` | Delete post |
-| GET | `/api/posts/calendar` | Calendar view (`year`, `month` params) |
-| POST | `/api/posts/{id}/approve` | Approve content |
-| POST | `/api/posts/{id}/reject` | Reject content |
-| POST | `/api/posts/{id}/request-review` | Request review |
-| GET | `/api/posts/{id}/notes` | Get content notes |
-| POST | `/api/posts/{id}/notes` | Add content note |
-| POST | `/api/posts/bulk` | Bulk action (publish, schedule, delete) |
-
-### Campaigns
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/campaigns` | List campaigns |
-| POST | `/api/campaigns` | Create campaign |
-| GET | `/api/campaigns/{id}` | Get campaign |
-| PUT | `/api/campaigns/{id}` | Update campaign |
-| DELETE | `/api/campaigns/{id}` | Delete campaign |
-| GET | `/api/campaigns/{id}/metrics` | Get daily metrics |
-| POST | `/api/campaigns/{id}/metrics` | Add metric entry (spend, revenue, etc.) |
-| GET | `/api/campaigns/{id}/summary` | Get ROI summary (ROI%, CTR, CPA, ROAS) |
-| POST | `/api/campaigns/compare` | Compare campaigns (`campaign_ids` array) |
-
-### Contacts
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/contacts` | List (filter: `stage`, `search`) |
-| POST | `/api/contacts` | Create contact |
-| GET | `/api/contacts/{id}` | Get contact + activities |
-| PATCH | `/api/contacts/{id}` | Update contact |
-| DELETE | `/api/contacts/{id}` | Delete contact |
-| POST | `/api/contacts/{id}/activity` | Log activity |
-| GET | `/api/contacts/metrics` | Stage breakdown counts |
-| GET | `/api/contacts/export` | CSV export |
-| POST | `/api/contacts/import` | CSV import |
-| POST | `/api/contacts/bulk` | Bulk ops (delete, update_stage, add_tag, add_score) |
-
-### Segments
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/segments` | List segments |
-| POST | `/api/segments` | Create segment |
-| GET | `/api/segments/{id}` | Get segment |
-| PUT | `/api/segments/{id}` | Update segment |
-| DELETE | `/api/segments/{id}` | Delete segment |
-| GET | `/api/segments/{id}/contacts` | Get matching contacts |
-| POST | `/api/segments/{id}/recompute` | Refresh contact count |
-| GET | `/api/segments/criteria-fields` | Available criteria types |
-
-### Social
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/social-accounts` | List connected accounts |
-| POST | `/api/social-accounts` | Connect account |
-| PUT | `/api/social-accounts/{id}` | Update account |
-| DELETE | `/api/social-accounts/{id}` | Remove account |
-| GET | `/api/social-queue` | List queued posts |
-| POST | `/api/social-queue` | Add to queue |
-| PATCH | `/api/social-queue/{id}` | Update priority/status |
-| DELETE | `/api/social-queue/{id}` | Remove from queue |
-| GET | `/api/social-queue/metrics` | Queue stats |
-| GET | `/api/social-queue/best-times` | Best posting times |
-
-### Email Marketing
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/email-lists` | List email lists |
-| POST | `/api/email-lists` | Create list |
-| DELETE | `/api/email-lists/{id}` | Delete list |
-| GET | `/api/subscribers` | List subscribers |
-| POST | `/api/subscribers` | Add subscriber |
-| POST | `/api/subscribers/import` | CSV import |
-| DELETE | `/api/subscribers/{id}` | Remove subscriber |
-| GET | `/api/email-campaigns` | List campaigns |
-| POST | `/api/email-campaigns` | Create campaign |
-| PUT | `/api/email-campaigns/{id}` | Update campaign |
-| DELETE | `/api/email-campaigns/{id}` | Delete campaign |
-| POST | `/api/email-campaigns/{id}/send` | Send to all subscribers |
-| POST | `/api/email-campaigns/{id}/test` | Send test email |
-| GET | `/api/email-campaigns/{id}/stats` | Open/click rates |
-| GET | `/api/email-templates` | List templates |
-| POST | `/api/email-templates` | Create template |
-| PUT | `/api/email-templates/{id}` | Update template |
-| DELETE | `/api/email-templates/{id}` | Delete (custom only) |
-| POST | `/api/email-templates/{id}/render` | Render with variables |
-
-### Other Endpoints
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/competitors` | List competitors |
-| POST | `/api/competitors` | Add competitor |
-| GET | `/api/kpis` | List KPI logs |
-| POST | `/api/kpis` | Log KPI |
-| GET | `/api/templates` | Content templates |
-| GET | `/api/media` | Media library |
-| POST | `/api/media` | Upload file |
-| GET | `/api/rss-feeds` | RSS feeds |
-| GET | `/api/rss-items` | RSS items |
-| GET | `/api/utm-links` | UTM links |
-| POST | `/api/utm-links` | Create UTM link |
-| GET | `/api/short-links` | Short links |
-| POST | `/api/short-links` | Create short link |
-| GET | `/api/landing-pages` | Landing pages |
-| POST | `/api/landing-pages` | Create landing page |
-| GET | `/api/forms` | Forms |
-| POST | `/api/forms` | Create form |
-| GET | `/api/ab-tests` | A/B tests |
-| POST | `/api/ab-tests` | Create test |
-| GET | `/api/funnels` | Sales funnels |
-| POST | `/api/funnels` | Create funnel |
-| GET | `/api/automations` | Automation rules |
-| POST | `/api/automations` | Create automation |
-| GET | `/api/webhooks` | Webhooks |
-| POST | `/api/webhooks` | Create webhook |
-| GET | `/api/analytics/overview` | Dashboard metrics |
-| GET | `/api/analytics/export/{type}` | CSV export |
-| GET | `/api/health` | Health check |
-| GET | `/api/settings` | App configuration |
-
-### Public Endpoints (no auth)
-| Path | Description |
-|------|-------------|
-| `/p/{slug}` | Render landing page |
-| `/f/{slug}` | Render embeddable form |
-| `/s/{code}` | Short link redirect |
-| `/api/track/open` | Email open tracking pixel |
-| `/api/track/click` | Email click tracking redirect |
-| `/api/unsubscribe` | Email unsubscribe |
-| `/api/forms/{slug}/submit` | Public form submission |
-
-## Security
-
-- **Authentication:** Session-based (browser) + Bearer token (API)
-- **CSRF protection:** Token validation on all mutating requests
-- **Rate limiting:** IP-based with configurable windows
-- **Password hashing:** bcrypt
-- **SQL injection:** Prepared statements throughout
-- **XSS prevention:** HTML escaping in all templates
-- **Email security:** HMAC-SHA256 signed unsubscribe URLs
-- **Webhook security:** HMAC-SHA256 request signatures
-- **File upload validation:** MIME type checking, size limits
-- **Security headers:** X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy
-- **Path protection:** `.env`, `data/`, `src/` blocked via .htaccess/nginx
+See [docs/configuration.md](docs/configuration.md) for full configuration reference.
 
 ## Cron Setup
 
-For scheduled posts, recurring content, and RSS fetching, set up a cron job:
-
 ```bash
-# Run every 5 minutes
 */5 * * * * curl -s "https://yourdomain.com/cron.php?key=YOUR_CRON_KEY" > /dev/null 2>&1
 ```
 
-The cron key is set in `.env` as `CRON_KEY`.
+Handles: scheduled post publishing, recurring post creation, RSS feed fetching.
 
-## Database
+## Documentation
 
-SQLite database at `data/marketing.sqlite` with 35+ tables. Schema is auto-migrating — the `Database` class creates missing tables and columns on every request. No manual migrations needed.
+| Document | Description |
+|----------|-------------|
+| [Architecture](docs/architecture.md) | System architecture, directory structure, tech stack |
+| [Configuration](docs/configuration.md) | Environment variables, provider setup, deployment options |
+| [API Reference](docs/api-reference.md) | Complete REST API documentation (80+ endpoints) |
+| [AI System](docs/ai-system.md) | AI providers, tools, writing assistant, inline toolbar |
+| [Content Management](docs/content-management.md) | Posts, calendar, workflows, bulk operations |
+| [Social Publishing](docs/social-publishing.md) | 15-platform publishing, queue, optimal timing |
+| [Email Marketing](docs/email-marketing.md) | Lists, campaigns, templates, tracking |
+| [CRM & Contacts](docs/crm-contacts.md) | Contact management, pipeline, scoring, segmentation |
+| [Campaigns & Analytics](docs/campaigns-analytics.md) | Campaign ROI, metrics, reporting, exports |
+| [Forms & Landing Pages](docs/forms-landing-pages.md) | Form builder, landing pages, public endpoints |
+| [Automations & Workflows](docs/automations-workflows.md) | Triggers, actions, conditions |
+| [Frontend Architecture](docs/frontend-architecture.md) | SPA routing, page modules, UI patterns |
+| [Database Schema](docs/database-schema.md) | All 35+ tables with columns and relationships |
+| [WordPress Plugin](docs/wordpress-plugin.md) | WP connector plugin installation and usage |
+| [Security](docs/security.md) | Authentication, CSRF, rate limiting, headers |
+| [Known Issues](docs/known-issues.md) | Documented issues, limitations, and recommendations |
 
-The database file is gitignored. A fresh clone auto-creates it on first request.
+## Architecture Overview
 
-## Hosting Scenarios
-
-| Environment | Setup |
-|-------------|-------|
-| **Local dev** | `php -S localhost:8080 -t public` |
-| **Shared hosting** | Upload files, point document root to `public/`, visit `/install.php` |
-| **VPS (Nginx)** | Use `nginx.example.conf`, install `php-fpm` |
-| **VPS (Apache)** | `.htaccess` handles everything, enable `mod_rewrite` |
-| **Docker** | Any PHP 8.1+ image with `pdo_sqlite` and `curl` extensions |
-| **PaaS** | Set `public/` as web root, ensure `data/` is writable |
+```
+marketing/
+├── public/                  # Web root
+│   ├── index.php            # Main router and API dispatcher
+│   ├── app.html             # SPA shell (22 pages inline)
+│   ├── install.php          # Web installer
+│   ├── cron.php             # Cron trigger
+│   └── assets/              # CSS, JS modules
+├── src/                     # PHP backend
+│   ├── Database.php         # SQLite schema (35+ tables)
+│   ├── AiService.php        # Multi-provider AI orchestration
+│   ├── SocialPublisher.php  # 15-platform publishing
+│   ├── EmailService.php     # SMTP client with tracking
+│   └── routes/              # 28 API route files
+├── wordpress-plugin/        # WordPress connector plugin
+├── data/                    # Runtime (gitignored)
+│   ├── marketing.sqlite     # Database
+│   └── uploads/             # Media files
+└── nginx.example.conf       # Production config
+```
 
 ## License
 

@@ -319,7 +319,8 @@ Follow UTM best practices: lowercase, hyphens not spaces, consistent naming.";
 
         $raw = $this->ai->generateAdvanced($this->ai->buildSystemPrompt(), $prompt);
 
-        if (preg_match('/\{[\s\S]*\}/', $raw, $m)) {
+        $cleaned = preg_replace('/```(?:json)?\s*/i', '', $raw);
+        if (preg_match('/\{[\s\S]*\}/s', $cleaned, $m)) {
             $parsed = json_decode($m[0], true);
             if (is_array($parsed) && isset($parsed['utm_source'])) {
                 return ['utm' => $parsed, 'provider' => $this->ai->getProvider()];

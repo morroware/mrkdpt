@@ -84,7 +84,12 @@ RULES:
         $ctx = [];
 
         // Always include high-level overview
-        $ctx[] = $this->getOverviewStats();
+        try {
+            $ctx[] = $this->getOverviewStats();
+        } catch (\PDOException $e) {
+            error_log("AiChatService context error: " . $e->getMessage());
+            $ctx[] = "OVERVIEW: Data unavailable.";
+        }
 
         // Include relevant data based on query keywords
         $q = strtolower($query);
@@ -250,10 +255,25 @@ RULES:
         return 'posts, campaigns, email, contacts, competitors, platforms, funnels, schedule';
     }
 
+    private static array $allowedTables = [
+        'posts', 'campaigns', 'contacts', 'subscribers', 'email_lists',
+        'email_campaigns', 'competitors', 'funnels', 'funnel_stages',
+        'social_accounts', 'social_queue', 'ab_tests', 'forms',
+        'landing_pages', 'automation_rules', 'audience_segments',
+    ];
+
     private function count(string $table, string $where = '1=1'): int
     {
-        $stmt = $this->pdo->query("SELECT COUNT(*) as c FROM {$table} WHERE {$where}");
-        return (int)($stmt->fetch(PDO::FETCH_ASSOC)['c'] ?? 0);
+        if (!in_array($table, self::$allowedTables, true)) {
+            return 0;
+        }
+        try {
+            $stmt = $this->pdo->query("SELECT COUNT(*) as c FROM {$table} WHERE {$where}");
+            return (int)($stmt->fetch(PDO::FETCH_ASSOC)['c'] ?? 0);
+        } catch (\PDOException $e) {
+            error_log("AiChatService::count error on {$table}: " . $e->getMessage());
+            return 0;
+        }
     }
 
     private function chatViaOpenAi(string $system, array $messages, ?string $model): string
@@ -266,15 +286,25 @@ RULES:
 
     private function chatViaGemini(string $system, array $messages, ?string $model): string
     {
-        // Gemini uses a different format — combine system + messages
+        // Gemini uses a different format — build contents with role alternation
         $contents = [];
         foreach ($messages as $msg) {
             $role = $msg['role'] === 'assistant' ? 'model' : 'user';
-            $text = $msg['role'] === 'user' && empty($contents)
-                ? $system . "\n\n" . $msg['content']
-                : $msg['content'];
-            $contents[] = ['role' => $role, 'parts' => [['text' => $text]]];
+            $text = $msg['content'];
+
+            // Merge consecutive messages with the same role (Gemini requires alternation)
+            if (!empty($contents) && $contents[count($contents) - 1]['role'] === $role) {
+                $contents[count($contents) - 1]['parts'][] = ['text' => $text];
+            } else {
+                $contents[] = ['role' => $role, 'parts' => [['text' => $text]]];
+            }
         }
+
+        // Ensure first message is from 'user' (Gemini requirement)
+        if (!empty($contents) && $contents[0]['role'] !== 'user') {
+            array_unshift($contents, ['role' => 'user', 'parts' => [['text' => 'Continue.']]]);
+        }
+
         return $this->ai->chatGemini($contents, $model);
     }
 }

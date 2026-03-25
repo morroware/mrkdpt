@@ -112,7 +112,8 @@ Return as JSON with this structure:
         );
 
         // Parse JSON
-        if (preg_match('/\{[\s\S]*\}/', $raw, $m)) {
+        $cleaned = preg_replace('/```(?:json)?\s*/i', '', $raw);
+        if (preg_match('/\{[\s\S]*\}/s', $cleaned, $m)) {
             $parsed = json_decode($m[0], true);
             if (is_array($parsed) && isset($parsed['overall_score'])) {
                 return ['review' => $parsed, 'raw' => $raw, 'provider' => $this->ai->getProvider()];
@@ -182,7 +183,8 @@ Provide a detailed prediction as JSON:
             $prompt
         );
 
-        if (preg_match('/\{[\s\S]*\}/', $raw, $m)) {
+        $cleaned = preg_replace('/```(?:json)?\s*/i', '', $raw);
+        if (preg_match('/\{[\s\S]*\}/s', $cleaned, $m)) {
             $parsed = json_decode($m[0], true);
             if (is_array($parsed) && isset($parsed['confidence_score'])) {
                 return ['prediction' => $parsed, 'raw' => $raw, 'provider' => $this->ai->getProvider()];

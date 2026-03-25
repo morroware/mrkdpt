@@ -157,8 +157,8 @@ final class AiService
         $p = $provider ?? $this->provider;
         return match ($p) {
             'anthropic' => $this->callAnthropicAdv($system, $prompt, $model, $maxTokens, $temperature),
-            'gemini'    => $this->callGeminiAdv($system, $prompt, $model, $temperature),
-            default     => $this->callOpenAiAdv($system, $prompt, $model, $temperature),
+            'gemini'    => $this->callGeminiAdv($system, $prompt, $model, $maxTokens, $temperature),
+            default     => $this->callOpenAiAdv($system, $prompt, $model, $maxTokens, $temperature),
         };
     }
 
@@ -212,7 +212,7 @@ final class AiService
     /*  Provider call — OpenAI-compatible                                 */
     /* ------------------------------------------------------------------ */
 
-    private function callOpenAiAdv(string $system, string $prompt, ?string $model = null, float $temperature = 0.7): string
+    private function callOpenAiAdv(string $system, string $prompt, ?string $model = null, int $maxTokens = 4096, float $temperature = 0.7): string
     {
         if (empty($this->config['openai_api_key'])) {
             return $this->fallback($prompt);
@@ -226,6 +226,7 @@ final class AiService
                 ['role' => 'user',   'content' => $prompt],
             ],
             'temperature' => $temperature,
+            'max_tokens'  => $maxTokens,
         ];
 
         $data = $this->postJson($url, [
@@ -314,7 +315,7 @@ final class AiService
     /*  Provider call — Gemini                                            */
     /* ------------------------------------------------------------------ */
 
-    private function callGeminiAdv(string $system, string $prompt, ?string $model = null, float $temperature = 0.7): string
+    private function callGeminiAdv(string $system, string $prompt, ?string $model = null, int $maxTokens = 4096, float $temperature = 0.7): string
     {
         if (empty($this->config['gemini_api_key'])) {
             return $this->fallback($prompt);
@@ -328,11 +329,14 @@ final class AiService
         );
 
         $payload = [
+            'systemInstruction' => ['parts' => [['text' => $system]]],
             'contents' => [[
-                'parts' => [['text' => $system . "\n\n" . $prompt]],
+                'role' => 'user',
+                'parts' => [['text' => $prompt]],
             ]],
             'generationConfig' => [
-                'temperature' => $temperature,
+                'temperature'   => $temperature,
+                'maxOutputTokens' => $maxTokens,
             ],
         ];
 
@@ -472,23 +476,42 @@ final class AiService
     {
         $ch = curl_init($url);
         curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST           => true,
-            CURLOPT_HTTPHEADER     => array_merge(['Content-Type: application/json'], $headers),
-            CURLOPT_POSTFIELDS     => json_encode($payload),
-            CURLOPT_TIMEOUT        => $timeout,
+            CURLOPT_RETURNTRANSFER  => true,
+            CURLOPT_POST            => true,
+            CURLOPT_HTTPHEADER      => array_merge(['Content-Type: application/json'], $headers),
+            CURLOPT_POSTFIELDS      => json_encode($payload),
+            CURLOPT_TIMEOUT         => $timeout,
+            CURLOPT_SSL_VERIFYPEER  => true,
+            CURLOPT_SSL_VERIFYHOST  => 2,
         ]);
 
         $raw   = curl_exec($ch);
         $error = curl_error($ch);
+        $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        if ($error || !$raw) {
-            return [];
+        if ($raw === false || $error !== '') {
+            error_log("AiService::postJson curl error: {$error} (URL: {$url})");
+            return ['error' => 'Network error: ' . $error];
         }
 
         $decoded = json_decode($raw, true);
-        return is_array($decoded) ? $decoded : [];
+        if (!is_array($decoded)) {
+            error_log("AiService::postJson invalid JSON response (HTTP {$httpCode}, URL: {$url})");
+            return ['error' => "Invalid response from AI provider (HTTP {$httpCode})"];
+        }
+
+        // Surface API-level errors
+        if ($httpCode >= 400) {
+            $apiError = $decoded['error']['message'] ?? $decoded['error'] ?? "HTTP {$httpCode}";
+            if (is_array($apiError)) {
+                $apiError = $apiError['message'] ?? json_encode($apiError);
+            }
+            error_log("AiService::postJson API error: {$apiError} (HTTP {$httpCode}, URL: {$url})");
+            return ['error' => "AI provider error: {$apiError}"];
+        }
+
+        return $decoded;
     }
 
     /* ------------------------------------------------------------------ */
@@ -501,8 +524,7 @@ final class AiService
             . "- Core strategy: 40% educational, 30% social proof, 20% offer, 10% behind-the-scenes.\n"
             . "- Recommended cadence: 5 posts/week + 2 stories/day + 1 email/week.\n"
             . "- Highest-conversion windows: Tue 11:30 AM, Wed 6:30 PM, Thu 12:15 PM ({$this->timezone}).\n"
-            . "- CTA suggestions: 'Comment START', 'Book your spot', 'Send us DM with keyword'.\n\n"
-            . "Prompt used:\n{$prompt}";
+            . "- CTA suggestions: 'Comment START', 'Book your spot', 'Send us DM with keyword'.";
     }
 
     private function parseSize(string $size): array

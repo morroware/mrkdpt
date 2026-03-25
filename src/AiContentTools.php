@@ -199,7 +199,7 @@ Return as a structured day-by-day plan with clear headings for each content type
         $sys = $this->ai->buildSystemPrompt('You are creating a multi-channel content workflow. Be thorough and produce ready-to-publish content for each piece.');
 
         return [
-            'workflow' => $this->ai->generateAdvanced($sys, $prompt, null, null, 4096),
+            'workflow' => $this->ai->generateAdvanced($sys, $prompt, null, null, 8192),
             'topic'    => $topic,
             'days'     => $days,
             'provider' => $this->ai->getProvider(),
@@ -241,7 +241,8 @@ Be specific and detailed. The voice_tone should capture nuance — not just 'pro
         $raw = $this->ai->generateAdvanced($this->ai->buildSystemPrompt(), $prompt);
 
         // Parse JSON from response
-        if (preg_match('/\{[\s\S]*\}/', $raw, $m)) {
+        $cleaned = preg_replace('/```(?:json)?\s*/i', '', $raw);
+        if (preg_match('/\{[\s\S]*\}/s', $cleaned, $m)) {
             $parsed = json_decode($m[0], true);
             if (is_array($parsed) && isset($parsed['voice_tone'])) {
                 return ['profile' => $parsed, 'raw' => $raw, 'provider' => $this->ai->getProvider()];

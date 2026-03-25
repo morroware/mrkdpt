@@ -355,10 +355,14 @@ function register_ai_routes(
         $funnelId = (int)($p['funnel_id'] ?? 0);
         if (!$funnelId) { json_response(['error' => 'Missing: funnel_id'], 422); return; }
 
-        $funnel = $pdo->query("SELECT name FROM funnels WHERE id = {$funnelId}")->fetch(PDO::FETCH_ASSOC);
+        $stmt = $pdo->prepare("SELECT name FROM funnels WHERE id = :id");
+        $stmt->execute([':id' => $funnelId]);
+        $funnel = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$funnel) { json_response(['error' => 'Funnel not found'], 404); return; }
 
-        $stages = $pdo->query("SELECT * FROM funnel_stages WHERE funnel_id = {$funnelId} ORDER BY stage_order ASC")->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $pdo->prepare("SELECT * FROM funnel_stages WHERE funnel_id = :id ORDER BY stage_order ASC");
+        $stmt->execute([':id' => $funnelId]);
+        $stages = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $result = $strategyTools->funnelAdvisor($funnel['name'], $stages);
         $analytics->track('ai.funnel_advisor', 'ai', 0, []);
         json_response(['item' => $result]);
@@ -377,7 +381,9 @@ function register_ai_routes(
         $p = request_json();
         $testId = (int)($p['test_id'] ?? 0);
         if (!$testId) { json_response(['error' => 'Missing: test_id'], 422); return; }
-        $variants = $pdo->query("SELECT variant_name, impressions, conversions FROM ab_variants WHERE test_id = {$testId}")->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $pdo->prepare("SELECT variant_name, impressions, conversions FROM ab_variants WHERE test_id = :id");
+        $stmt->execute([':id' => $testId]);
+        $variants = $stmt->fetchAll(PDO::FETCH_ASSOC);
         if (empty($variants)) { json_response(['error' => 'No variants found'], 404); return; }
         json_response(['item' => $analysisTools->analyzeAbResults($variants)]);
     });
@@ -471,7 +477,8 @@ function register_ai_routes(
     });
 
     // Get conversation messages
-    $router->get('/api/ai/conversations/{id}', function (int $id) use ($pdo) {
+    $router->get('/api/ai/conversations/{id}', function (array $params) use ($pdo) {
+        $id = (int)($params['id'] ?? 0);
         $conv = $pdo->prepare("SELECT * FROM ai_chat_conversations WHERE id = :id");
         $conv->execute([':id' => $id]);
         $conversation = $conv->fetch(PDO::FETCH_ASSOC);
@@ -484,7 +491,8 @@ function register_ai_routes(
     });
 
     // Delete conversation
-    $router->delete('/api/ai/conversations/{id}', function (int $id) use ($pdo) {
+    $router->delete('/api/ai/conversations/{id}', function (array $params) use ($pdo) {
+        $id = (int)($params['id'] ?? 0);
         $pdo->prepare("DELETE FROM ai_chat_messages WHERE conversation_id = :id")->execute([':id' => $id]);
         $pdo->prepare("DELETE FROM ai_chat_conversations WHERE id = :id")->execute([':id' => $id]);
         json_response(['ok' => true]);

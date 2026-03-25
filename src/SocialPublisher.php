@@ -550,17 +550,17 @@ final class SocialPublisher
     ): void {
         try {
             $stmt = $this->pdo->prepare(
-                'INSERT INTO publish_log (post_id, platform, account_id, external_id, status, error, created_at)
-                 VALUES (:post_id, :platform, :account_id, :external_id, :status, :error, :created_at)'
+                'INSERT INTO publish_log (post_id, platform, social_account_id, external_id, status, error_message, published_at)
+                 VALUES (:post_id, :platform, :social_account_id, :external_id, :status, :error_message, :published_at)'
             );
             $stmt->execute([
-                ':post_id'     => $postId,
-                ':platform'    => $platform,
-                ':account_id'  => $accountId,
-                ':external_id' => $externalId,
-                ':status'      => $status,
-                ':error'       => $error,
-                ':created_at'  => gmdate(DATE_ATOM),
+                ':post_id'            => $postId,
+                ':platform'           => $platform,
+                ':social_account_id'  => $accountId,
+                ':external_id'        => $externalId,
+                ':status'             => $status,
+                ':error_message'      => $error,
+                ':published_at'       => gmdate(DATE_ATOM),
             ]);
         } catch (\Throwable $e) {
             // Logging failure should not break the publish flow.
@@ -577,7 +577,7 @@ final class SocialPublisher
     {
         try {
             $stmt = $this->pdo->prepare(
-                'SELECT * FROM publish_log WHERE post_id = :post_id ORDER BY created_at DESC, id DESC'
+                'SELECT * FROM publish_log WHERE post_id = :post_id ORDER BY published_at DESC, id DESC'
             );
             $stmt->execute([':post_id' => $postId]);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);

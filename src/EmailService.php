@@ -307,7 +307,7 @@ class EmailService
         try {
             // Load campaign
             $stmt = $this->db->prepare(
-                'SELECT * FROM campaigns WHERE id = :id LIMIT 1'
+                'SELECT * FROM email_campaigns WHERE id = :id LIMIT 1'
             );
             $stmt->execute([':id' => $campaignId]);
             $campaign = $stmt->fetch(\PDO::FETCH_ASSOC);
@@ -332,12 +332,12 @@ class EmailService
             foreach ($subscribers as $subscriber) {
                 try {
                     $htmlBody = $this->processMergeTags(
-                        $campaign['html_content'],
+                        $campaign['body_html'] ?? '',
                         $subscriber,
                         $campaignId
                     );
                     $textBody = $this->processMergeTags(
-                        $campaign['text_content'],
+                        $campaign['body_text'] ?? '',
                         $subscriber,
                         $campaignId
                     );
@@ -364,15 +364,6 @@ class EmailService
                 }
             }
 
-            // Update campaign status
-            $stmt = $this->db->prepare(
-                'UPDATE campaigns SET status = :status, sent_at = :sent_at WHERE id = :id'
-            );
-            $stmt->execute([
-                ':status' => 'sent',
-                ':sent_at' => date('Y-m-d H:i:s'),
-                ':id' => $campaignId,
-            ]);
         } catch (\Throwable $e) {
             $stats['errors'][] = "Campaign send error: {$e->getMessage()}";
         }
@@ -418,14 +409,14 @@ class EmailService
     {
         try {
             $stmt = $this->db->prepare(
-                'INSERT INTO email_tracking (campaign_id, subscriber_id, event_type, created_at)
-                 VALUES (:campaign_id, :subscriber_id, :event_type, :created_at)'
+                'INSERT INTO email_tracking (campaign_id, subscriber_id, event_type, tracked_at)
+                 VALUES (:campaign_id, :subscriber_id, :event_type, :tracked_at)'
             );
             $stmt->execute([
                 ':campaign_id' => $campaignId,
                 ':subscriber_id' => $subscriberId,
                 ':event_type' => 'sent',
-                ':created_at' => date('Y-m-d H:i:s'),
+                ':tracked_at' => date('Y-m-d H:i:s'),
             ]);
         } catch (\Throwable $e) {
             // Silently continue — tracking failure should not block sending.
@@ -443,14 +434,14 @@ class EmailService
     {
         try {
             $stmt = $this->db->prepare(
-                'INSERT INTO email_tracking (campaign_id, subscriber_id, event_type, created_at)
-                 VALUES (:campaign_id, :subscriber_id, :event_type, :created_at)'
+                'INSERT INTO email_tracking (campaign_id, subscriber_id, event_type, tracked_at)
+                 VALUES (:campaign_id, :subscriber_id, :event_type, :tracked_at)'
             );
             $stmt->execute([
                 ':campaign_id' => $campaignId,
                 ':subscriber_id' => $subscriberId,
                 ':event_type' => 'open',
-                ':created_at' => date('Y-m-d H:i:s'),
+                ':tracked_at' => date('Y-m-d H:i:s'),
             ]);
         } catch (\Throwable $e) {
             // Tracking must not throw — fail silently.
@@ -464,15 +455,15 @@ class EmailService
     {
         try {
             $stmt = $this->db->prepare(
-                'INSERT INTO email_tracking (campaign_id, subscriber_id, event_type, url, created_at)
-                 VALUES (:campaign_id, :subscriber_id, :event_type, :url, :created_at)'
+                'INSERT INTO email_tracking (campaign_id, subscriber_id, event_type, url, tracked_at)
+                 VALUES (:campaign_id, :subscriber_id, :event_type, :url, :tracked_at)'
             );
             $stmt->execute([
                 ':campaign_id' => $campaignId,
                 ':subscriber_id' => $subscriberId,
                 ':event_type' => 'click',
                 ':url' => $url,
-                ':created_at' => date('Y-m-d H:i:s'),
+                ':tracked_at' => date('Y-m-d H:i:s'),
             ]);
         } catch (\Throwable $e) {
             // Tracking must not throw — fail silently.

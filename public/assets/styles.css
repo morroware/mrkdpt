@@ -548,7 +548,7 @@ label {
   justify-content: center;
   z-index: 200;
 }
-.modal-overlay.open { display: flex; }
+.modal-overlay.open, .modal-overlay.visible { display: flex; }
 .modal-content {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -567,6 +567,7 @@ label {
 }
 .modal-header h3 { margin: 0; }
 .modal-body { padding: 1.2rem; }
+#segmentModal .modal-content, #emailTplModal .modal-content { max-width: 800px; }
 .modal-close {
   background: none;
   border: none;

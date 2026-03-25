@@ -24,6 +24,8 @@ import * as forms from './pages/forms.js';
 import * as abtests from './pages/abtests.js';
 import * as funnels from './pages/funnels.js';
 import * as automations from './pages/automations.js';
+import * as segments from './pages/segments.js';
+import * as queue from './pages/queue.js';
 
 // Register each page module with the SPA router
 registerPage('dashboard', dashboard);
@@ -45,6 +47,8 @@ registerPage('forms', forms);
 registerPage('abtests', abtests);
 registerPage('funnels', funnels);
 registerPage('automations', automations);
+registerPage('segments', segments);
+registerPage('queue', queue);
 
 // Initialize all page modules (binds forms, click handlers, etc.)
 function initAll() {
@@ -67,6 +71,8 @@ function initAll() {
   abtests.init();
   funnels.init();
   automations.init();
+  segments.init();
+  queue.init();
 }
 
 // Boot sequence

@@ -44,6 +44,8 @@
       <a href="#abtests" data-page="abtests"><span class="nav-icon">&#8644;</span> A/B Tests</a>
       <a href="#funnels" data-page="funnels"><span class="nav-icon">&#9661;</span> Funnels</a>
       <a href="#automations" data-page="automations"><span class="nav-icon">&#9889;</span> Automations</a>
+      <a href="#segments" data-page="segments"><span class="nav-icon">&#9881;</span> Segments</a>
+      <a href="#queue" data-page="queue"><span class="nav-icon">&#9200;</span> Publish Queue</a>
       <a href="#templates" data-page="templates"><span class="nav-icon">&#9881;</span> Content Library</a>
       <a href="#rss" data-page="rss"><span class="nav-icon">&#8734;</span> RSS Feeds</a>
       <a href="#settings" data-page="settings"><span class="nav-icon">&#9881;</span> Settings</a>
@@ -163,6 +165,12 @@
           <div class="card"><h3>Audience Persona</h3><div class="stack"><input id="aiPersonaDemographics" placeholder="Demographics" /><input id="aiPersonaBehaviors" placeholder="Behaviors/interests" /><button class="btn w-full" id="runPersona">Build Persona</button></div></div>
           <div class="card"><h3>Content Scorer</h3><div class="stack"><textarea id="aiScoreContent" placeholder="Content to score" rows="3"></textarea><select id="aiScorePlatform"><option>instagram</option><option>facebook</option><option>twitter</option><option>linkedin</option><option>email</option></select><button class="btn w-full" id="runScore">Score Content</button></div></div>
           <div class="card"><h3>Posting Calendar</h3><div class="stack"><input id="aiCalendarGoal" placeholder="Goal for next 14 days" /><button class="btn w-full" id="runCalendar">Generate Schedule</button></div></div>
+          <div class="card"><h3>Video Script</h3><div class="stack"><input id="aiVideoTopic" placeholder="Video topic" /><select id="aiVideoPlatform"><option>tiktok</option><option>youtube</option><option>instagram</option><option>facebook</option></select><input id="aiVideoDuration" type="number" value="60" min="15" max="600" placeholder="Duration (seconds)" /><button class="btn w-full" id="runVideoScript">Generate Script</button></div></div>
+          <div class="card"><h3>Caption Batch</h3><div class="stack"><input id="aiCaptionTopic" placeholder="Topic for captions" /><div class="flex flex-wrap gap-1"><label><input type="checkbox" class="caption-platform" value="instagram" checked /> Instagram</label><label><input type="checkbox" class="caption-platform" value="twitter" checked /> Twitter</label><label><input type="checkbox" class="caption-platform" value="linkedin" checked /> LinkedIn</label><label><input type="checkbox" class="caption-platform" value="facebook" /> Facebook</label></div><button class="btn w-full" id="runCaptionBatch">Generate Captions</button></div></div>
+          <div class="card"><h3>SEO Audit</h3><div class="stack"><input id="aiAuditUrl" placeholder="Page URL" /><textarea id="aiAuditDescription" placeholder="Describe what the page contains" rows="3"></textarea><button class="btn w-full" id="runSeoAudit">Run Audit</button></div></div>
+          <div class="card"><h3>Social Strategy</h3><div class="stack"><textarea id="aiStrategyGoals" placeholder="Your social media goals" rows="2"></textarea><textarea id="aiStrategyState" placeholder="Current state (followers, platforms, frequency)" rows="2"></textarea><button class="btn w-full" id="runSocialStrategy">Build Strategy</button></div></div>
+          <div class="card"><h3>Competitor Deep Dive</h3><div class="stack"><input id="aiCompName" placeholder="Competitor name" /><textarea id="aiCompNotes" placeholder="What you know about them" rows="2"></textarea><button class="btn w-full" id="runCompAnalysis">Analyze</button></div></div>
+          <div class="card"><h3>Weekly Report</h3><div class="stack"><p class="text-small text-muted">Generates an AI-powered weekly performance summary based on your current data.</p><button class="btn w-full" id="runWeeklyReport">Generate Report</button></div></div>
         </div>
         <div class="card mt-1"><h3>AI Output</h3><pre class="ai-output" id="aiOutput">AI output will appear here...</pre></div>
       </section>
@@ -196,6 +204,7 @@
           <button class="tab-btn" data-tab="email-subscribers">Subscribers</button>
           <button class="tab-btn" data-tab="email-campaigns">Campaigns</button>
           <button class="tab-btn" data-tab="email-compose">Compose</button>
+          <button class="tab-btn" data-tab="email-templates-lib">Templates</button>
         </div>
         <div id="email-lists" class="tab-panel active">
           <form id="emailListForm" class="stack card"><div class="row2"><div><label>List Name</label><input name="name" required /></div><div><label>Description</label><input name="description" /></div></div><button type="submit">Create List</button></form>
@@ -217,6 +226,12 @@
             <div><label>Plain Text</label><textarea name="body_text" rows="4" placeholder="Hello {{name}}"></textarea></div>
             <div class="btn-group"><button type="submit">Save Campaign</button><button type="button" class="btn btn-outline" id="sendTestEmail">Send Test</button></div>
           </form>
+        </div>
+        <div id="email-templates-lib" class="tab-panel">
+          <div class="card-grid" id="emailTemplateList"></div>
+          <div class="modal-overlay" id="emailTplModal">
+            <div class="modal-content"><div class="modal-header"><h3 id="emailTplModalTitle">Template Preview</h3><button class="modal-close" id="closeEmailTplModal">&times;</button></div><div class="modal-body" id="emailTplModalBody"></div></div>
+          </div>
         </div>
       </section>
 
@@ -304,7 +319,11 @@
             <select id="contactStageFilter"><option value="">All Stages</option><option>lead</option><option>mql</option><option>sql</option><option>opportunity</option><option>customer</option></select>
             <input id="contactSearch" placeholder="Search contacts..." style="min-width:200px" />
           </div>
-          <button class="btn" id="showContactForm">+ Add Contact</button>
+          <div class="btn-group">
+            <button class="btn" id="showContactForm">+ Add Contact</button>
+            <button class="btn btn-outline" onclick="window._importContactsCsv()">Import CSV</button>
+            <button class="btn btn-outline" onclick="window._exportContactsCsv()">Export CSV</button>
+          </div>
         </div>
         <div id="contactFormWrap" class="card hidden">
           <form id="contactForm" class="stack">
@@ -446,6 +465,70 @@
           <button type="submit">Create Automation</button>
         </form>
         <div class="table-wrap mt-1"><table class="data-table"><thead><tr><th>Name</th><th>Trigger</th><th>Action</th><th>Runs</th><th>Last Run</th><th>Active</th><th>Actions</th></tr></thead><tbody id="automationTable"></tbody></table></div>
+      </section>
+
+      <!-- Audience Segments -->
+      <section id="page-segments" class="page">
+        <form id="segmentForm" class="stack card">
+          <div class="row2">
+            <div><label>Segment Name</label><input name="name" required placeholder="High-value leads" /></div>
+            <div><label>Description</label><input name="description" placeholder="Contacts scoring above 50" /></div>
+          </div>
+          <h4>Criteria</h4>
+          <div class="row3">
+            <div><label>Stage(s)</label><select name="criteria_stage" id="segStage" multiple><option>lead</option><option>mql</option><option>sql</option><option>opportunity</option><option>customer</option></select></div>
+            <div><label>Min Score</label><input name="criteria_min_score" type="number" placeholder="0" /></div>
+            <div><label>Max Score</label><input name="criteria_max_score" type="number" placeholder="100" /></div>
+          </div>
+          <div class="row3">
+            <div><label>Has Tags</label><input name="criteria_tags" placeholder="vip, webinar" /></div>
+            <div><label>Source</label><input name="criteria_source" placeholder="form, manual, csv_import" /></div>
+            <div><label>Company Contains</label><input name="criteria_company" placeholder="Inc" /></div>
+          </div>
+          <div class="row2">
+            <div><label>Active Since</label><input name="criteria_has_activity_since" type="date" /></div>
+            <div><label>Inactive Since</label><input name="criteria_no_activity_since" type="date" /></div>
+          </div>
+          <button type="submit">Create Segment</button>
+        </form>
+        <div id="segmentList" class="card-grid mt-1"></div>
+        <div class="modal-overlay" id="segmentModal">
+          <div class="modal-content"><div class="modal-header"><h3 id="segmentModalTitle">Segment Contacts</h3><button class="modal-close" id="closeSegmentModal">&times;</button></div><div class="modal-body" id="segmentModalBody"></div></div>
+        </div>
+      </section>
+
+      <!-- Social Publish Queue -->
+      <section id="page-queue" class="page">
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="queue-list">Queue</button>
+          <button class="tab-btn" data-tab="queue-add">Add to Queue</button>
+          <button class="tab-btn" data-tab="queue-times">Best Times</button>
+        </div>
+        <div id="queue-list" class="tab-panel active">
+          <div id="queueMetrics" class="metrics-row"></div>
+          <div class="table-wrap mt-1">
+            <table class="data-table"><thead><tr><th>Post</th><th>Account</th><th>Optimal Time</th><th>Priority</th><th>Status</th><th>Actions</th></tr></thead><tbody id="queueTable"></tbody></table>
+          </div>
+        </div>
+        <div id="queue-add" class="tab-panel">
+          <form id="queueForm" class="stack card">
+            <div class="row2">
+              <div><label>Post</label><select name="post_id" id="queuePostSelect"></select></div>
+              <div><label>Social Account</label><select name="social_account_id" id="queueAccountSelect"></select></div>
+            </div>
+            <div class="row2">
+              <div><label>Optimal Time</label><input name="optimal_time" type="datetime-local" /></div>
+              <div><label>Priority (0=low, 10=high)</label><input name="priority" type="number" value="5" min="0" max="10" /></div>
+            </div>
+            <button type="submit">Add to Queue</button>
+          </form>
+        </div>
+        <div id="queue-times" class="tab-panel">
+          <div class="card"><h3>Best Posting Times (based on historical data)</h3>
+            <div class="row2 mb-2"><div><label>Filter Platform</label><select id="bestTimesPlatform"><option value="">All Platforms</option><option>twitter</option><option>facebook</option><option>instagram</option><option>linkedin</option><option>bluesky</option><option>mastodon</option></select></div></div>
+            <div id="bestTimesList"></div>
+          </div>
+        </div>
       </section>
 
       <!-- Settings -->

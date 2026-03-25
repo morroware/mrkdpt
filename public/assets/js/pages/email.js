@@ -118,9 +118,72 @@ async function refreshEmailCampaigns() {
   }
 }
 
+async function refreshEmailTemplates() {
+  try {
+    const { items } = await api('/api/email-templates');
+    const list = $('emailTemplateList');
+    if (!list) return;
+
+    list.innerHTML = items.map((t) => `<div class="card">
+      <div class="flex-between">
+        <h4>${escapeHtml(t.name)}</h4>
+        <span class="badge">${escapeHtml(t.category)}</span>
+      </div>
+      <p class="text-small text-muted">Subject: ${escapeHtml(t.subject_template || '-')}</p>
+      <div style="height:8px;background:${t.thumbnail_color || '#4c8dff'};border-radius:4px;margin:8px 0"></div>
+      <div class="btn-group mt-1">
+        <button class="btn btn-sm" data-preview-tpl="${t.id}">Preview</button>
+        <button class="btn btn-sm btn-outline" data-use-tpl="${t.id}" data-html="${encodeURIComponent(t.html_template || '')}" data-text="${encodeURIComponent(t.text_template || '')}" data-subject="${encodeURIComponent(t.subject_template || '')}">Use in Campaign</button>
+        ${!t.is_builtin ? `<button class="btn btn-sm btn-danger" data-del-tpl="${t.id}">Delete</button>` : '<span class="text-small text-muted">Built-in</span>'}
+      </div>
+    </div>`).join('') || '<p class="text-muted">No email templates found</p>';
+
+    list.querySelectorAll('[data-preview-tpl]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        try {
+          const tpl = await api(`/api/email-templates/${btn.dataset.previewTpl}`);
+          const modal = $('emailTplModal');
+          const body = $('emailTplModalBody');
+          if (modal && body) {
+            body.innerHTML = `<div style="background:#fff;padding:16px;border-radius:8px">${tpl.html_template || '<p>No HTML content</p>'}</div>`;
+            modal.classList.add('visible');
+          }
+        } catch (e) { error(e.message); }
+      });
+    });
+
+    list.querySelectorAll('[data-use-tpl]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const htmlField = document.querySelector('#emailComposeForm [name="body_html"]');
+        const textField = document.querySelector('#emailComposeForm [name="body_text"]');
+        const subjectField = document.querySelector('#emailComposeForm [name="subject"]');
+        if (htmlField) htmlField.value = decodeURIComponent(btn.dataset.html || '');
+        if (textField) textField.value = decodeURIComponent(btn.dataset.text || '');
+        if (subjectField && !subjectField.value) subjectField.value = decodeURIComponent(btn.dataset.subject || '');
+        // Switch to compose tab
+        document.querySelector('[data-tab="email-compose"]')?.click();
+        success('Template loaded into composer');
+      });
+    });
+
+    list.querySelectorAll('[data-del-tpl]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('Delete this template?')) return;
+        try {
+          await api(`/api/email-templates/${btn.dataset.delTpl}`, { method: 'DELETE' });
+          success('Template deleted');
+          refreshEmailTemplates();
+        } catch (e) { error(e.message); }
+      });
+    });
+  } catch (e) {
+    error('Failed to load email templates: ' + e.message);
+  }
+}
+
 export async function refresh() {
   await refreshLists();
-  await Promise.all([refreshSubscribers(), refreshEmailCampaigns()]);
+  await Promise.all([refreshSubscribers(), refreshEmailCampaigns(), refreshEmailTemplates()]);
 }
 
 export function init() {
@@ -168,6 +231,11 @@ export function init() {
       success('Email campaign saved');
       refreshEmailCampaigns();
     } catch (err) { error(err.message); }
+  });
+
+  // Close template modal
+  onClick('closeEmailTplModal', () => {
+    $('emailTplModal')?.classList.remove('visible');
   });
 
   // Send test email

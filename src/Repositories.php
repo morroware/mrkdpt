@@ -43,7 +43,7 @@ final class CampaignRepository
     {
         $fields = [];
         $params = [':id' => $id];
-        foreach (['name', 'channel', 'objective', 'budget', 'notes', 'start_date', 'end_date'] as $col) {
+        foreach (['name', 'channel', 'objective', 'budget', 'notes', 'start_date', 'end_date', 'status', 'spend_to_date', 'revenue', 'target_audience', 'kpi_target'] as $col) {
             if (array_key_exists($col, $data)) {
                 $fields[] = "{$col} = :{$col}";
                 $params[":{$col}"] = $col === 'budget' ? (float)$data[$col] : $data[$col];

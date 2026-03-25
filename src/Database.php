@@ -448,6 +448,69 @@ final class Database
             created_at TEXT NOT NULL
         )');
 
+        /* ---- Phase 6: audience segments, social queue, email templates, campaign ROI ---- */
+
+        $this->pdo->exec('CREATE TABLE IF NOT EXISTS audience_segments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT DEFAULT "",
+            criteria TEXT NOT NULL DEFAULT "{}",
+            contact_count INTEGER DEFAULT 0,
+            is_dynamic INTEGER DEFAULT 1,
+            last_computed TEXT,
+            created_at TEXT NOT NULL
+        )');
+
+        $this->pdo->exec('CREATE TABLE IF NOT EXISTS social_queue (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            post_id INTEGER NOT NULL,
+            social_account_id INTEGER NOT NULL,
+            priority INTEGER DEFAULT 0,
+            optimal_time TEXT,
+            status TEXT NOT NULL DEFAULT "queued",
+            queued_at TEXT NOT NULL,
+            published_at TEXT,
+            error_message TEXT DEFAULT "",
+            FOREIGN KEY(post_id) REFERENCES posts(id),
+            FOREIGN KEY(social_account_id) REFERENCES social_accounts(id)
+        )');
+
+        $this->pdo->exec('CREATE TABLE IF NOT EXISTS email_templates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            category TEXT DEFAULT "general",
+            subject_template TEXT DEFAULT "",
+            html_template TEXT NOT NULL,
+            text_template TEXT DEFAULT "",
+            thumbnail_color TEXT DEFAULT "#4c8dff",
+            variables TEXT DEFAULT "[]",
+            is_builtin INTEGER DEFAULT 0,
+            created_at TEXT NOT NULL
+        )');
+
+        $this->pdo->exec('CREATE TABLE IF NOT EXISTS campaign_metrics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            campaign_id INTEGER NOT NULL,
+            metric_date TEXT NOT NULL,
+            spend REAL DEFAULT 0,
+            revenue REAL DEFAULT 0,
+            impressions INTEGER DEFAULT 0,
+            clicks INTEGER DEFAULT 0,
+            conversions INTEGER DEFAULT 0,
+            notes TEXT DEFAULT "",
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(campaign_id) REFERENCES campaigns(id)
+        )');
+
+        $this->pdo->exec('CREATE TABLE IF NOT EXISTS content_notes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            post_id INTEGER NOT NULL,
+            author TEXT DEFAULT "",
+            note TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(post_id) REFERENCES posts(id)
+        )');
+
         /* ---- safe column additions for upgrades ---- */
 
         $this->applySafeAlter('campaigns', 'start_date', 'TEXT');
@@ -466,6 +529,12 @@ final class Database
         $this->applySafeAlter('posts', 'approved_by', 'TEXT');
         $this->applySafeAlter('posts', 'approved_at', 'TEXT');
         $this->applySafeAlter('posts', 'review_notes', 'TEXT DEFAULT ""');
+
+        $this->applySafeAlter('campaigns', 'status', 'TEXT DEFAULT "active"');
+        $this->applySafeAlter('campaigns', 'spend_to_date', 'REAL DEFAULT 0');
+        $this->applySafeAlter('campaigns', 'revenue', 'REAL DEFAULT 0');
+        $this->applySafeAlter('campaigns', 'target_audience', 'TEXT DEFAULT ""');
+        $this->applySafeAlter('campaigns', 'kpi_target', 'TEXT DEFAULT ""');
     }
 
     private function applySafeAlter(string $table, string $column, string $type): void

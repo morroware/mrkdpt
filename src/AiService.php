@@ -160,6 +160,35 @@ final class AiService
         return ['analysis' => $this->generateAdvanced($this->buildSystemPrompt(), $prompt), 'provider' => $this->provider];
     }
 
+    public function videoScript(string $topic, string $platform, int $durationSeconds = 60): array
+    {
+        $prompt = "Write a video script for {$this->businessName} ({$this->industry}) for {$platform}.\n\nTopic: {$topic}\nTarget duration: {$durationSeconds} seconds\n\nInclude all of the following:\n1. Hook (first 3 seconds — must stop the scroll)\n2. Scene-by-scene breakdown with:\n   - Timestamp range\n   - Visual direction (what's on screen)\n   - Voiceover/dialogue\n   - Text overlay suggestions\n3. Call-to-action (final 5 seconds)\n4. Music/sound suggestions\n5. Thumbnail text suggestion\n6. 5 caption options for the post\n7. Recommended hashtags\n\nKeep it punchy and native to {$platform}.";
+
+        return ['script' => $this->generateAdvanced($this->buildSystemPrompt(), $prompt), 'provider' => $this->provider];
+    }
+
+    public function socialCaptionBatch(string $topic, array $platforms, int $count = 3): array
+    {
+        $platformList = implode(', ', $platforms);
+        $prompt = "Generate {$count} ready-to-post social media captions for each of these platforms: {$platformList}.\n\nBusiness: {$this->businessName} ({$this->industry})\nTopic: {$topic}\n\nFor each caption include:\n- The platform name\n- Caption text (platform-appropriate length and style)\n- Hashtags (platform-appropriate count)\n- Best posting time suggestion\n- Engagement hook type (question, controversy, story, stat, etc.)\n\nMake each caption unique — don't just rephrase the same thing. Vary the angles, hooks, and CTAs.";
+
+        return ['captions' => $this->generateAdvanced($this->buildSystemPrompt(), $prompt), 'provider' => $this->provider];
+    }
+
+    public function seoAudit(string $url, string $pageDescription): array
+    {
+        $prompt = "Perform a comprehensive SEO audit assessment for {$this->businessName} ({$this->industry}) based on this page description:\n\nURL: {$url}\nPage Description: {$pageDescription}\n\nAnalyze and provide recommendations for:\n1. Title tag optimization (under 60 chars)\n2. Meta description (under 155 chars)\n3. Header structure (H1, H2, H3 hierarchy)\n4. Keyword density and placement\n5. Internal linking opportunities\n6. Image optimization (alt tags, file names)\n7. Page speed factors (what to optimize)\n8. Mobile-friendliness checks\n9. Schema markup suggestions\n10. Content length and quality assessment\n\nFor each area, provide:\n- Current assessment (pass/warning/fail)\n- Specific recommendation\n- Priority (high/medium/low)\n\nEnd with a summary score out of 100 and top 3 quick wins.";
+
+        return ['audit' => $this->generateAdvanced($this->buildSystemPrompt(), $prompt), 'provider' => $this->provider];
+    }
+
+    public function socialStrategy(string $goals, string $currentState): array
+    {
+        $prompt = "Create a comprehensive social media strategy for {$this->businessName} ({$this->industry}).\n\nCurrent state: {$currentState}\nGoals: {$goals}\n\nProvide:\n1. Platform prioritization (which platforms and why)\n2. Content pillars (3-5 recurring themes)\n3. Content mix ratio (educational/entertaining/promotional/community)\n4. Posting frequency per platform\n5. Optimal posting schedule for {$this->timezone}\n6. Content format recommendations per platform\n7. Engagement strategy (how to grow community)\n8. KPIs to track per platform\n9. 30-day action plan with weekly milestones\n10. Tools and resources needed\n\nBe specific to {$this->industry} and practical for a small team.";
+
+        return ['strategy' => $this->generateAdvanced($this->buildSystemPrompt(), $prompt), 'provider' => $this->provider];
+    }
+
     public function weeklyReport(array $stats): array
     {
         $statsFormatted = '';

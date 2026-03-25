@@ -30,6 +30,10 @@ require __DIR__ . '/../src/FormBuilder.php';
 require __DIR__ . '/../src/AbTesting.php';
 require __DIR__ . '/../src/Funnels.php';
 require __DIR__ . '/../src/Automations.php';
+require __DIR__ . '/../src/Segments.php';
+require __DIR__ . '/../src/SocialQueue.php';
+require __DIR__ . '/../src/EmailTemplates.php';
+require __DIR__ . '/../src/CampaignMetrics.php';
 
 security_headers();
 
@@ -60,6 +64,10 @@ $formRepo       = new FormRepository($pdo);
 $abTests        = new AbTestRepository($pdo);
 $funnels        = new FunnelRepository($pdo);
 $automations    = new AutomationRepository($pdo);
+$segments       = new SegmentRepository($pdo);
+$socialQueue    = new SocialQueue($pdo);
+$emailTemplates = new EmailTemplateRepository($pdo);
+$campaignMetrics = new CampaignMetricsRepository($pdo);
 
 /* ---- Services ---- */
 $auth      = new Auth($pdo);
@@ -214,7 +222,7 @@ if (str_starts_with($path, '/api/')) {
     $router = new Router();
 
     // Health check (always public)
-    $router->get('/api/health', fn() => json_response(['ok' => true, 'service' => 'marketing-suite', 'version' => '2.0']));
+    $router->get('/api/health', fn() => json_response(['ok' => true, 'service' => 'marketing-suite', 'version' => '3.0-beta']));
 
     // Load route modules
     require __DIR__ . '/../src/routes/auth.php';
@@ -241,6 +249,10 @@ if (str_starts_with($path, '/api/')) {
     require __DIR__ . '/../src/routes/ab_tests.php';
     require __DIR__ . '/../src/routes/funnels.php';
     require __DIR__ . '/../src/routes/automations.php';
+    require __DIR__ . '/../src/routes/segments.php';
+    require __DIR__ . '/../src/routes/social_queue.php';
+    require __DIR__ . '/../src/routes/email_templates.php';
+    require __DIR__ . '/../src/routes/campaign_metrics.php';
 
     // Register public routes (before middleware)
     register_auth_routes($router, $auth);
@@ -313,6 +325,10 @@ if (str_starts_with($path, '/api/')) {
     register_ab_test_routes($router, $abTests);
     register_funnel_routes($router, $funnels);
     register_automation_routes($router, $automations);
+    register_segment_routes($router, $segments);
+    register_social_queue_routes($router, $socialQueue);
+    register_email_template_routes($router, $emailTemplates);
+    register_campaign_metric_routes($router, $campaignMetrics);
 
     // Dispatch
     if (!$router->dispatch($method, $uri)) {

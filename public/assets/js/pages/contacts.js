@@ -127,3 +127,37 @@ function debounce(fn, ms) {
   let t;
   return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
 }
+
+// CSV Import handler
+window._importContactsCsv = async () => {
+  const csv = prompt('Paste CSV data (email,first_name,last_name,company,phone,stage,tags):');
+  if (!csv) return;
+  try {
+    const result = await api('/api/contacts/import', {
+      method: 'POST',
+      body: JSON.stringify({ csv, source: 'csv_import' }),
+    });
+    toast(`Imported: ${result.imported}, Skipped: ${result.skipped}`, 'success');
+    refresh();
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+};
+
+// CSV Export handler
+window._exportContactsCsv = async () => {
+  try {
+    const response = await api('/api/contacts/export');
+    const text = await response.text();
+    const blob = new Blob([text], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'contacts.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('Contacts exported', 'success');
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+};

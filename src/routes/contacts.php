@@ -57,4 +57,117 @@ function register_contact_routes(Router $router, ContactRepository $contacts, Au
         $contacts->logActivity((int)$params['id'], $data['type'] ?? 'note', $data['description'] ?? '', $data['data'] ?? []);
         json_response(['ok' => true]);
     });
+
+    // CSV Import
+    $router->post('/api/contacts/import', function () use ($contacts, $automations) {
+        $data = request_json();
+        $csv = $data['csv'] ?? '';
+        if (empty($csv)) {
+            json_response(['error' => 'Missing: csv'], 422);
+            return;
+        }
+
+        $lines = explode("\n", str_replace("\r\n", "\n", $csv));
+        $imported = 0;
+        $skipped = 0;
+        $headers = null;
+
+        foreach ($lines as $i => $line) {
+            $line = trim($line);
+            if ($line === '') continue;
+            $row = str_getcsv($line);
+
+            if ($headers === null) {
+                $headers = array_map(fn($h) => strtolower(trim($h)), $row);
+                if (in_array('email', $headers)) continue;
+                // If first row doesn't look like headers, treat as data
+                $headers = ['email', 'first_name', 'last_name', 'company', 'phone', 'stage', 'tags'];
+            }
+
+            $record = [];
+            foreach ($headers as $idx => $key) {
+                $record[$key] = $row[$idx] ?? '';
+            }
+
+            if (empty($record['email']) || !filter_var($record['email'], FILTER_VALIDATE_EMAIL)) {
+                $skipped++;
+                continue;
+            }
+
+            $record['source'] = $data['source'] ?? 'csv_import';
+            $contact = $contacts->create($record);
+            $automations->fire('contact.created', ['contact_id' => $contact['id'], 'email' => $contact['email'], 'source' => 'csv_import']);
+            $imported++;
+        }
+
+        json_response(['imported' => $imported, 'skipped' => $skipped]);
+    });
+
+    // CSV Export
+    $router->get('/api/contacts/export', function () use ($contacts) {
+        $all = $contacts->all();
+        if (empty($all)) {
+            csv_response('email,first_name,last_name,company,phone,stage,score,source,tags,created_at', 'contacts.csv');
+            return;
+        }
+        $headers = array_keys($all[0]);
+        $output = fopen('php://temp', 'r+');
+        fputcsv($output, $headers);
+        foreach ($all as $row) {
+            fputcsv($output, $row);
+        }
+        rewind($output);
+        $csv = stream_get_contents($output);
+        fclose($output);
+        csv_response($csv, 'contacts.csv');
+    });
+
+    // Bulk operations
+    $router->post('/api/contacts/bulk', function () use ($contacts) {
+        $data = request_json();
+        $ids = $data['ids'] ?? [];
+        $action = $data['action'] ?? '';
+        if (empty($ids)) {
+            json_response(['error' => 'No IDs provided'], 422);
+            return;
+        }
+
+        $count = 0;
+        switch ($action) {
+            case 'delete':
+                foreach ($ids as $id) {
+                    if ($contacts->delete((int)$id)) $count++;
+                }
+                break;
+            case 'update_stage':
+                $stage = $data['stage'] ?? 'lead';
+                foreach ($ids as $id) {
+                    $contacts->update((int)$id, ['stage' => $stage]);
+                    $count++;
+                }
+                break;
+            case 'add_tag':
+                $tag = $data['tag'] ?? '';
+                foreach ($ids as $id) {
+                    $c = $contacts->find((int)$id);
+                    if ($c) {
+                        $tags = $c['tags'] ? $c['tags'] . ',' . $tag : $tag;
+                        $contacts->update((int)$id, ['tags' => $tags]);
+                        $count++;
+                    }
+                }
+                break;
+            case 'add_score':
+                $points = (int)($data['points'] ?? 0);
+                foreach ($ids as $id) {
+                    $c = $contacts->find((int)$id);
+                    if ($c) {
+                        $contacts->update((int)$id, ['score' => $c['score'] + $points]);
+                        $count++;
+                    }
+                }
+                break;
+        }
+        json_response(['affected' => $count]);
+    });
 }

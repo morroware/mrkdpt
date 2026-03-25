@@ -136,4 +136,53 @@ export function init() {
       objective: $('aiCalendarGoal')?.value || '',
     }, 'schedule');
   });
+
+  // Video Script
+  onClick('runVideoScript', () => {
+    run('/api/ai/video-script', {
+      topic: $('aiVideoTopic')?.value || '',
+      platform: $('aiVideoPlatform')?.value || 'tiktok',
+      duration: parseInt($('aiVideoDuration')?.value || '60'),
+    }, 'script');
+  });
+
+  // Caption Batch
+  onClick('runCaptionBatch', () => {
+    const checks = document.querySelectorAll('.caption-platform:checked');
+    const platforms = [...checks].map((c) => c.value);
+    run('/api/ai/caption-batch', {
+      topic: $('aiCaptionTopic')?.value || '',
+      platforms,
+      count: 3,
+    }, 'captions');
+  });
+
+  // SEO Audit
+  onClick('runSeoAudit', () => {
+    run('/api/ai/seo-audit', {
+      url: $('aiAuditUrl')?.value || '',
+      description: $('aiAuditDescription')?.value || '',
+    }, 'audit');
+  });
+
+  // Social Strategy
+  onClick('runSocialStrategy', () => {
+    run('/api/ai/social-strategy', {
+      goals: $('aiStrategyGoals')?.value || '',
+      current_state: $('aiStrategyState')?.value || '',
+    }, 'strategy');
+  });
+
+  // Competitor Analysis
+  onClick('runCompAnalysis', () => {
+    run('/api/ai/competitor-analysis', {
+      name: $('aiCompName')?.value || '',
+      notes: $('aiCompNotes')?.value || '',
+    }, 'analysis');
+  });
+
+  // Weekly Report
+  onClick('runWeeklyReport', () => {
+    run('/api/ai/report', {}, 'report');
+  });
 }

@@ -141,6 +141,43 @@ function register_ai_routes(
         }
     });
 
+    $router->post('/api/ai/video-script', function () use ($ai) {
+        $p = request_json();
+        if (method_exists($ai, 'videoScript')) {
+            json_response(['item' => $ai->videoScript($p['topic'] ?? '', $p['platform'] ?? 'tiktok', (int)($p['duration'] ?? 60))]);
+        } else {
+            json_response(['error' => 'Method not available'], 501);
+        }
+    });
+
+    $router->post('/api/ai/caption-batch', function () use ($ai) {
+        $p = request_json();
+        if (method_exists($ai, 'socialCaptionBatch')) {
+            $platforms = $p['platforms'] ?? ['instagram', 'twitter', 'linkedin'];
+            json_response(['item' => $ai->socialCaptionBatch($p['topic'] ?? '', $platforms, (int)($p['count'] ?? 3))]);
+        } else {
+            json_response(['error' => 'Method not available'], 501);
+        }
+    });
+
+    $router->post('/api/ai/seo-audit', function () use ($ai) {
+        $p = request_json();
+        if (method_exists($ai, 'seoAudit')) {
+            json_response(['item' => $ai->seoAudit($p['url'] ?? '', $p['description'] ?? '')]);
+        } else {
+            json_response(['error' => 'Method not available'], 501);
+        }
+    });
+
+    $router->post('/api/ai/social-strategy', function () use ($ai) {
+        $p = request_json();
+        if (method_exists($ai, 'socialStrategy')) {
+            json_response(['item' => $ai->socialStrategy($p['goals'] ?? '', $p['current_state'] ?? '')]);
+        } else {
+            json_response(['error' => 'Method not available'], 501);
+        }
+    });
+
     $router->post('/api/ai/bulk', function () use ($ai) {
         $data = request_json();
         $specs = $data['specs'] ?? [];

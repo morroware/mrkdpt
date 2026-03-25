@@ -12,11 +12,14 @@
 
 declare(strict_types=1);
 
-require __DIR__ . '/../src/bootstrap.php';
-require __DIR__ . '/../src/Database.php';
-require __DIR__ . '/../src/Repositories.php';
-require __DIR__ . '/../src/Templates.php';
-require __DIR__ . '/../src/Scheduler.php';
+// Auto-detect layout: src/ next to this file (flat) or one level up (nested/public)
+$srcDir = is_dir(__DIR__ . '/src') ? __DIR__ . '/src' : __DIR__ . '/../src';
+
+require $srcDir . '/bootstrap.php';
+require $srcDir . '/Database.php';
+require $srcDir . '/Repositories.php';
+require $srcDir . '/Templates.php';
+require $srcDir . '/Scheduler.php';
 
 // Auth check: either CLI or valid cron key
 $isCli = php_sapi_name() === 'cli';
@@ -30,13 +33,13 @@ if (!$isCli) {
     }
 }
 
-$dataDir = __DIR__ . '/../data';
+$dataDir = APP_ROOT . '/data';
 $db = new Database($dataDir . '/marketing.sqlite');
 $pdo = $db->pdo();
 
 // Optionally load SocialPublisher if available
 $publisher = null;
-$publisherFile = __DIR__ . '/../src/SocialPublisher.php';
+$publisherFile = APP_ROOT . '/src/SocialPublisher.php';
 if (is_file($publisherFile)) {
     require $publisherFile;
     $publisher = new SocialPublisher($pdo);

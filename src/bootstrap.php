@@ -2,6 +2,12 @@
 
 declare(strict_types=1);
 
+// APP_ROOT is always the parent of the src/ directory, which works in both
+// nested layout (public/ document root) and flat layout (everything in one folder).
+if (!defined('APP_ROOT')) {
+    define('APP_ROOT', dirname(__DIR__));
+}
+
 function env_value(string $key, ?string $default = null): ?string
 {
     static $loaded = false;

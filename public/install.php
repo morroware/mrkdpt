@@ -2,13 +2,15 @@
 
 declare(strict_types=1);
 
-require __DIR__ . '/../src/bootstrap.php';
-require __DIR__ . '/../src/Database.php';
-require __DIR__ . '/../src/Auth.php';
+// Auto-detect layout: src/ next to this file (flat) or one level up (nested/public)
+$srcDir = is_dir(__DIR__ . '/src') ? __DIR__ . '/src' : __DIR__ . '/../src';
 
-$root = dirname(__DIR__);
-$envPath = $root . '/.env';
-$dataDir = $root . '/data';
+require $srcDir . '/bootstrap.php';
+require $srcDir . '/Database.php';
+require $srcDir . '/Auth.php';
+
+$envPath = APP_ROOT . '/.env';
+$dataDir = APP_ROOT . '/data';
 $dbPath = $dataDir . '/marketing.sqlite';
 
 $defaults = [
@@ -188,7 +190,8 @@ function esc(string $value): string
     <div class="msg ok">
       <strong>Installation complete!</strong>
       <ul><?php foreach ($status as $s): ?><li><?= esc($s) ?></li><?php endforeach; ?></ul>
-      <p style="margin-top:0.6rem">Open <a href="/">the app</a> to get started. For security, remove or restrict <code>install.php</code> after setup.</p>
+      <?php $appBase = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '')), '/') ?: '/'; ?>
+      <p style="margin-top:0.6rem">Open <a href="<?= esc($appBase) ?>">the app</a> to get started. For security, remove or restrict <code>install.php</code> after setup.</p>
     </div>
   <?php endif; ?>
 

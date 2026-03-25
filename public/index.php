@@ -2,43 +2,46 @@
 
 declare(strict_types=1);
 
-require __DIR__ . '/../src/bootstrap.php';
-require __DIR__ . '/../src/Database.php';
-require __DIR__ . '/../src/Repositories.php';
-require __DIR__ . '/../src/Templates.php';
-require __DIR__ . '/../src/Auth.php';
-require __DIR__ . '/../src/Router.php';
-require __DIR__ . '/../src/AiService.php';
-require __DIR__ . '/../src/MediaLibrary.php';
-require __DIR__ . '/../src/Analytics.php';
-require __DIR__ . '/../src/Webhooks.php';
-require __DIR__ . '/../src/RssFetcher.php';
-require __DIR__ . '/../src/Scheduler.php';
+// Auto-detect layout: src/ next to this file (flat) or one level up (nested/public)
+$srcDir = is_dir(__DIR__ . '/src') ? __DIR__ . '/src' : __DIR__ . '/../src';
 
-if (is_file(__DIR__ . '/../src/SocialPublisher.php')) {
-    require __DIR__ . '/../src/SocialPublisher.php';
+require $srcDir . '/bootstrap.php';
+require $srcDir . '/Database.php';
+require $srcDir . '/Repositories.php';
+require $srcDir . '/Templates.php';
+require $srcDir . '/Auth.php';
+require $srcDir . '/Router.php';
+require $srcDir . '/AiService.php';
+require $srcDir . '/MediaLibrary.php';
+require $srcDir . '/Analytics.php';
+require $srcDir . '/Webhooks.php';
+require $srcDir . '/RssFetcher.php';
+require $srcDir . '/Scheduler.php';
+
+if (is_file($srcDir . '/SocialPublisher.php')) {
+    require $srcDir . '/SocialPublisher.php';
 }
-if (is_file(__DIR__ . '/../src/EmailService.php')) {
-    require __DIR__ . '/../src/EmailService.php';
+if (is_file($srcDir . '/EmailService.php')) {
+    require $srcDir . '/EmailService.php';
 }
 
-require __DIR__ . '/../src/UtmBuilder.php';
-require __DIR__ . '/../src/LinkShortener.php';
-require __DIR__ . '/../src/LandingPages.php';
-require __DIR__ . '/../src/Contacts.php';
-require __DIR__ . '/../src/FormBuilder.php';
-require __DIR__ . '/../src/AbTesting.php';
-require __DIR__ . '/../src/Funnels.php';
-require __DIR__ . '/../src/Automations.php';
-require __DIR__ . '/../src/Segments.php';
-require __DIR__ . '/../src/SocialQueue.php';
-require __DIR__ . '/../src/EmailTemplates.php';
-require __DIR__ . '/../src/CampaignMetrics.php';
+require $srcDir . '/UtmBuilder.php';
+require $srcDir . '/LinkShortener.php';
+require $srcDir . '/LandingPages.php';
+require $srcDir . '/Contacts.php';
+require $srcDir . '/FormBuilder.php';
+require $srcDir . '/AbTesting.php';
+require $srcDir . '/Funnels.php';
+require $srcDir . '/Automations.php';
+require $srcDir . '/Segments.php';
+require $srcDir . '/SocialQueue.php';
+require $srcDir . '/EmailTemplates.php';
+require $srcDir . '/CampaignMetrics.php';
 
 security_headers();
 
 /* ---- Database & Repositories ---- */
-$dataDir = __DIR__ . '/../data';
+$dataDir = APP_ROOT . '/data';
 $db = new Database($dataDir . '/marketing.sqlite');
 $pdo = $db->pdo();
 
@@ -114,6 +117,13 @@ $socialPublisher = class_exists('SocialPublisher') ? new SocialPublisher($pdo) :
 $method = $_SERVER['REQUEST_METHOD'];
 $uri    = $_SERVER['REQUEST_URI'];
 $path   = parse_url($uri, PHP_URL_PATH) ?: '/';
+
+// Strip subdirectory prefix so route patterns work regardless of install location
+$scriptDir = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '')), '/');
+$basePath  = ($scriptDir !== '' && $scriptDir !== '.') ? $scriptDir : '';
+if ($basePath !== '' && str_starts_with($path, $basePath)) {
+    $path = substr($path, strlen($basePath)) ?: '/';
+}
 
 // Serve uploaded files
 if (str_starts_with($path, '/uploads/')) {
@@ -225,34 +235,34 @@ if (str_starts_with($path, '/api/')) {
     $router->get('/api/health', fn() => json_response(['ok' => true, 'service' => 'marketing-suite', 'version' => '3.0-beta']));
 
     // Load route modules
-    require __DIR__ . '/../src/routes/auth.php';
-    require __DIR__ . '/../src/routes/settings.php';
-    require __DIR__ . '/../src/routes/dashboard.php';
-    require __DIR__ . '/../src/routes/campaigns.php';
-    require __DIR__ . '/../src/routes/posts.php';
-    require __DIR__ . '/../src/routes/competitors.php';
-    require __DIR__ . '/../src/routes/kpis.php';
-    require __DIR__ . '/../src/routes/templates.php';
-    require __DIR__ . '/../src/routes/media.php';
-    require __DIR__ . '/../src/routes/social.php';
-    require __DIR__ . '/../src/routes/email.php';
-    require __DIR__ . '/../src/routes/analytics_routes.php';
-    require __DIR__ . '/../src/routes/rss.php';
-    require __DIR__ . '/../src/routes/webhooks_routes.php';
-    require __DIR__ . '/../src/routes/cron.php';
-    require __DIR__ . '/../src/routes/ai.php';
-    require __DIR__ . '/../src/routes/utm.php';
-    require __DIR__ . '/../src/routes/links.php';
-    require __DIR__ . '/../src/routes/landing_pages.php';
-    require __DIR__ . '/../src/routes/contacts.php';
-    require __DIR__ . '/../src/routes/forms.php';
-    require __DIR__ . '/../src/routes/ab_tests.php';
-    require __DIR__ . '/../src/routes/funnels.php';
-    require __DIR__ . '/../src/routes/automations.php';
-    require __DIR__ . '/../src/routes/segments.php';
-    require __DIR__ . '/../src/routes/social_queue.php';
-    require __DIR__ . '/../src/routes/email_templates.php';
-    require __DIR__ . '/../src/routes/campaign_metrics.php';
+    require APP_ROOT . '/src/routes/auth.php';
+    require APP_ROOT . '/src/routes/settings.php';
+    require APP_ROOT . '/src/routes/dashboard.php';
+    require APP_ROOT . '/src/routes/campaigns.php';
+    require APP_ROOT . '/src/routes/posts.php';
+    require APP_ROOT . '/src/routes/competitors.php';
+    require APP_ROOT . '/src/routes/kpis.php';
+    require APP_ROOT . '/src/routes/templates.php';
+    require APP_ROOT . '/src/routes/media.php';
+    require APP_ROOT . '/src/routes/social.php';
+    require APP_ROOT . '/src/routes/email.php';
+    require APP_ROOT . '/src/routes/analytics_routes.php';
+    require APP_ROOT . '/src/routes/rss.php';
+    require APP_ROOT . '/src/routes/webhooks_routes.php';
+    require APP_ROOT . '/src/routes/cron.php';
+    require APP_ROOT . '/src/routes/ai.php';
+    require APP_ROOT . '/src/routes/utm.php';
+    require APP_ROOT . '/src/routes/links.php';
+    require APP_ROOT . '/src/routes/landing_pages.php';
+    require APP_ROOT . '/src/routes/contacts.php';
+    require APP_ROOT . '/src/routes/forms.php';
+    require APP_ROOT . '/src/routes/ab_tests.php';
+    require APP_ROOT . '/src/routes/funnels.php';
+    require APP_ROOT . '/src/routes/automations.php';
+    require APP_ROOT . '/src/routes/segments.php';
+    require APP_ROOT . '/src/routes/social_queue.php';
+    require APP_ROOT . '/src/routes/email_templates.php';
+    require APP_ROOT . '/src/routes/campaign_metrics.php';
 
     // Register public routes (before middleware)
     register_auth_routes($router, $auth);
@@ -330,8 +340,10 @@ if (str_starts_with($path, '/api/')) {
     register_email_template_routes($router, $emailTemplates);
     register_campaign_metric_routes($router, $campaignMetrics);
 
-    // Dispatch
-    if (!$router->dispatch($method, $uri)) {
+    // Dispatch using the base-path-stripped path
+    $query = parse_url($uri, PHP_URL_QUERY);
+    $dispatchUri = $path . ($query ? '?' . $query : '');
+    if (!$router->dispatch($method, $dispatchUri)) {
         json_response(['error' => 'Not found'], 404);
     }
     return;

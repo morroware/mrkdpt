@@ -1,0 +1,33 @@
+RewriteEngine On
+
+# Route all requests through index.php (except existing files)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [L]
+
+# Block access to sensitive files
+<FilesMatch "\.(env|sqlite|sqlite3|db|log)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Block access to src/ and data/ if somehow exposed
+RewriteRule ^(\.env|data/|src/) - [F,L]
+
+# Security headers
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# Disable directory listing
+Options -Indexes
+
+# Set proper MIME types
+<IfModule mod_mime.c>
+    AddType application/javascript .js
+    AddType text/css .css
+    AddType image/webp .webp
+</IfModule>

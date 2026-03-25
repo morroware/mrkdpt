@@ -125,13 +125,20 @@
         </div>
         <div class="ai-command-suggestions">
           <div class="ai-command-group">
-            <div class="ai-command-label">Quick Actions</div>
-            <button class="ai-command-item" data-ai-quick="social_post">Generate a social media post</button>
-            <button class="ai-command-item" data-ai-quick="blog_post">Write a blog post</button>
-            <button class="ai-command-item" data-ai-quick="email">Draft a marketing email</button>
-            <button class="ai-command-item" data-ai-quick="ad_copy">Create ad copy variations</button>
-            <button class="ai-command-item" data-ai-quick="ideas">Brainstorm content ideas</button>
-            <button class="ai-command-item" data-ai-quick="strategy">Build a social strategy</button>
+            <div class="ai-command-label">Content Creation</div>
+            <button class="ai-command-item" data-ai-quick="social_post">&#9998; Generate a social media post</button>
+            <button class="ai-command-item" data-ai-quick="blog_post">&#128196; Write a blog post</button>
+            <button class="ai-command-item" data-ai-quick="email">&#9993; Draft a marketing email</button>
+            <button class="ai-command-item" data-ai-quick="ad_copy">&#128226; Create ad copy variations</button>
+            <button class="ai-command-item" data-ai-quick="video_script">&#127916; Write a video script</button>
+          </div>
+          <div class="ai-command-group">
+            <div class="ai-command-label">Research & Strategy</div>
+            <button class="ai-command-item" data-ai-quick="ideas">&#128161; Brainstorm content ideas</button>
+            <button class="ai-command-item" data-ai-quick="strategy">&#128202; Build a social strategy</button>
+            <button class="ai-command-item" data-ai-quick="brief">&#128203; Create a content brief</button>
+            <button class="ai-command-item" data-ai-quick="calendar_month">&#128197; Plan a full month of content</button>
+            <button class="ai-command-item" data-ai-quick="headlines">&#128240; Optimize a headline</button>
           </div>
         </div>
         <div class="ai-command-output hidden" id="aiCommandOutput">
@@ -166,6 +173,17 @@
             <button class="ai-quick-btn" data-quick-action="email"><span>&#9993;</span><strong>Email Draft</strong><small>Campaign email</small></button>
             <button class="ai-quick-btn" data-quick-action="report"><span>&#128202;</span><strong>Weekly Report</strong><small>Performance summary</small></button>
             <button class="ai-quick-btn" data-quick-action="calendar"><span>&#128197;</span><strong>Content Calendar</strong><small>14-day schedule</small></button>
+          </div>
+        </div>
+
+        <!-- AI Insights -->
+        <div class="card ai-insights-card mb-2" id="aiInsightsCard">
+          <div class="flex-between">
+            <h3><span class="btn-ai-icon">&#9733;</span> AI Insights &amp; Recommendations</h3>
+            <button class="btn btn-sm btn-ai" id="refreshAiInsights"><span class="btn-ai-icon">&#9733;</span> Refresh Insights</button>
+          </div>
+          <div id="aiInsightsList" class="ai-insights-list">
+            <p class="text-muted text-small">Click "Refresh Insights" to get AI-powered recommendations based on your marketing data.</p>
           </div>
         </div>
 
@@ -219,7 +237,18 @@
               <div><label>Content Type</label><select name="content_type"><option value="social_post">Social Post</option><option value="caption">Caption</option><option value="ad_copy">Ad Copy</option><option value="video_script">Video Script</option><option value="email">Email</option><option value="blog_post">Blog Post</option></select></div>
               <div><label>Title</label><input name="title" placeholder="Post title" required /></div>
             </div>
-            <div><label>Body</label><textarea name="body" rows="5" placeholder="Post content" required></textarea></div>
+            <div>
+              <div class="flex-between"><label>Body</label>
+                <div class="ai-inline-toolbar">
+                  <button type="button" class="ai-inline-btn" data-inline-refine="improve" title="AI Improve">&#10024; Improve</button>
+                  <button type="button" class="ai-inline-btn" data-inline-refine="expand" title="AI Expand">&#8644; Expand</button>
+                  <button type="button" class="ai-inline-btn" data-inline-refine="shorten" title="AI Shorten">&#8700; Shorten</button>
+                  <button type="button" class="ai-inline-btn" data-inline-refine="persuasive" title="Make Persuasive">&#128165; Persuasive</button>
+                  <button type="button" class="ai-inline-btn" data-inline-refine="emoji" title="Add Emojis">&#128515; Emojis</button>
+                </div>
+              </div>
+              <textarea name="body" rows="5" placeholder="Post content" required></textarea>
+            </div>
             <div class="row2">
               <div><label>CTA</label><input name="cta" placeholder="Call to action" /></div>
               <div><label>Tags</label><input name="tags" placeholder="#hashtags" /></div>
@@ -245,6 +274,7 @@
           <span class="bulk-count"><span id="bulkCount">0</span> selected</span>
           <button class="btn btn-sm btn-success" id="bulkPublish">Publish</button>
           <button class="btn btn-sm btn-danger" id="bulkDelete">Delete</button>
+          <button class="btn btn-sm btn-ai" id="bulkRepurpose"><span class="btn-ai-icon">&#9733;</span> AI Repurpose</button>
         </div>
       </section>
 
@@ -254,7 +284,7 @@
         <div class="ai-studio-header">
           <div class="ai-studio-title">
             <h2>AI Studio</h2>
-            <p class="text-muted">18 AI-powered tools to supercharge your marketing</p>
+            <p class="text-muted">25+ AI-powered tools to supercharge your marketing</p>
           </div>
           <div class="ai-studio-controls">
             <select id="aiProviderSelect" class="ai-provider-select" title="Choose AI provider for this generation">
@@ -359,6 +389,27 @@
                   <label class="text-small text-muted" style="align-self:center">subjects</label>
                 </div>
                 <button class="btn btn-ai w-full" id="runSubjectLines"><span class="btn-ai-icon">&#9733;</span> Generate Subjects</button>
+              </div>
+            </div>
+
+            <div class="ai-tool-card" data-ai-cat="creation">
+              <div class="ai-tool-header"><span class="ai-tool-icon">&#128203;</span><h3>Content Brief</h3></div>
+              <p class="ai-tool-desc">Generate a detailed content brief with outline, SEO keywords, and distribution plan</p>
+              <div class="stack">
+                <input id="aiBriefTopic" placeholder="Topic or subject" />
+                <select id="aiBriefType"><option value="blog_post">Blog Post</option><option value="social_campaign">Social Campaign</option><option value="email_sequence">Email Sequence</option><option value="video_series">Video Series</option><option value="landing_page">Landing Page</option><option value="case_study">Case Study</option><option value="whitepaper">Whitepaper</option></select>
+                <input id="aiBriefGoal" placeholder="Primary goal (e.g., generate leads, build authority)" />
+                <button class="btn btn-ai w-full" id="runBrief"><span class="btn-ai-icon">&#9733;</span> Generate Brief</button>
+              </div>
+            </div>
+
+            <div class="ai-tool-card" data-ai-cat="creation">
+              <div class="ai-tool-header"><span class="ai-tool-icon">&#128240;</span><h3>Headline Optimizer</h3></div>
+              <p class="ai-tool-desc">10 headline variations using different psychological triggers</p>
+              <div class="stack">
+                <input id="aiHeadlineText" placeholder="Your current headline" />
+                <select id="aiHeadlinePlatform"><option value="blog">Blog/Article</option><option value="email">Email Subject</option><option value="social">Social Media</option><option value="ad">Advertisement</option><option value="landing_page">Landing Page</option></select>
+                <button class="btn btn-ai w-full" id="runHeadlines"><span class="btn-ai-icon">&#9733;</span> Optimize Headline</button>
               </div>
             </div>
 
@@ -472,6 +523,48 @@
                 <button class="btn btn-ai w-full" id="runWeeklyReport"><span class="btn-ai-icon">&#9733;</span> Generate Report</button>
               </div>
             </div>
+
+            <div class="ai-tool-card" data-ai-cat="analytics">
+              <div class="ai-tool-header"><span class="ai-tool-icon">&#128197;</span><h3>Monthly Content Calendar</h3></div>
+              <p class="ai-tool-desc">Complete month of content planned with topics, channels, and posting times</p>
+              <div class="stack">
+                <input id="aiCalMonthInput" placeholder="Month (e.g., April 2026)" />
+                <input id="aiCalMonthGoals" placeholder="Goals for the month" />
+                <input id="aiCalMonthChannels" placeholder="Channels (e.g., instagram, twitter, email)" value="instagram, twitter, linkedin, email" />
+                <button class="btn btn-ai w-full" id="runCalendarMonth"><span class="btn-ai-icon">&#9733;</span> Generate Full Calendar</button>
+              </div>
+            </div>
+
+            <div class="ai-tool-card" data-ai-cat="analytics">
+              <div class="ai-tool-header"><span class="ai-tool-icon">&#9200;</span><h3>Smart Posting Times</h3></div>
+              <p class="ai-tool-desc">AI-optimized posting schedule based on platform and audience</p>
+              <div class="stack">
+                <select id="aiSmartTimePlatform"><option>instagram</option><option>twitter</option><option>linkedin</option><option>facebook</option><option>tiktok</option><option>youtube</option></select>
+                <input id="aiSmartTimeAudience" placeholder="Describe your target audience" />
+                <select id="aiSmartTimeType"><option value="social_post">Social Post</option><option value="story">Story/Reel</option><option value="video">Video</option><option value="blog">Blog Post</option><option value="email">Email</option></select>
+                <button class="btn btn-ai w-full" id="runSmartTimes"><span class="btn-ai-icon">&#9733;</span> Get Best Times</button>
+              </div>
+            </div>
+
+            <div class="ai-tool-card" data-ai-cat="optimization">
+              <div class="ai-tool-header"><span class="ai-tool-icon">&#128200;</span><h3>Tone Analyzer</h3></div>
+              <p class="ai-tool-desc">Analyze content tone, sentiment, readability, and brand alignment</p>
+              <div class="stack">
+                <textarea id="aiToneContent" placeholder="Paste content to analyze tone..." rows="3"></textarea>
+                <button class="btn btn-ai w-full" id="runToneAnalysis"><span class="btn-ai-icon">&#9733;</span> Analyze Tone</button>
+              </div>
+            </div>
+
+            <div class="ai-tool-card" data-ai-cat="research">
+              <div class="ai-tool-header"><span class="ai-tool-icon">&#128161;</span><h3>Campaign Optimizer</h3></div>
+              <p class="ai-tool-desc">AI recommendations for budget allocation, channel mix, and creative strategy</p>
+              <div class="stack">
+                <select id="aiOptCampaignSelect"><option value="">Select a campaign...</option></select>
+                <textarea id="aiOptCampaignData" placeholder="Or paste campaign data manually (budget, spend, channels, performance...)" rows="3"></textarea>
+                <input id="aiOptGoals" placeholder="Optimization goals" />
+                <button class="btn btn-ai w-full" id="runCampaignOptimizer"><span class="btn-ai-icon">&#9733;</span> Optimize Campaign</button>
+              </div>
+            </div>
           </div>
 
           <!-- AI Output Panel -->
@@ -499,7 +592,7 @@ Tip: Use the provider selector above to compare results from different AI models
           <div class="row2"><div><label>Objective</label><input name="objective" placeholder="Campaign objective" required /></div><div><label>Budget</label><input name="budget" type="number" min="0" step="0.01" placeholder="0.00" /></div></div>
           <div class="row2"><div><label>Start</label><input name="start_date" type="date" /></div><div><label>End</label><input name="end_date" type="date" /></div></div>
           <div><label>Notes</label><textarea name="notes" placeholder="Notes" rows="2"></textarea></div>
-          <div class="btn-group"><button type="submit">Create Campaign</button><button type="button" class="btn btn-ai btn-sm" id="aiCampaignStrategy" title="AI-generate campaign strategy"><span class="btn-ai-icon">&#9733;</span> AI Strategy</button></div>
+          <div class="btn-group"><button type="submit">Create Campaign</button><button type="button" class="btn btn-ai btn-sm" id="aiCampaignStrategy" title="AI-generate campaign strategy"><span class="btn-ai-icon">&#9733;</span> AI Strategy</button><button type="button" class="btn btn-ai btn-sm" id="aiCampaignOptimize" title="AI campaign optimization"><span class="btn-ai-icon">&#9733;</span> AI Optimize</button></div>
         </form>
         <div id="campaignList" class="card-grid mt-1"></div>
       </section>
@@ -539,7 +632,17 @@ Tip: Use the provider selector above to compare results from different AI models
           <form id="emailComposeForm" class="stack card">
             <div class="row2"><div><label>Campaign Name</label><input name="name" required /></div><div><label>Subject Line</label><input name="subject" required /></div></div>
             <div><label>List</label><select name="list_id" id="composeListSelect"></select></div>
-            <div><label>HTML Body</label><textarea name="body_html" rows="10" placeholder="&lt;h1&gt;Hello {{name}}&lt;/h1&gt;"></textarea></div>
+            <div>
+              <div class="flex-between"><label>HTML Body</label>
+                <div class="ai-inline-toolbar">
+                  <button type="button" class="ai-inline-btn" data-inline-refine="improve" data-target="email-body" title="AI Improve">&#10024; Improve</button>
+                  <button type="button" class="ai-inline-btn" data-inline-refine="expand" data-target="email-body" title="AI Expand">&#8644; Expand</button>
+                  <button type="button" class="ai-inline-btn" data-inline-refine="shorten" data-target="email-body" title="AI Shorten">&#8700; Shorten</button>
+                  <button type="button" class="ai-inline-btn" data-inline-refine="persuasive" data-target="email-body" title="Make Persuasive">&#128165; Persuasive</button>
+                </div>
+              </div>
+              <textarea name="body_html" rows="10" placeholder="&lt;h1&gt;Hello {{name}}&lt;/h1&gt;"></textarea>
+            </div>
             <div><label>Plain Text</label><textarea name="body_text" rows="4" placeholder="Hello {{name}}"></textarea></div>
             <div class="btn-group"><button type="submit">Save Campaign</button><button type="button" class="btn btn-outline" id="sendTestEmail">Send Test</button><button type="button" class="btn btn-ai btn-sm" id="aiGenerateEmail" title="AI-generate email body"><span class="btn-ai-icon">&#9733;</span> AI Write Email</button><button type="button" class="btn btn-ai btn-sm" id="aiGenerateSubject" title="AI-generate subject line"><span class="btn-ai-icon">&#9733;</span> AI Subject Lines</button></div>
           </form>
@@ -845,6 +948,18 @@ Tip: Use the provider selector above to compare results from different AI models
             <div class="row2 mb-2"><div><label>Filter Platform</label><select id="bestTimesPlatform"><option value="">All Platforms</option><option>twitter</option><option>facebook</option><option>instagram</option><option>linkedin</option><option>bluesky</option><option>mastodon</option></select></div></div>
             <div id="bestTimesList"></div>
           </div>
+          <div class="card mt-1">
+            <h3><span class="btn-ai-icon">&#9733;</span> AI Smart Posting Schedule</h3>
+            <p class="text-small text-muted mb-1">Get AI-powered recommendations for the best posting times based on your audience and platform.</p>
+            <div class="stack">
+              <div class="row3">
+                <div><label>Platform</label><select id="queueSmartPlatform"><option>instagram</option><option>twitter</option><option>linkedin</option><option>facebook</option><option>tiktok</option></select></div>
+                <div><label>Audience</label><input id="queueSmartAudience" placeholder="Describe your audience" /></div>
+                <div><label>&nbsp;</label><button class="btn btn-ai w-full" id="queueRunSmartTimes"><span class="btn-ai-icon">&#9733;</span> Get AI Times</button></div>
+              </div>
+              <pre class="ai-output" id="queueSmartOutput" style="min-height:60px;max-height:300px">AI-powered timing recommendations will appear here...</pre>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -868,6 +983,77 @@ Tip: Use the provider selector above to compare results from different AI models
     </div><!-- content-area -->
   </div><!-- main-area -->
 </div><!-- app-layout -->
+
+<!-- AI Writing Assistant Panel -->
+<div class="ai-assistant-panel" id="aiAssistantPanel">
+  <div class="ai-assistant-header">
+    <div class="flex gap-1">
+      <span class="ai-assistant-icon">&#9733;</span>
+      <h3>AI Assistant</h3>
+    </div>
+    <div class="flex gap-1">
+      <button class="btn btn-sm btn-outline" id="aiAssistantMinimize" title="Minimize">&#8722;</button>
+      <button class="btn btn-sm btn-outline" id="aiAssistantClose" title="Close">&times;</button>
+    </div>
+  </div>
+  <div class="ai-assistant-body">
+    <div class="ai-assistant-context" id="aiAssistantContext">
+      <span class="text-small text-muted">No content selected</span>
+    </div>
+    <div class="ai-assistant-actions">
+      <div class="ai-assistant-action-group">
+        <span class="ai-assistant-action-label">Quick Actions</span>
+        <div class="ai-assistant-action-grid">
+          <button class="ai-assist-btn" data-refine="improve"><span>&#10024;</span> Improve</button>
+          <button class="ai-assist-btn" data-refine="expand"><span>&#8644;</span> Expand</button>
+          <button class="ai-assist-btn" data-refine="shorten"><span>&#8700;</span> Shorten</button>
+          <button class="ai-assist-btn" data-refine="add_hooks"><span>&#127907;</span> Add Hooks</button>
+          <button class="ai-assist-btn" data-refine="add_cta"><span>&#128073;</span> Add CTA</button>
+          <button class="ai-assist-btn" data-refine="bullet_points"><span>&#9776;</span> Bullet Points</button>
+          <button class="ai-assist-btn" data-refine="emoji"><span>&#128515;</span> Add Emojis</button>
+          <button class="ai-assist-btn" data-refine="simplify"><span>&#128218;</span> Simplify</button>
+        </div>
+      </div>
+      <div class="ai-assistant-action-group">
+        <span class="ai-assistant-action-label">Change Tone</span>
+        <div class="ai-assistant-action-grid">
+          <button class="ai-assist-btn" data-refine="formal"><span>&#127891;</span> Formal</button>
+          <button class="ai-assist-btn" data-refine="casual"><span>&#9996;</span> Casual</button>
+          <button class="ai-assist-btn" data-refine="persuasive"><span>&#128165;</span> Persuasive</button>
+          <button class="ai-assist-btn" data-refine="storytelling"><span>&#128214;</span> Storytelling</button>
+        </div>
+      </div>
+      <div class="ai-assistant-action-group">
+        <span class="ai-assistant-action-label">Analyze</span>
+        <div class="ai-assistant-action-grid">
+          <button class="ai-assist-btn" id="aiAssistTone"><span>&#128200;</span> Tone Analysis</button>
+          <button class="ai-assist-btn" id="aiAssistScore"><span>&#9989;</span> Score Content</button>
+          <button class="ai-assist-btn" id="aiAssistHeadlines"><span>&#128240;</span> Headline Ideas</button>
+        </div>
+      </div>
+      <div class="ai-assistant-custom">
+        <input id="aiAssistCustomInput" placeholder="Custom instruction (e.g., 'make it funnier')" />
+        <button class="btn btn-ai btn-sm" id="aiAssistCustomBtn"><span class="btn-ai-icon">&#9733;</span> Apply</button>
+      </div>
+    </div>
+    <div class="ai-assistant-output hidden" id="aiAssistantOutput">
+      <div class="ai-assistant-output-header">
+        <span class="text-small text-muted" id="aiAssistantOutputMeta"></span>
+        <div class="btn-group">
+          <button class="btn btn-sm btn-outline" id="aiAssistCopy">Copy</button>
+          <button class="btn btn-sm btn-ai" id="aiAssistApply">Apply to Field</button>
+        </div>
+      </div>
+      <pre class="ai-output" id="aiAssistantResult"></pre>
+    </div>
+  </div>
+</div>
+
+<!-- AI Assistant Toggle Button (floating) -->
+<button class="ai-fab" id="aiAssistantFab" title="AI Writing Assistant">
+  <span class="ai-fab-icon">&#9733;</span>
+  <span class="ai-fab-label">AI Assist</span>
+</button>
 
 <div class="toast-container" id="toastContainer"></div>
 

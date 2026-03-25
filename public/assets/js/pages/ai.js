@@ -99,9 +99,17 @@ export function refresh() {
   api('/api/ai/providers').then((status) => {
     const sel = $('aiProviderSelect');
     if (sel && status.active_provider) {
-      // Mark the active provider in the selector
       const badge = $('providerBadge');
       if (badge) badge.textContent = `Provider: ${status.active_provider}`;
+    }
+  }).catch(() => {});
+
+  // Load campaigns for the optimizer dropdown
+  api('/api/campaigns').then(({ items }) => {
+    const sel = $('aiOptCampaignSelect');
+    if (sel) {
+      sel.innerHTML = '<option value="">Select a campaign...</option>' +
+        (items || []).map((c) => `<option value="${c.id}">${c.name} (${c.channel})</option>`).join('');
     }
   }).catch(() => {});
 }
@@ -265,6 +273,63 @@ export function init() {
   // Weekly Report
   onClick('runWeeklyReport', () => {
     run('/api/ai/report', {}, 'report', 'runWeeklyReport', 'Weekly Report');
+  });
+
+  // ---- New Enhanced Tools ----
+
+  // Content Brief
+  onClick('runBrief', () => {
+    run('/api/ai/brief', {
+      topic: $('aiBriefTopic')?.value || '',
+      content_type: $('aiBriefType')?.value || 'blog_post',
+      goal: $('aiBriefGoal')?.value || '',
+    }, 'brief', 'runBrief', 'Content Brief');
+  });
+
+  // Headline Optimizer
+  onClick('runHeadlines', () => {
+    run('/api/ai/headlines', {
+      headline: $('aiHeadlineText')?.value || '',
+      platform: $('aiHeadlinePlatform')?.value || 'blog',
+    }, 'headlines', 'runHeadlines', 'Headline Optimizer');
+  });
+
+  // Monthly Content Calendar
+  onClick('runCalendarMonth', () => {
+    run('/api/ai/calendar-month', {
+      month: $('aiCalMonthInput')?.value || '',
+      goals: $('aiCalMonthGoals')?.value || '',
+      channels: $('aiCalMonthChannels')?.value || 'instagram, twitter, linkedin, email',
+    }, 'calendar', 'runCalendarMonth', 'Monthly Calendar');
+  });
+
+  // Smart Posting Times
+  onClick('runSmartTimes', () => {
+    run('/api/ai/smart-times', {
+      platform: $('aiSmartTimePlatform')?.value || 'instagram',
+      audience: $('aiSmartTimeAudience')?.value || '',
+      content_type: $('aiSmartTimeType')?.value || 'social_post',
+    }, 'schedule', 'runSmartTimes', 'Smart Posting Times');
+  });
+
+  // Tone Analyzer
+  onClick('runToneAnalysis', () => {
+    run('/api/ai/tone-analysis', {
+      content: $('aiToneContent')?.value || '',
+    }, 'analysis', 'runToneAnalysis', 'Tone Analyzer');
+  });
+
+  // Campaign Optimizer
+  onClick('runCampaignOptimizer', () => {
+    const campaignSelect = $('aiOptCampaignSelect');
+    const payload = {
+      campaign_data: $('aiOptCampaignData')?.value || '',
+      goals: $('aiOptGoals')?.value || '',
+    };
+    if (campaignSelect?.value) {
+      payload.campaign_id = parseInt(campaignSelect.value);
+    }
+    run('/api/ai/campaign-optimizer', payload, 'optimization', 'runCampaignOptimizer', 'Campaign Optimizer');
   });
 
   // ---- Output Actions ----

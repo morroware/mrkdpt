@@ -118,4 +118,31 @@ export function init() {
   if (platformFilter) {
     platformFilter.addEventListener('change', loadBestTimes);
   }
+
+  // AI Smart Posting Times
+  onClick('queueRunSmartTimes', async () => {
+    const btn = $('queueRunSmartTimes');
+    const platform = $('queueSmartPlatform')?.value || 'instagram';
+    const audience = $('queueSmartAudience')?.value || '';
+    const outputEl = $('queueSmartOutput');
+
+    if (btn) { btn.classList.add('loading'); btn.disabled = true; }
+    if (outputEl) outputEl.textContent = 'Analyzing optimal posting times...';
+
+    try {
+      const { item } = await api('/api/ai/smart-times', {
+        method: 'POST',
+        body: JSON.stringify({ platform, audience, content_type: 'social_post' }),
+      });
+      if (item?.schedule && outputEl) {
+        outputEl.textContent = item.schedule;
+        success('Smart posting times generated');
+      }
+    } catch (e) {
+      if (outputEl) outputEl.textContent = 'Error: ' + e.message;
+      error(e.message);
+    } finally {
+      if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
+    }
+  });
 }

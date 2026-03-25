@@ -202,6 +202,100 @@ final class AiService
         return ['report' => $this->generateAdvanced($this->buildSystemPrompt(), $prompt), 'provider' => $this->provider];
     }
 
+    public function refineContent(string $content, string $action, ?string $context = null): array
+    {
+        $actionPrompts = [
+            'improve' => "Improve the following content. Make it more engaging, clear, and compelling while keeping the same meaning and length. Fix any grammar issues.",
+            'expand' => "Expand the following content to be 2-3x longer. Add more detail, examples, and supporting points while maintaining the same tone and message.",
+            'shorten' => "Condense the following content to be 50% shorter. Keep the core message and most impactful phrases. Remove filler and redundancy.",
+            'formal' => "Rewrite the following content in a formal, professional tone. Keep the same meaning but make it suitable for corporate communication.",
+            'casual' => "Rewrite the following content in a casual, conversational tone. Make it feel friendly and approachable, like talking to a friend.",
+            'persuasive' => "Rewrite the following content to be more persuasive. Add urgency, social proof language, and stronger calls-to-action.",
+            'storytelling' => "Rewrite the following content using storytelling techniques. Add narrative elements, emotional hooks, and a compelling arc.",
+            'simplify' => "Simplify the following content. Use shorter sentences, simpler words, and clearer structure. Target a 6th-grade reading level.",
+            'add_hooks' => "Add 3 attention-grabbing hooks/opening lines for the following content. Then rewrite the content with the best hook integrated.",
+            'add_cta' => "Add 3 different call-to-action options at the end of the following content. Make each CTA use a different psychological trigger (urgency, curiosity, benefit).",
+            'emoji' => "Add relevant emojis to the following content to make it more engaging for social media. Don't overdo it — use 1-2 per paragraph or key point.",
+            'bullet_points' => "Restructure the following content into clear bullet points or a numbered list format. Add a brief intro and conclusion.",
+        ];
+
+        $actionText = $actionPrompts[$action] ?? "Improve the following content: ";
+        $contextNote = $context ? "\n\nAdditional context: {$context}" : '';
+
+        $prompt = "{$actionText}{$contextNote}\n\nContent:\n{$content}";
+        return ['content' => $this->generateAdvanced($this->buildSystemPrompt(), $prompt), 'action' => $action, 'provider' => $this->provider];
+    }
+
+    public function toneAnalysis(string $content): array
+    {
+        $prompt = "Analyze the tone and sentiment of the following content for {$this->businessName} ({$this->industry}). Provide:\n\n1. **Primary Tone**: (e.g., professional, casual, urgent, inspirational)\n2. **Sentiment**: Positive / Neutral / Negative with confidence %\n3. **Readability**: Score 1-100 and grade level\n4. **Emotion Map**: Top 3 emotions detected with intensity (low/medium/high)\n5. **Brand Alignment**: How well it matches our brand voice (if set) — score 1-10\n6. **Audience Fit**: Which audience segments would respond best\n7. **Improvement Tips**: 3 specific suggestions to better align tone with marketing goals\n\nContent:\n{$content}";
+
+        return ['analysis' => $this->generateAdvanced($this->buildSystemPrompt(), $prompt), 'provider' => $this->provider];
+    }
+
+    public function contentBrief(string $topic, string $contentType, string $goal): array
+    {
+        $prompt = "Create a detailed content brief for {$this->businessName} ({$this->industry}).\n\nTopic: {$topic}\nContent Type: {$contentType}\nGoal: {$goal}\n\nThe brief must include:\n1. **Working Title** (3 options)\n2. **Target Audience** (specific persona)\n3. **Key Message** (one sentence)\n4. **Content Outline** (structured sections with bullet points)\n5. **SEO Keywords** (5-8 target keywords)\n6. **Tone & Voice Direction** (specific guidance)\n7. **Reference/Inspiration** (3 examples of similar successful content)\n8. **Distribution Plan** (which channels, when to post, repurpose strategy)\n9. **Success Metrics** (KPIs to track)\n10. **Call-to-Action** (primary and secondary)\n\nMake it actionable — a writer should be able to create the content directly from this brief.";
+
+        return ['brief' => $this->generateAdvanced($this->buildSystemPrompt(), $prompt), 'provider' => $this->provider];
+    }
+
+    public function headlineOptimizer(string $headline, string $platform): array
+    {
+        $prompt = "Optimize this headline for {$platform} for {$this->businessName} ({$this->industry}).\n\nOriginal: {$headline}\n\nGenerate 10 headline variations using different techniques:\n1. Question format\n2. Number/listicle format\n3. How-to format\n4. Urgency/FOMO\n5. Curiosity gap\n6. Benefit-driven\n7. Controversy/bold claim\n8. Social proof\n9. Emotional trigger\n10. Power words\n\nFor each, rate predicted CTR impact (low/medium/high) and explain the psychology behind it.";
+
+        return ['headlines' => $this->generateAdvanced($this->buildSystemPrompt(), $prompt), 'platform' => $platform, 'provider' => $this->provider];
+    }
+
+    public function campaignOptimizer(string $campaignData, string $goals): array
+    {
+        $prompt = "Analyze this campaign data and provide optimization recommendations for {$this->businessName} ({$this->industry}).\n\nCampaign Data:\n{$campaignData}\n\nGoals: {$goals}\n\nProvide:\n1. **Performance Assessment**: How is the campaign performing against goals?\n2. **Budget Optimization**: Where to reallocate spend for better ROI\n3. **Channel Mix**: Which channels to increase/decrease/add\n4. **Audience Targeting**: Refinement suggestions\n5. **Creative Recommendations**: What content/messaging changes to make\n6. **Timing Optimization**: Best days/times to increase activity\n7. **Quick Wins**: 3 things to change immediately for better results\n8. **30-Day Action Plan**: Week-by-week optimization roadmap\n\nBe specific with numbers and percentages where possible.";
+
+        return ['optimization' => $this->generateAdvanced($this->buildSystemPrompt(), $prompt), 'provider' => $this->provider];
+    }
+
+    public function contentCalendarMonth(string $month, string $goals, string $channels): array
+    {
+        $prompt = "Create a complete content calendar for {$this->businessName} ({$this->industry}) for {$month}.\n\nGoals: {$goals}\nChannels: {$channels}\nTimezone: {$this->timezone}\n\nFor each day of the month, provide:\n- **Day & Date**\n- **Content Type** (post, story, reel, blog, email, etc.)\n- **Channel/Platform**\n- **Topic/Theme**\n- **Caption/Hook** (first 2 lines)\n- **Best Posting Time**\n- **Hashtags** (if applicable)\n- **Content Pillar** (educational/entertaining/promotional/community)\n\nAlso include:\n- Weekly themes\n- Key dates/holidays to leverage\n- Content mix ratio summary\n- Engagement tactics for each week";
+
+        return ['calendar' => $this->generateAdvanced($this->buildSystemPrompt(), $prompt), 'provider' => $this->provider];
+    }
+
+    public function smartPostingTime(string $platform, string $audience, string $contentType): array
+    {
+        $prompt = "Recommend the optimal posting schedule for {$this->businessName} ({$this->industry}) on {$platform}.\n\nTarget Audience: {$audience}\nContent Type: {$contentType}\nTimezone: {$this->timezone}\n\nProvide:\n1. **Best Days**: Ranked from best to worst with reasoning\n2. **Best Times**: Top 5 time slots with expected engagement multiplier\n3. **Worst Times**: When to avoid posting\n4. **Frequency**: Recommended posts per day/week\n5. **Content-Specific Timing**: Different times for different content types\n6. **Seasonal Adjustments**: How to adjust for time of year\n7. **Algorithm Tips**: Platform-specific algorithm optimization\n\nBase recommendations on current {$platform} best practices and the specific audience described.";
+
+        return ['schedule' => $this->generateAdvanced($this->buildSystemPrompt(), $prompt), 'platform' => $platform, 'provider' => $this->provider];
+    }
+
+    public function aiInsights(array $stats): array
+    {
+        $statsFormatted = '';
+        foreach ($stats as $key => $value) {
+            $label = ucwords(str_replace('_', ' ', $key));
+            if (is_array($value)) {
+                $statsFormatted .= "- {$label}: " . json_encode($value) . "\n";
+            } else {
+                $statsFormatted .= "- {$label}: {$value}\n";
+            }
+        }
+
+        $prompt = "Based on the following marketing metrics for {$this->businessName} ({$this->industry}), provide 5 actionable insights as a JSON array. Each insight should have: title (short, under 60 chars), description (1-2 sentences), priority (high/medium/low), category (content/engagement/growth/optimization), and action (specific next step).\n\nMetrics:\n{$statsFormatted}\n\nReturn ONLY a valid JSON array like:\n[{\"title\":\"...\",\"description\":\"...\",\"priority\":\"...\",\"category\":\"...\",\"action\":\"...\"}]\n\nFocus on actionable, specific recommendations — not generic advice.";
+
+        $raw = $this->generateAdvanced($this->buildSystemPrompt(), $prompt);
+
+        // Try to parse JSON from response
+        $jsonMatch = [];
+        if (preg_match('/\[[\s\S]*\]/', $raw, $jsonMatch)) {
+            $parsed = json_decode($jsonMatch[0], true);
+            if (is_array($parsed)) {
+                return ['insights' => $parsed, 'provider' => $this->provider];
+            }
+        }
+
+        return ['insights' => [['title' => 'AI Insights Available', 'description' => $raw, 'priority' => 'medium', 'category' => 'content', 'action' => 'Review the full analysis']], 'provider' => $this->provider];
+    }
+
     private function generate(string $prompt): string
     {
         return match ($this->provider) {

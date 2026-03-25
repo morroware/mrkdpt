@@ -203,18 +203,34 @@ function initAiCommandBar() {
         blog_post: { type: 'blog_post', platform: 'blog' },
         email: { type: 'email', platform: 'email' },
         ad_copy: { type: 'ad_copy', platform: 'facebook' },
-        ideas: null,
-        strategy: null,
+        video_script: { type: 'video_script', platform: 'tiktok' },
       };
 
-      if (action === 'ideas' || action === 'strategy') {
+      // Navigate-only actions
+      if (['ideas', 'strategy', 'brief', 'calendar_month', 'headlines'].includes(action)) {
         closeCommandBar();
         navigate('ai');
+        if (action === 'brief') {
+          setTimeout(() => {
+            document.querySelector('.ai-cat-btn[data-ai-cat="creation"]')?.click();
+            document.getElementById('aiBriefTopic')?.focus();
+          }, 150);
+        } else if (action === 'calendar_month') {
+          setTimeout(() => {
+            document.querySelector('.ai-cat-btn[data-ai-cat="analytics"]')?.click();
+            document.getElementById('aiCalMonthInput')?.focus();
+          }, 150);
+        } else if (action === 'headlines') {
+          setTimeout(() => {
+            document.querySelector('.ai-cat-btn[data-ai-cat="creation"]')?.click();
+            document.getElementById('aiHeadlineText')?.focus();
+          }, 150);
+        }
         return;
       }
 
       const config = typeMap[action] || { type: 'social_post', platform: 'instagram' };
-      generateFromCommandBar(input.value || btn.textContent, config.type, config.platform);
+      generateFromCommandBar(input.value || btn.textContent.replace(/^[^\s]+\s/, ''), config.type, config.platform);
     });
   });
 

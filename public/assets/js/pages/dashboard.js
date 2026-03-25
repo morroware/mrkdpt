@@ -66,6 +66,34 @@ export async function refresh() {
   }
 }
 
+async function loadAiInsights() {
+  const list = $('aiInsightsList');
+  if (!list) return;
+  list.innerHTML = '<div class="flex gap-1"><div class="loading-spinner"></div> <span class="text-muted">Generating AI insights...</span></div>';
+  try {
+    const { item } = await api('/api/ai/insights', { method: 'POST', body: '{}' });
+    if (item?.insights && Array.isArray(item.insights)) {
+      const priorityColors = { high: 'danger', medium: 'warning', low: 'info' };
+      const categoryIcons = { content: '&#9998;', engagement: '&#128172;', growth: '&#128200;', optimization: '&#9881;' };
+      list.innerHTML = item.insights.map((ins) => `
+        <div class="ai-insight-item">
+          <div class="ai-insight-header">
+            <span class="badge badge-${priorityColors[ins.priority] || 'info'}">${escapeHtml(ins.priority || 'medium')}</span>
+            <span class="ai-insight-category">${categoryIcons[ins.category] || '&#9733;'} ${escapeHtml(ins.category || 'general')}</span>
+          </div>
+          <strong>${escapeHtml(ins.title || '')}</strong>
+          <p class="text-small text-muted">${escapeHtml(ins.description || '')}</p>
+          <div class="ai-insight-action text-small"><strong>Action:</strong> ${escapeHtml(ins.action || '')}</div>
+        </div>
+      `).join('');
+    } else {
+      list.innerHTML = '<p class="text-muted">No insights available. Configure your AI provider to enable insights.</p>';
+    }
+  } catch (err) {
+    list.innerHTML = '<p class="text-muted">Configure an AI provider in settings to get AI-powered insights.</p>';
+  }
+}
+
 export function init() {
   // Navigation buttons on dashboard
   window.navigate = navigate;
@@ -114,4 +142,17 @@ export function init() {
       }
     });
   });
+
+  // AI Insights refresh button
+  const refreshInsightsBtn = $('refreshAiInsights');
+  if (refreshInsightsBtn) {
+    refreshInsightsBtn.addEventListener('click', () => {
+      refreshInsightsBtn.classList.add('loading');
+      refreshInsightsBtn.disabled = true;
+      loadAiInsights().finally(() => {
+        refreshInsightsBtn.classList.remove('loading');
+        refreshInsightsBtn.disabled = false;
+      });
+    });
+  }
 }

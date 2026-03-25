@@ -178,6 +178,88 @@ function register_ai_routes(
         }
     });
 
+    // --- New enhanced AI endpoints ---
+
+    $router->post('/api/ai/refine', function () use ($ai, $analytics) {
+        $p = request_json();
+        if (empty($p['content'])) { json_response(['error' => 'Missing: content'], 422); return; }
+        $result = $ai->refineContent($p['content'], $p['action'] ?? 'improve', $p['context'] ?? null);
+        $analytics->track('ai.refine', 'ai', 0, ['action' => $p['action'] ?? 'improve']);
+        json_response(['item' => $result]);
+    });
+
+    $router->post('/api/ai/tone-analysis', function () use ($ai, $analytics) {
+        $p = request_json();
+        if (empty($p['content'])) { json_response(['error' => 'Missing: content'], 422); return; }
+        $result = $ai->toneAnalysis($p['content']);
+        $analytics->track('ai.tone_analysis', 'ai', 0, []);
+        json_response(['item' => $result]);
+    });
+
+    $router->post('/api/ai/brief', function () use ($ai, $analytics) {
+        $p = request_json();
+        $result = $ai->contentBrief($p['topic'] ?? '', $p['content_type'] ?? 'blog_post', $p['goal'] ?? 'drive engagement');
+        $analytics->track('ai.brief', 'ai', 0, []);
+        json_response(['item' => $result]);
+    });
+
+    $router->post('/api/ai/headlines', function () use ($ai) {
+        $p = request_json();
+        if (empty($p['headline'])) { json_response(['error' => 'Missing: headline'], 422); return; }
+        json_response(['item' => $ai->headlineOptimizer($p['headline'], $p['platform'] ?? 'general')]);
+    });
+
+    $router->post('/api/ai/campaign-optimizer', function () use ($ai, $campaigns) {
+        $p = request_json();
+        $campaignData = $p['campaign_data'] ?? '';
+        // If campaign_id provided, auto-gather data
+        if (!empty($p['campaign_id'])) {
+            $c = $campaigns->find((int)$p['campaign_id']);
+            if ($c) {
+                $campaignData = "Name: {$c['name']}\nChannel: {$c['channel']}\nObjective: {$c['objective']}\nBudget: \${$c['budget']}\nSpent: \${$c['spend_to_date']}\nRevenue: \${$c['revenue']}\nStart: {$c['start_date']}\nEnd: {$c['end_date']}\nStatus: {$c['status']}\nNotes: {$c['notes']}";
+            }
+        }
+        json_response(['item' => $ai->campaignOptimizer($campaignData, $p['goals'] ?? 'maximize ROI')]);
+    });
+
+    $router->post('/api/ai/calendar-month', function () use ($ai) {
+        $p = request_json();
+        json_response(['item' => $ai->contentCalendarMonth(
+            $p['month'] ?? date('F Y'),
+            $p['goals'] ?? 'grow audience and engagement',
+            $p['channels'] ?? 'instagram, twitter, linkedin, email'
+        )]);
+    });
+
+    $router->post('/api/ai/smart-times', function () use ($ai) {
+        $p = request_json();
+        json_response(['item' => $ai->smartPostingTime(
+            $p['platform'] ?? 'instagram',
+            $p['audience'] ?? 'general business audience',
+            $p['content_type'] ?? 'social_post'
+        )]);
+    });
+
+    $router->post('/api/ai/insights', function () use ($ai, $posts, $campaigns, $analytics) {
+        $overview = $analytics->overview(30);
+        $stats = [
+            'posts_total' => (int)($overview['posts']['total'] ?? 0),
+            'posts_published' => (int)($overview['posts']['published'] ?? 0),
+            'posts_scheduled' => (int)($overview['posts']['scheduled'] ?? 0),
+            'posts_draft' => (int)($overview['posts']['draft'] ?? 0),
+            'avg_ai_score' => (int)($overview['posts']['avg_score'] ?? 0),
+            'campaigns_count' => count($campaigns->all()),
+            'top_platforms' => $overview['by_platform'] ?? [],
+            'content_types' => $overview['by_type'] ?? [],
+            'ai_research_count' => (int)($overview['ai_usage']['research_count'] ?? 0),
+            'ai_ideas_count' => (int)($overview['ai_usage']['ideas_count'] ?? 0),
+            'email_campaigns' => (int)($overview['email']['campaigns'] ?? 0),
+            'email_sent' => (int)($overview['email']['total_sent'] ?? 0),
+            'social_published' => (int)($overview['social']['total_published'] ?? 0),
+        ];
+        json_response(['item' => $ai->aiInsights($stats)]);
+    });
+
     $router->post('/api/ai/bulk', function () use ($ai) {
         $data = request_json();
         $specs = $data['specs'] ?? [];

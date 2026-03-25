@@ -160,4 +160,43 @@ export function init() {
       finally { stratBtn.classList.remove('loading'); stratBtn.disabled = false; }
     });
   }
+
+  // AI campaign optimizer
+  const optBtn = document.getElementById('aiCampaignOptimize');
+  if (optBtn) {
+    optBtn.addEventListener('click', async () => {
+      const form = document.getElementById('campaignForm');
+      if (!form) return;
+      const name = form.querySelector('[name="name"]')?.value || '';
+      const channel = form.querySelector('[name="channel"]')?.value || '';
+      const objective = form.querySelector('[name="objective"]')?.value || '';
+      const budget = form.querySelector('[name="budget"]')?.value || '';
+      const notes = form.querySelector('[name="notes"]')?.value || '';
+
+      if (!name && !notes) {
+        error('Fill in campaign details or notes first');
+        return;
+      }
+
+      optBtn.classList.add('loading');
+      optBtn.disabled = true;
+      try {
+        const { item } = await api('/api/ai/campaign-optimizer', {
+          method: 'POST',
+          body: JSON.stringify({
+            campaign_data: `Name: ${name}\nChannel: ${channel}\nObjective: ${objective}\nBudget: $${budget}\nNotes: ${notes}`,
+            goals: objective || 'maximize ROI',
+          }),
+        });
+        if (item?.optimization) {
+          const notesField = form.querySelector('[name="notes"]');
+          if (notesField) {
+            notesField.value = item.optimization.slice(0, 3000);
+            success('AI optimization recommendations added to notes');
+          }
+        }
+      } catch (err) { error(err.message); }
+      finally { optBtn.classList.remove('loading'); optBtn.disabled = false; }
+    });
+  }
 }

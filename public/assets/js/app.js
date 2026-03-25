@@ -26,6 +26,7 @@ import * as funnels from './pages/funnels.js';
 import * as automations from './pages/automations.js';
 import * as segments from './pages/segments.js';
 import * as queue from './pages/queue.js';
+import * as assistant from './pages/assistant.js';
 
 // Register each page module with the SPA router
 registerPage('dashboard', dashboard);
@@ -73,6 +74,47 @@ function initAll() {
   automations.init();
   segments.init();
   queue.init();
+  assistant.init();
+  initInlineAiToolbars();
+}
+
+// Inline AI toolbar — attach refine actions to textareas
+function initInlineAiToolbars() {
+  document.querySelectorAll('.ai-inline-btn[data-inline-refine]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const action = btn.dataset.inlineRefine;
+      // Find the sibling textarea
+      const container = btn.closest('div').parentElement || btn.closest('.stack');
+      const textarea = container?.querySelector('textarea');
+      if (!textarea || !textarea.value.trim()) {
+        const { error: showError } = await import('./core/toast.js');
+        showError('Write some content first');
+        return;
+      }
+
+      btn.classList.add('loading');
+      btn.disabled = true;
+      try {
+        const { api: apiFn } = await import('./core/api.js');
+        const { item } = await apiFn('/api/ai/refine', {
+          method: 'POST',
+          body: JSON.stringify({ content: textarea.value, action }),
+        });
+        if (item?.content) {
+          textarea.value = item.content;
+          textarea.dispatchEvent(new Event('input'));
+          const { success: showSuccess } = await import('./core/toast.js');
+          showSuccess(`Content ${action === 'improve' ? 'improved' : action === 'expand' ? 'expanded' : action === 'shorten' ? 'shortened' : 'refined'} with AI`);
+        }
+      } catch (err) {
+        const { error: showError } = await import('./core/toast.js');
+        showError(err.message);
+      } finally {
+        btn.classList.remove('loading');
+        btn.disabled = false;
+      }
+    });
+  });
 }
 
 // Boot sequence

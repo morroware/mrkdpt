@@ -41,13 +41,14 @@ async function refreshPosts() {
       <td>
         <button class="btn btn-sm btn-outline" data-action="edit" data-id="${p.id}">Edit</button>
         ${p.status !== 'published' ? `<button class="btn btn-sm btn-success" data-action="publish" data-id="${p.id}">Publish</button>` : ''}
+        <button class="btn btn-sm btn-ai" data-action="repurpose" data-id="${p.id}" data-body="${escapeHtml(p.body || '')}" title="AI Repurpose"><span class="btn-ai-icon">&#9733;</span></button>
         <button class="btn btn-sm btn-danger" data-action="delete" data-id="${p.id}">Del</button>
       </td>
     </tr>`).join('');
 
     // Wire action buttons
     table.querySelectorAll('button[data-action]').forEach((btn) => {
-      btn.addEventListener('click', () => handlePostAction(btn.dataset.action, parseInt(btn.dataset.id)));
+      btn.addEventListener('click', () => handlePostAction(btn.dataset.action, parseInt(btn.dataset.id), btn));
     });
 
     // Wire checkboxes
@@ -61,7 +62,7 @@ async function refreshPosts() {
   }
 }
 
-async function handlePostAction(action, id) {
+async function handlePostAction(action, id, btn) {
   try {
     if (action === 'publish') {
       await api(`/api/posts/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'published' }) });
@@ -70,6 +71,22 @@ async function handlePostAction(action, id) {
       if (!confirm('Delete this post?')) return;
       await api(`/api/posts/${id}`, { method: 'DELETE' });
       success('Post deleted');
+    } else if (action === 'repurpose') {
+      const body = btn?.dataset.body || '';
+      if (!body) { error('Post has no content to repurpose'); return; }
+      // Navigate to AI Studio repurpose tool with content pre-filled
+      sessionStorage.setItem('repurpose_content', body);
+      window.location.hash = '#ai';
+      setTimeout(() => {
+        document.querySelector('.ai-cat-btn[data-ai-cat="creation"]')?.click();
+        const repurposeField = document.getElementById('aiRepurposeContent');
+        if (repurposeField) {
+          repurposeField.value = body;
+          repurposeField.scrollIntoView({ behavior: 'smooth' });
+          success('Content loaded — select formats and click Repurpose');
+        }
+      }, 200);
+      return;
     }
     refreshPosts();
   } catch (err) {
@@ -223,6 +240,21 @@ export function init() {
   onClick('bulkPublish', () => bulkAction('publish'));
   onClick('bulkDelete', () => {
     if (confirm(`Delete ${selectedIds.size} posts?`)) bulkAction('delete');
+  });
+
+  // Bulk repurpose
+  onClick('bulkRepurpose', async () => {
+    if (selectedIds.size === 0) return;
+    if (selectedIds.size > 1) {
+      error('Select one post to repurpose');
+      return;
+    }
+    const postId = [...selectedIds][0];
+    const row = document.querySelector(`.post-check[value="${postId}"]`)?.closest('tr');
+    const repurposeBtn = row?.querySelector('[data-action="repurpose"]');
+    if (repurposeBtn) {
+      handlePostAction('repurpose', postId, repurposeBtn);
+    }
   });
 
   // Calendar navigation

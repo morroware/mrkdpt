@@ -292,6 +292,7 @@ if (str_starts_with($path, '/api/')) {
     require APP_ROOT . '/src/routes/social_queue.php';
     require APP_ROOT . '/src/routes/email_templates.php';
     require APP_ROOT . '/src/routes/campaign_metrics.php';
+    require APP_ROOT . '/src/routes/wordpress_plugin.php';
 
     // Register public routes (before middleware)
     register_auth_routes($router, $auth);
@@ -378,6 +379,7 @@ if (str_starts_with($path, '/api/')) {
     register_social_queue_routes($router, $socialQueue);
     register_email_template_routes($router, $emailTemplates);
     register_campaign_metric_routes($router, $campaignMetrics);
+    register_wordpress_plugin_routes($router, $posts, $campaigns, $contactRepo, $pdo);
 
     // Dispatch using the base-path-stripped path
     $query = parse_url($uri, PHP_URL_QUERY);

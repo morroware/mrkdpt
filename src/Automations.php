@@ -130,7 +130,7 @@ final class AutomationRepository
     {
         foreach ($conditions as $key => $expected) {
             $actual = $context[$key] ?? null;
-            if ($actual === null) continue;
+            if ($actual === null) return false;
             if (is_array($expected)) {
                 if (!in_array($actual, $expected)) return false;
             } else {
@@ -200,7 +200,12 @@ final class AutomationRepository
                 break;
 
             case 'send_webhook':
-                if (!empty($config['url'])) {
+                if (!empty($config['url']) && preg_match('#^https?://#i', $config['url'])) {
+                    // Basic SSRF protection: reject private/internal IPs
+                    $host = parse_url($config['url'], PHP_URL_HOST);
+                    if ($host && !filter_var(gethostbyname($host), FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                        break; // skip internal/private IPs
+                    }
                     $ch = curl_init($config['url']);
                     curl_setopt_array($ch, [
                         CURLOPT_RETURNTRANSFER => true,
@@ -213,6 +218,8 @@ final class AutomationRepository
                             'fired_at' => gmdate(DATE_ATOM),
                         ]),
                         CURLOPT_TIMEOUT => 10,
+                        CURLOPT_SSL_VERIFYPEER => true,
+                        CURLOPT_SSL_VERIFYHOST => 2,
                     ]);
                     curl_exec($ch);
                     curl_close($ch);

@@ -67,13 +67,20 @@ final class MediaLibrary
         }
 
         $mime = $file['type'] ?? '';
-        // verify with finfo if available
-        if (function_exists('finfo_open') && !empty($file['tmp_name'])) {
-            $finfo = finfo_open(FILEINFO_MIME_TYPE);
-            $detectedMime = finfo_file($finfo, $file['tmp_name']);
-            finfo_close($finfo);
-            if ($detectedMime) {
-                $mime = $detectedMime;
+        // Always verify MIME type with finfo to prevent spoofing
+        if (!empty($file['tmp_name'])) {
+            if (function_exists('finfo_open')) {
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $detectedMime = finfo_file($finfo, $file['tmp_name']);
+                finfo_close($finfo);
+                if ($detectedMime) {
+                    $mime = $detectedMime;
+                }
+            } elseif (function_exists('mime_content_type')) {
+                $detectedMime = mime_content_type($file['tmp_name']);
+                if ($detectedMime) {
+                    $mime = $detectedMime;
+                }
             }
         }
 
@@ -89,6 +96,12 @@ final class MediaLibrary
             if (is_uploaded_file($file['tmp_name'])) {
                 move_uploaded_file($file['tmp_name'], $destPath);
             } else {
+                // For programmatic uploads, verify source is within uploads or temp dir
+                $realSrc = realpath($file['tmp_name']);
+                $tmpDir = sys_get_temp_dir();
+                if (!$realSrc || (!str_starts_with($realSrc, $tmpDir) && !str_starts_with($realSrc, $this->uploadDir))) {
+                    return 'Invalid file source path';
+                }
                 copy($file['tmp_name'], $destPath);
             }
         } else {

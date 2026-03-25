@@ -115,7 +115,7 @@ final class Analytics
         $stmt = $this->pdo->prepare("
             SELECT p.id, p.title, p.platform, p.content_type, p.status, p.ai_score,
                    p.created_at, p.published_at,
-                   (SELECT COUNT(*) FROM publish_log pl WHERE pl.post_id = p.id AND pl.status = 'success') as publish_count,
+                   (SELECT COUNT(*) FROM publish_log pl WHERE pl.post_id = p.id AND pl.status = 'published') as publish_count,
                    c.name as campaign_name
             FROM posts p
             LEFT JOIN campaigns c ON c.id = p.campaign_id
@@ -206,8 +206,8 @@ final class Analytics
             $stmt = $this->pdo->prepare("
                 SELECT platform,
                        COUNT(*) as total,
-                       SUM(CASE WHEN status='success' THEN 1 ELSE 0 END) as success,
-                       SUM(CASE WHEN status='error' THEN 1 ELSE 0 END) as errors
+                       SUM(CASE WHEN status='published' THEN 1 ELSE 0 END) as success,
+                       SUM(CASE WHEN status='failed' THEN 1 ELSE 0 END) as errors
                 FROM publish_log WHERE published_at >= :since
                 GROUP BY platform
             ");
@@ -256,8 +256,8 @@ final class Analytics
         try {
             $stmt = $this->pdo->prepare("
                 SELECT DATE(published_at) as date,
-                       SUM(CASE WHEN status='success' THEN 1 ELSE 0 END) as success,
-                       SUM(CASE WHEN status='error' THEN 1 ELSE 0 END) as errors
+                       SUM(CASE WHEN status='published' THEN 1 ELSE 0 END) as success,
+                       SUM(CASE WHEN status='failed' THEN 1 ELSE 0 END) as errors
                 FROM publish_log WHERE published_at >= :since
                 GROUP BY date ORDER BY date
             ");

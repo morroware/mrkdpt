@@ -155,20 +155,66 @@ final class SegmentRepository
         if ($where) {
             $sql .= ' WHERE ' . implode(' AND ', $where);
         }
-        $sql .= ' ORDER BY score DESC, id DESC LIMIT ' . $limit;
+        $sql .= ' ORDER BY score DESC, id DESC LIMIT :lim';
 
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute($params);
+        $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
+        foreach ($params as $key => $val) {
+            $stmt->bindValue($key, $val);
+        }
+        $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**
-     * Recompute contact count for a segment.
+     * Recompute contact count for a segment using COUNT(*) instead of fetching all rows.
      */
     public function recompute(int $id): void
     {
-        $contacts = $this->contacts($id, 100000);
-        $count = count($contacts);
+        $segment = $this->find($id);
+        if (!$segment) return;
+
+        $criteria = json_decode($segment['criteria'] ?? '{}', true) ?: [];
+        $where = [];
+        $params = [];
+
+        // Build the same WHERE clause as contacts() but for COUNT
+        if (!empty($criteria['stage'])) {
+            if (is_array($criteria['stage'])) {
+                $placeholders = [];
+                foreach ($criteria['stage'] as $i => $s) {
+                    $key = ":stage_{$i}";
+                    $placeholders[] = $key;
+                    $params[$key] = $s;
+                }
+                $where[] = 'stage IN (' . implode(',', $placeholders) . ')';
+            } else {
+                $where[] = 'stage = :stage';
+                $params[':stage'] = $criteria['stage'];
+            }
+        }
+        if (!empty($criteria['min_score'])) { $where[] = 'score >= :min_score'; $params[':min_score'] = (int)$criteria['min_score']; }
+        if (!empty($criteria['max_score'])) { $where[] = 'score <= :max_score'; $params[':max_score'] = (int)$criteria['max_score']; }
+        if (!empty($criteria['tags'])) {
+            $tags = is_array($criteria['tags']) ? $criteria['tags'] : explode(',', $criteria['tags']);
+            foreach ($tags as $i => $tag) { $key = ":tag_{$i}"; $where[] = "tags LIKE {$key}"; $params[$key] = '%' . trim($tag) . '%'; }
+        }
+        if (!empty($criteria['source'])) { $where[] = 'source = :source'; $params[':source'] = $criteria['source']; }
+        if (!empty($criteria['company'])) { $where[] = 'company LIKE :company'; $params[':company'] = '%' . $criteria['company'] . '%'; }
+        if (!empty($criteria['created_after'])) { $where[] = 'created_at >= :created_after'; $params[':created_after'] = $criteria['created_after']; }
+        if (!empty($criteria['created_before'])) { $where[] = 'created_at <= :created_before'; $params[':created_before'] = $criteria['created_before']; }
+        if (!empty($criteria['has_activity_since'])) { $where[] = 'last_activity >= :activity_since'; $params[':activity_since'] = $criteria['has_activity_since']; }
+        if (!empty($criteria['no_activity_since'])) { $where[] = '(last_activity IS NULL OR last_activity < :no_activity)'; $params[':no_activity'] = $criteria['no_activity_since']; }
+
+        $sql = 'SELECT COUNT(*) FROM contacts';
+        if ($where) {
+            $sql .= ' WHERE ' . implode(' AND ', $where);
+        }
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        $count = (int)$stmt->fetchColumn();
+
         $this->pdo->prepare('UPDATE audience_segments SET contact_count = :c, last_computed = :lc WHERE id = :id')->execute([
             ':c' => $count,
             ':lc' => gmdate(DATE_ATOM),

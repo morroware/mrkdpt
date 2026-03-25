@@ -67,6 +67,8 @@ final class TemplateRepository
             return null;
         }
         $template['name'] .= ' (copy)';
+        unset($template['id']);
+        $template['created_at'] = gmdate(DATE_ATOM);
         return $this->create($template);
     }
 

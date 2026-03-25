@@ -88,7 +88,7 @@ final class SocialQueue
      */
     public function bestTimes(string $platform = ''): array
     {
-        $sql = "SELECT strftime('%w', published_at) as day_of_week, strftime('%H', published_at) as hour, COUNT(*) as total, SUM(CASE WHEN status='success' THEN 1 ELSE 0 END) as successes FROM publish_log WHERE published_at IS NOT NULL";
+        $sql = "SELECT strftime('%w', published_at) as day_of_week, strftime('%H', published_at) as hour, COUNT(*) as total, SUM(CASE WHEN status='published' THEN 1 ELSE 0 END) as successes FROM publish_log WHERE published_at IS NOT NULL";
         $params = [];
         if ($platform) {
             $sql .= ' AND platform = :p';

@@ -308,22 +308,40 @@ final class Scheduler
 
     /* ---- lock ---- */
 
+    /** @var resource|null */
+    private $lockHandle = null;
+
     private function acquireLock(): bool
     {
-        if (is_file($this->lockFile)) {
-            $age = time() - filemtime($this->lockFile);
-            if ($age < 300) { // 5 min max lock
-                return false;
-            }
-            unlink($this->lockFile); // stale lock
+        $this->lockHandle = @fopen($this->lockFile, 'c');
+        if (!$this->lockHandle) {
+            return false;
         }
-        return (bool)file_put_contents($this->lockFile, (string)getmypid());
+        if (!flock($this->lockHandle, LOCK_EX | LOCK_NB)) {
+            fclose($this->lockHandle);
+            $this->lockHandle = null;
+            // Check for stale lock (older than 5 minutes)
+            if (is_file($this->lockFile) && (time() - filemtime($this->lockFile)) > 300) {
+                @unlink($this->lockFile);
+                return $this->acquireLock();
+            }
+            return false;
+        }
+        ftruncate($this->lockHandle, 0);
+        fwrite($this->lockHandle, (string)getmypid());
+        fflush($this->lockHandle);
+        return true;
     }
 
     private function releaseLock(): void
     {
+        if ($this->lockHandle) {
+            flock($this->lockHandle, LOCK_UN);
+            fclose($this->lockHandle);
+            $this->lockHandle = null;
+        }
         if (is_file($this->lockFile)) {
-            unlink($this->lockFile);
+            @unlink($this->lockFile);
         }
     }
 

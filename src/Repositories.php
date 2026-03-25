@@ -179,16 +179,10 @@ final class PostRepository
     {
         if (empty($ids)) return 0;
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $params = array_map('intval', $ids);
-        $params[] = $status;
         if ($status === 'published') {
-            $params[] = gmdate(DATE_ATOM);
             $stmt = $this->pdo->prepare("UPDATE posts SET status = ?, published_at = ? WHERE id IN ({$placeholders})");
-            // reorder params: ids first, then status, then published_at
-            $ordered = array_map('intval', $ids);
-            $stmt2 = $this->pdo->prepare("UPDATE posts SET status = ?, published_at = ? WHERE id IN ({$placeholders})");
-            $stmt2->execute(array_merge([$status, gmdate(DATE_ATOM)], array_map('intval', $ids)));
-            return $stmt2->rowCount();
+            $stmt->execute(array_merge([$status, gmdate(DATE_ATOM)], array_map('intval', $ids)));
+            return $stmt->rowCount();
         }
         $stmt = $this->pdo->prepare("UPDATE posts SET status = ? WHERE id IN ({$placeholders})");
         $stmt->execute(array_merge([$status], array_map('intval', $ids)));
@@ -523,6 +517,7 @@ final class SubscriberRepository
 /**
  * Helper to parse CSV rows from a string.
  */
+if (!function_exists('str_getcsv_rows')) {
 function str_getcsv_rows(string $csv): array
 {
     $rows = [];
@@ -535,6 +530,7 @@ function str_getcsv_rows(string $csv): array
     }
     return $rows;
 }
+} // end function_exists guard
 
 /* ---- Email Campaigns ---- */
 

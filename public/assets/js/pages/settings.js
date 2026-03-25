@@ -2,7 +2,7 @@
  * Settings page — business info, health, token, backup, webhooks, cron log.
  */
 
-import { api } from '../core/api.js';
+import { api, setApiToken } from '../core/api.js';
 import { $, escapeHtml, formatDateTime, onSubmit, formData, onClick } from '../core/utils.js';
 import { success, error } from '../core/toast.js';
 
@@ -58,6 +58,7 @@ async function refreshToken() {
       onClick('regenToken', async () => {
         try {
           const result = await api('/api/regenerate-token', { method: 'POST' });
+          if (result.api_token) setApiToken(result.api_token);
           success('Token regenerated');
           refreshToken();
         } catch (err) { error(err.message); }

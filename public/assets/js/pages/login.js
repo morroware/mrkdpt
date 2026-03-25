@@ -5,7 +5,9 @@
 import { api, setCsrfToken, setApiToken } from '../core/api.js';
 import { $, onSubmit } from '../core/utils.js';
 import { error } from '../core/toast.js';
-import { navigate, initRouter } from '../core/router.js';
+import { initRouter } from '../core/router.js';
+
+let onAuthenticated = null;
 
 function showApp() {
   $('page-login').style.display = 'none';
@@ -16,6 +18,14 @@ function showApp() {
 function showLogin() {
   $('page-login').style.display = '';
   $('appLayout').classList.add('hidden');
+}
+
+/**
+ * Register a callback that runs once after successful authentication.
+ * Used by app.js to pass initAll() so page handlers bind after login.
+ */
+export function setOnAuthenticated(fn) {
+  onAuthenticated = fn;
 }
 
 export async function checkSession() {
@@ -53,6 +63,7 @@ export function init() {
       if (data.csrf_token) setCsrfToken(data.csrf_token);
       if (data.api_token) setApiToken(data.api_token);
       showApp();
+      if (onAuthenticated) onAuthenticated();
     } catch (err) {
       error(err.message || 'Login failed');
     }

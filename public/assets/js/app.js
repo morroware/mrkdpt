@@ -50,6 +50,8 @@ function initAll() {
 
 // Boot sequence
 async function boot() {
+  // Register callback so initAll runs after login even if session didn't exist at boot
+  login.setOnAuthenticated(initAll);
   login.init();
   const authenticated = await login.checkSession();
   if (authenticated) {

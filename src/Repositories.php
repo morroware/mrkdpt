@@ -224,7 +224,9 @@ final class CompetitorRepository
             ':created_at' => gmdate(DATE_ATOM),
         ]);
         $id = (int)$this->pdo->lastInsertId();
-        return $this->pdo->query('SELECT * FROM competitors WHERE id = ' . $id)->fetch(PDO::FETCH_ASSOC) ?: [];
+        $sel = $this->pdo->prepare('SELECT * FROM competitors WHERE id = :id LIMIT 1');
+        $sel->execute([':id' => $id]);
+        return $sel->fetch(PDO::FETCH_ASSOC) ?: [];
     }
 
     public function delete(int $id): bool
@@ -259,7 +261,9 @@ final class KpiRepository
             ':note' => $data['note'] ?? '',
         ]);
         $id = (int)$this->pdo->lastInsertId();
-        return $this->pdo->query('SELECT * FROM kpi_logs WHERE id = ' . $id)->fetch(PDO::FETCH_ASSOC) ?: [];
+        $sel = $this->pdo->prepare('SELECT * FROM kpi_logs WHERE id = :id LIMIT 1');
+        $sel->execute([':id' => $id]);
+        return $sel->fetch(PDO::FETCH_ASSOC) ?: [];
     }
 
     public function summary(): array

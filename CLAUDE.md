@@ -14,7 +14,7 @@ All-in-one marketing operations platform with deep AI integration. Zero-dependen
 ## Key Entry Points
 
 - `public/index.php` - Main router, API dispatcher, includes all route files
-- `public/app.html` - SPA shell (all 22 pages defined inline in HTML)
+- `public/app.html` - SPA shell (all 24 pages defined inline in HTML)
 - `public/install.php` - Web-based setup wizard
 - `public/cron.php` - External cron trigger
 
@@ -35,6 +35,8 @@ public/
       pages/                  # One module per page (exports init() + refresh())
         ai.js                 # AI Studio - 25+ tools with categories
         assistant.js          # AI Writing Assistant - floating refinement panel
+        chat.js               # AI Marketing Chat - conversational AI with history
+        onboarding.js         # Onboarding wizard - business profile + AI autopilot
         content.js            # Content Studio - calendar, list, create with AI buttons
         dashboard.js          # Dashboard - metrics, recent items, AI quick actions
         email.js              # Email Marketing - lists, subscribers, campaigns, AI compose
@@ -62,7 +64,7 @@ src/
   Database.php                # SQLite schema (35+ tables), auto-migration
   Auth.php                    # Session + bearer token, CSRF, rate limiting
   Router.php                  # Lightweight router with middleware
-  AiService.php               # Multi-provider AI (OpenAI, Anthropic, Gemini) - 26 methods
+  AiService.php               # Multi-provider AI (9 providers) - 26+ methods
   Repositories.php            # Data access layer (Post, Campaign, Competitor, etc.)
   SocialPublisher.php         # Multi-platform publishing (Twitter, Bluesky, Mastodon, Facebook, Instagram)
   SocialQueue.php             # Queue with best-time optimization
@@ -72,8 +74,8 @@ src/
   Analytics.php               # Event tracking, dashboard metrics
   Contacts.php                # Mini CRM
   FormBuilder.php             # Dynamic forms + submissions
-  LandingPages.php            # Landing page editor (5 templates)
-  LinkShortener.php           # Short links + click analytics
+  LandingPages.php            # Landing page editor (5 templates) + CSS sanitization
+  LinkShortener.php           # Short links + click analytics (iterative code gen)
   UtmBuilder.php              # UTM link generator
   Automations.php             # Trigger-action engine
   Segments.php                # Dynamic contact segmentation
@@ -139,9 +141,10 @@ Each maps to an `/api/ai/*` endpoint:
 
 ### AI Integration Points (throughout the app)
 - **AI Studio** (`pages/ai.js`): All 25+ tools with category tabs, sticky output panel, copy/use actions
+- **AI Marketing Chat** (`pages/chat.js`): Conversational AI with marketing data context, conversation history, multi-provider model selection
 - **AI Writing Assistant** (`pages/assistant.js`): Floating panel with 12 refinement actions, 4 tone changes, analysis tools, accessible from any page via FAB button
-- **Content Studio** (`pages/content.js`): AI Write Content, AI Title, AI Hashtags, AI Score, inline AI toolbar (improve/expand/shorten/persuasive/emoji), one-click repurpose per post
-- **Email Marketing** (`pages/email.js`): AI Write Email, AI Subject Lines, inline AI toolbar on body field
+- **Content Studio** (`pages/content.js`): AI Write Content, AI Title, AI Hashtags, AI Score, inline AI toolbar (improve/expand/shorten/persuasive/emoji), one-click repurpose per post; auto-populates from AI Studio "Use in Post" via sessionStorage
+- **Email Marketing** (`pages/email.js`): AI Write Email, AI Subject Lines, inline AI toolbar on body field; template preview via sandboxed iframe
 - **Campaigns** (`pages/campaigns.js`): AI Strategy, AI Campaign Optimizer
 - **Landing Pages** (`pages/landing.js`): AI Generate Copy
 - **Competitors** (`pages/competitors.js`): AI Deep Dive
@@ -150,6 +153,7 @@ Each maps to an `/api/ai/*` endpoint:
 - **Global Command Bar** (`core/router.js`): Ctrl+K from any page, 10 quick actions in 2 groups
 - **SEO Tools** (`pages/seo.js`): AI keyword research, blog generation
 - **Publish Queue** (`pages/queue.js`): AI Smart Posting Times with platform-specific recommendations
+- **Onboarding** (`pages/onboarding.js`): 5-step wizard that collects business profile and launches AI Autopilot to bootstrap content
 
 ### AI Writing Assistant (`pages/assistant.js`)
 Floating side panel accessible from any page via the purple FAB button (bottom-right corner).
@@ -178,10 +182,11 @@ Uses `.ai-inline-btn[data-inline-refine]` elements, wired globally in `app.js::i
 - Active page's section auto-expands on navigation
 
 ### SPA Routing
-- Hash-based: `#page-name` (e.g. `#ai`, `#content`, `#dashboard`)
+- Hash-based: `#page-name` (e.g. `#ai`, `#content`, `#dashboard`, `#chat`, `#onboarding`)
 - `router.js`: `registerPage(name, module)`, `navigate(page)`, `showPage(page)`
-- Each page module exports `init()` (bind events) and `refresh()` (load data)
-- `app.js` registers all 22 pages and calls `initAll()` after authentication
+- Each page module exports `init()` (bind events) and optionally `refresh()` (load data on visit)
+- `app.js` registers all 24 pages and calls `initAll()` after authentication
+- Router safely checks `typeof mod.refresh === 'function'` before calling — pages without it simply skip data refresh
 
 ### Tab System
 - `.tab-btn[data-tab]` toggles `.tab-panel` visibility within a page section
@@ -199,6 +204,18 @@ finally { btn.classList.remove('loading'); btn.disabled = false; }
 Theme is controlled by CSS variables on `:root` (dark) and `body.light` (light). Key vars: `--bg`, `--panel`, `--text`, `--accent`, `--line`, `--input-bg`, `--radius`.
 
 AI-specific styling uses purple gradient: `linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7)`.
+
+### CSS Utility Classes
+Key utility classes: `.hidden`, `.flex`, `.flex-between`, `.flex-end`, `.mt-1`, `.mb-1`, `.mb-2`, `.text-muted`, `.text-secondary`, `.text-small`, `.text-success`, `.text-danger`, `.w-full`, `.gap-1`, `.flex-wrap`.
+
+Button variants: `.btn`, `.btn-ai` (AI purple gradient), `.btn-ghost` (transparent), `.btn-outline`, `.btn-success`, `.btn-danger`, `.btn-warning`, `.btn-sm`, `.btn-lg`.
+
+### Accessibility
+- `:focus-visible` outlines on all interactive elements for keyboard navigation
+- Disabled button states (`.btn:disabled`) with reduced opacity
+- Modal overlays use `role="dialog"` and `aria-labelledby`
+- Icon-only buttons include `aria-label` attributes
+- Modal open/close animations use `opacity` + `visibility` + `transform` transitions
 
 ## Database (SQLite)
 
@@ -272,9 +289,13 @@ SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM
 - All frontend JS uses ES modules (`import`/`export`)
 - Backend uses `request_json()` helper to parse POST bodies
 - API responses follow `{ item: {...} }` or `{ items: [...] }` pattern
+- The `api()` wrapper in `api.js` handles CSRF tokens automatically and returns raw `Response` for non-JSON content types (CSV exports, etc.)
 - The `formData(e)` utility converts FormData to a plain object
 - `statusBadge(status)` returns colored badge HTML
 - Toast notifications via `success()`, `error()` from `toast.js`
-- The `api()` wrapper in `api.js` handles CSRF tokens automatically
 - When adding new AI tools: add method to `AiService.php`, register route in `routes/ai.php`, add card in `app.html`, wire button in `pages/ai.js`
 - When adding new pages: create page module in `pages/`, register in `app.js`, add HTML section in `app.html`, add nav link in sidebar
+- All SQL queries use prepared statements with parameter binding (no raw concatenation)
+- Landing page custom CSS is sanitized via `LandingPages::sanitizeCss()` to prevent style tag injection
+- Short link codes are generated iteratively (max 20 attempts, auto-lengthens on collision)
+- Scheduler uses `flock()` with `LOCK_EX | LOCK_NB` for atomic cron lock + stale lock recovery

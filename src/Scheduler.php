@@ -89,7 +89,7 @@ final class Scheduler
 
             // Try to publish to social media if publisher and accounts are available
             if ($this->publisher && !empty($post['account_ids'])) {
-                $accountIds = array_filter(explode(',', $post['account_ids']));
+                $accountIds = array_filter(explode(',', $post['account_ids'] ?? ''));
                 foreach ($accountIds as $accountId) {
                     $acctStmt = $this->pdo->prepare('SELECT * FROM social_accounts WHERE id = :id LIMIT 1');
                     $acctStmt->execute([':id' => (int)$accountId]);

@@ -34,6 +34,8 @@ Open `http://localhost:8080/install.php` to run the setup wizard.
 | Category | Highlights |
 |----------|-----------|
 | **AI Studio** | 25+ AI tools across content creation, analysis, and strategy — powered by 9 configurable providers |
+| **AI Marketing Chat** | Conversational AI assistant grounded in your marketing data with conversation history |
+| **Onboarding Wizard** | 5-step setup wizard that collects business profile and launches AI Autopilot to bootstrap content |
 | **Content Management** | Post creation, calendar view, approval workflows, bulk operations, recurring posts |
 | **Social Publishing** | 15-platform publishing with queue, optimal timing, and retry logic |
 | **Email Marketing** | List management, campaign composer, 6 built-in templates, open/click tracking |
@@ -124,7 +126,7 @@ Handles: scheduled post publishing, recurring post creation, RSS feed fetching.
 marketing/
 ├── public/                  # Web root
 │   ├── index.php            # Main router and API dispatcher
-│   ├── app.html             # SPA shell (22 pages inline)
+│   ├── app.html             # SPA shell (24 pages inline)
 │   ├── install.php          # Web installer
 │   ├── cron.php             # Cron trigger
 │   └── assets/              # CSS, JS modules

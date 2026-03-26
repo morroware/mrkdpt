@@ -95,7 +95,7 @@ final class LandingPageRepository
             $formHtml = $this->renderForm($form, $page['slug']);
         }
 
-        $css = $page['custom_css'] ?? '';
+        $css = $this->sanitizeCss($page['custom_css'] ?? '');
         $template = $page['template'] ?? 'blank';
 
         return '<!doctype html><html lang="en"><head>'
@@ -160,6 +160,18 @@ final class LandingPageRepository
         $html .= '<button type="submit" class="lp-submit">' . htmlspecialchars($form['submit_label'] ?? 'Submit') . '</button>';
         $html .= '</form></div>';
         return $html;
+    }
+
+    private function sanitizeCss(string $css): string
+    {
+        // Strip sequences that could escape the style tag or inject scripts
+        $css = preg_replace('#</style#i', '', $css);
+        $css = preg_replace('#javascript\s*:#i', '', $css);
+        $css = preg_replace('#expression\s*\(#i', '', $css);
+        $css = preg_replace('#@import\b#i', '', $css);
+        $css = preg_replace('#-moz-binding\s*:#i', '', $css);
+        $css = preg_replace('#behavior\s*:#i', '', $css);
+        return $css;
     }
 
     private function baseStyles(string $template): string

@@ -448,5 +448,12 @@ export function init() {
   if (stored) {
     sessionStorage.removeItem('ai_generated_content');
     sessionStorage.removeItem('ai_generated_tool');
+    // Switch to create tab and populate the body field
+    document.querySelector('[data-tab="content-create"]')?.click();
+    const bodyField = document.querySelector('#postForm [name="body"]');
+    if (bodyField) {
+      bodyField.value = stored;
+      bodyField.dispatchEvent(new Event('input'));
+    }
   }
 }

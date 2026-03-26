@@ -106,19 +106,19 @@
   <div class="main-area">
     <header class="header-bar">
       <div class="flex gap-1">
-        <button id="menuToggle">&#9776;</button>
+        <button id="menuToggle" aria-label="Toggle menu">&#9776;</button>
         <h2 id="pageTitle">Dashboard</h2>
       </div>
       <div class="header-right">
         <button class="btn btn-sm btn-ai" id="globalAiBtn" title="Quick AI Generate (Ctrl+K)"><span class="btn-ai-icon">&#9733;</span> AI Quick Generate</button>
         <span id="settingsSummary" class="text-small text-muted"></span>
         <span class="badge" id="providerBadge">AI: --</span>
-        <button class="theme-toggle" id="themeToggle" title="Toggle theme">&#9790;</button>
+        <button class="theme-toggle" id="themeToggle" title="Toggle theme" aria-label="Toggle theme">&#9790;</button>
       </div>
     </header>
 
     <!-- Global AI Command Bar Modal -->
-    <div class="modal-overlay" id="aiCommandModal">
+    <div class="modal-overlay" id="aiCommandModal" role="dialog" aria-label="AI Command Bar">
       <div class="modal-content ai-command-modal">
         <div class="ai-command-search">
           <span class="ai-command-icon">&#9733;</span>
@@ -1082,8 +1082,8 @@ Tip: Use the provider selector above to compare results from different AI models
         </div>
         <div id="email-templates-lib" class="tab-panel">
           <div class="card-grid" id="emailTemplateList"></div>
-          <div class="modal-overlay" id="emailTplModal">
-            <div class="modal-content"><div class="modal-header"><h3 id="emailTplModalTitle">Template Preview</h3><button class="modal-close" id="closeEmailTplModal">&times;</button></div><div class="modal-body" id="emailTplModalBody"></div></div>
+          <div class="modal-overlay" id="emailTplModal" role="dialog" aria-labelledby="emailTplModalTitle">
+            <div class="modal-content"><div class="modal-header"><h3 id="emailTplModalTitle">Template Preview</h3><button class="modal-close" aria-label="Close" id="closeEmailTplModal">&times;</button></div><div class="modal-body" id="emailTplModalBody"></div></div>
           </div>
         </div>
       </section>
@@ -1165,8 +1165,8 @@ Tip: Use the provider selector above to compare results from different AI models
         <div id="rssFeedList" class="mt-1"></div>
         <div class="card mt-1"><h3>Recent Items</h3><div class="table-wrap"><table class="data-table"><thead><tr><th>Title</th><th>Source</th><th>Date</th><th>Actions</th></tr></thead><tbody id="rssItemTable"></tbody></table></div></div>
         <!-- RSS to Post Modal -->
-        <div class="modal-overlay" id="rssPostModal">
-          <div class="modal-content"><div class="modal-header"><h3>AI: Turn into Post</h3><button class="modal-close" id="closeRssPostModal">&times;</button></div>
+        <div class="modal-overlay" id="rssPostModal" role="dialog" aria-label="AI: Turn into Post">
+          <div class="modal-content"><div class="modal-header"><h3>AI: Turn into Post</h3><button class="modal-close" aria-label="Close" id="closeRssPostModal">&times;</button></div>
             <div class="modal-body stack">
               <select id="rssPostPlatform"><option>twitter</option><option>linkedin</option><option>instagram</option><option>facebook</option></select>
               <div id="rssPostOutput" class="ai-output" style="min-height:100px;max-height:300px;overflow:auto"></div>
@@ -1204,8 +1204,8 @@ Tip: Use the provider selector above to compare results from different AI models
           <table class="data-table"><thead><tr><th>Email</th><th>Name</th><th>Company</th><th>Stage</th><th>Score</th><th>Source</th><th>Last Activity</th><th>Actions</th></tr></thead><tbody id="contactTable"></tbody></table>
         </div>
         <!-- Contact detail modal -->
-        <div class="modal-overlay" id="contactModal">
-          <div class="modal-content"><div class="modal-header"><h3 id="contactModalTitle">Contact</h3><button class="modal-close" id="closeContactModal">&times;</button></div><div class="modal-body" id="contactModalBody"></div></div>
+        <div class="modal-overlay" id="contactModal" role="dialog" aria-labelledby="contactModalTitle">
+          <div class="modal-content"><div class="modal-header"><h3 id="contactModalTitle">Contact</h3><button class="modal-close" aria-label="Close" id="closeContactModal">&times;</button></div><div class="modal-body" id="contactModalBody"></div></div>
         </div>
       </section>
 
@@ -1359,8 +1359,8 @@ Tip: Use the provider selector above to compare results from different AI models
         </form>
         <div class="card mt-1 hidden" id="smartSegmentsCard"><h3><span class="btn-ai-icon">&#9733;</span> AI Suggested Segments</h3><div id="smartSegmentsList"></div></div>
         <div id="segmentList" class="card-grid mt-1"></div>
-        <div class="modal-overlay" id="segmentModal">
-          <div class="modal-content"><div class="modal-header"><h3 id="segmentModalTitle">Segment Contacts</h3><button class="modal-close" id="closeSegmentModal">&times;</button></div><div class="modal-body" id="segmentModalBody"></div></div>
+        <div class="modal-overlay" id="segmentModal" role="dialog" aria-labelledby="segmentModalTitle">
+          <div class="modal-content"><div class="modal-header"><h3 id="segmentModalTitle">Segment Contacts</h3><button class="modal-close" aria-label="Close" id="closeSegmentModal">&times;</button></div><div class="modal-body" id="segmentModalBody"></div></div>
         </div>
       </section>
 

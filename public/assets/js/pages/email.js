@@ -145,8 +145,12 @@ async function refreshEmailTemplates() {
           const modal = $('emailTplModal');
           const body = $('emailTplModalBody');
           if (modal && body) {
-            const previewHtml = escapeHtml(tpl.html_template || '<p>No HTML content</p>');
-            body.innerHTML = `<iframe srcdoc="${previewHtml}" style="width:100%;min-height:400px;border:none;border-radius:8px;background:#fff" sandbox=""></iframe>`;
+            const iframe = document.createElement('iframe');
+            iframe.style.cssText = 'width:100%;min-height:400px;border:none;border-radius:8px;background:#fff';
+            iframe.sandbox = '';
+            iframe.srcdoc = tpl.html_template || '<p>No HTML content</p>';
+            body.innerHTML = '';
+            body.appendChild(iframe);
             modal.classList.add('visible');
           }
         } catch (e) { error(e.message); }

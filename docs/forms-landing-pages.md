@@ -128,7 +128,7 @@ Features:
 - Hero section with headline, subheadline, CTA button, and optional image
 - Body HTML content
 - Integrated form (if `form_id` is set)
-- Custom CSS injection
+- Custom CSS with security sanitization (strips `javascript:`, `expression()`, `@import`, `</style>` breakout, `-moz-binding`, `behavior` patterns)
 - Responsive design
 - View tracking (auto-increments views counter)
 

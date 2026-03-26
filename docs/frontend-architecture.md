@@ -8,7 +8,7 @@ The frontend is a vanilla JavaScript Single Page Application (SPA) with hash-bas
 
 The main HTML file contains:
 - Sidebar navigation with 5 collapsible sections
-- 22 page sections (hidden by default, shown on navigation)
+- 24 page sections (hidden by default, shown on navigation)
 - AI Writing Assistant floating panel
 - Global AI Command Bar (Ctrl+K)
 - Login overlay
@@ -149,6 +149,7 @@ export function refresh() {
 | `rss.js` | RSS Feeds | Feed management, item curation |
 | `competitors.js` | Competitors | Competitor tracking, AI deep dive |
 | `settings.js` | Settings | Config display, health check, backup download |
+| `onboarding.js` | Onboarding | 5-step wizard: business profile, goals, platforms, competitors, AI Autopilot launch |
 | `login.js` | Login | Authentication form |
 
 ## Tab System
@@ -241,9 +242,21 @@ Purple gradient for AI elements:
 background: linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7);
 ```
 
+### Accessibility
+
+- `:focus-visible` outlines on all interactive elements for keyboard navigation
+- Input focus styles use `box-shadow` instead of outline (already in place via `:focus`)
+- Disabled buttons get `opacity: 0.5`, `cursor: not-allowed`, and `pointer-events: none`
+- Modal overlays include `role="dialog"` and `aria-labelledby` pointing to the modal title
+- Icon-only buttons (close `&times;`, menu toggle `&#9776;`, theme toggle `&#9790;`) include `aria-label`
+- Modal open/close uses animated `opacity` + `visibility` + `transform` transitions
+- Loading skeletons available via `.skeleton` class with shimmer animation
+
 ### Responsive Design
 
 The layout is responsive with:
-- Collapsible sidebar on smaller screens
-- Stacked layouts on mobile
-- Responsive tables and cards
+- Collapsible sidebar on smaller screens (hidden at 768px, toggle via menu button)
+- Stacked layouts on mobile (`.row2`, `.row3`, `.row4` collapse to single column)
+- Responsive tables via `.table-wrap` with horizontal scroll on mobile
+- AI Studio layout switches from 2-column to stacked at 1024px
+- AI Assistant panel goes full-width on mobile

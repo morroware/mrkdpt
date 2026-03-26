@@ -159,9 +159,11 @@ A catalog of identified issues, limitations, and improvement recommendations org
 
 **Location:** `src/Scheduler.php`
 
-**Description:** Uses a filesystem lock which doesn't protect against distributed execution. Running cron on multiple servers could publish posts multiple times.
+**Description:** Uses a filesystem lock via `flock(LOCK_EX | LOCK_NB)` which is atomic on single-server deployments but doesn't protect against distributed execution. Running cron on multiple servers could publish posts multiple times.
 
-**Recommendation:** Implement database-level locking or use an `is_processing` flag with timestamps.
+**Status:** Partially resolved — `flock()` provides atomic locking on single servers. Null guard added for `account_ids` from `GROUP_CONCAT`. Stale lock recovery with PID checking implemented.
+
+**Remaining:** For multi-server deployments, consider database-level locking.
 
 ---
 
@@ -259,13 +261,11 @@ A catalog of identified issues, limitations, and improvement recommendations org
 
 ## Frontend Issues
 
-### 25. Potential XSS in Email Template Preview
+### 25. ~~Potential XSS in Email Template Preview~~ (RESOLVED)
 
 **Location:** `public/assets/js/pages/email.js`
 
-**Description:** The email template preview uses `iframe srcdoc` with only quote escaping (`replace(/"/g, '&quot;')`). Malicious HTML in templates could execute scripts within the preview context.
-
-**Recommendation:** Sanitize template HTML server-side or use a sandboxed iframe with CSP restrictions.
+**Status:** Fixed — Email template preview now uses DOM property assignment (`iframe.srcdoc = html`) instead of HTML attribute interpolation, and the iframe uses `sandbox=""` attribute which prevents all script execution.
 
 ---
 
@@ -346,3 +346,25 @@ No API versioning, database versioning, or content versioning. Schema changes re
 ### No Internationalization
 
 The application UI is English-only. No i18n framework or translatable strings.
+
+---
+
+## Recently Resolved Issues
+
+The following issues were identified and fixed during a comprehensive code audit:
+
+| Issue | Fix | File |
+|-------|-----|------|
+| SQL concatenation in Competitor/KPI repositories | Replaced with prepared statements | `src/Repositories.php` |
+| CSS injection in landing page custom CSS | Added `sanitizeCss()` to strip dangerous patterns | `src/LandingPages.php` |
+| Scheduler null pointer on missing account_ids | Added null coalescing guard | `src/Scheduler.php` |
+| LinkShortener recursive code generation | Replaced with iterative loop (max 20 attempts) | `src/LinkShortener.php` |
+| AI-generated content not applied from sessionStorage | Content now populates post form on Content Studio | `public/assets/js/pages/content.js` |
+| Email template preview escaped HTML | Uses DOM srcdoc property instead of escapeHtml | `public/assets/js/pages/email.js` |
+| Missing `.btn-ghost` CSS class (7 uses) | Added class definition | `public/assets/styles.css` |
+| Missing `.flex-end` CSS utility | Added class definition | `public/assets/styles.css` |
+| No disabled button states | Added `.btn:disabled` styles | `public/assets/styles.css` |
+| No keyboard focus indicators | Added `:focus-visible` styles | `public/assets/styles.css` |
+| Modal overlays with no transition | Added opacity/visibility/transform transitions | `public/assets/styles.css` |
+| Missing ARIA attributes on modals | Added `role="dialog"` and `aria-labelledby` | `public/app.html` |
+| Missing aria-label on icon buttons | Added `aria-label` to close/menu/theme buttons | `public/app.html` |

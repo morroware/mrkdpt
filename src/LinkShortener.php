@@ -76,16 +76,24 @@ final class LinkShortener
     private function generateCode(): string
     {
         $chars = 'abcdefghijkmnpqrstuvwxyz23456789';
-        $code = '';
-        for ($i = 0; $i < 6; $i++) {
-            $code .= $chars[random_int(0, strlen($chars) - 1)];
-        }
-        // Ensure uniqueness
+        $length = 6;
         $stmt = $this->pdo->prepare('SELECT id FROM short_links WHERE code = :c');
-        $stmt->execute([':c' => $code]);
-        if ($stmt->fetch()) {
-            return $this->generateCode();
+
+        for ($attempt = 0; $attempt < 20; $attempt++) {
+            $code = '';
+            for ($i = 0; $i < $length; $i++) {
+                $code .= $chars[random_int(0, strlen($chars) - 1)];
+            }
+            $stmt->execute([':c' => $code]);
+            if (!$stmt->fetch()) {
+                return $code;
+            }
+            // After 10 failed attempts, increase code length
+            if ($attempt === 10) {
+                $length = 8;
+            }
         }
-        return $code;
+
+        throw new \RuntimeException('Unable to generate unique short code after 20 attempts');
     }
 }

@@ -54,6 +54,8 @@
 - HTML escaping via `htmlspecialchars()` with `ENT_QUOTES`
 - `escapeHtml()` utility in frontend JavaScript
 - Content-Security-Policy headers (when configured)
+- **Custom CSS sanitization** in `LandingPages.php` — strips `javascript:`, `expression()`, `@import`, `-moz-binding`, `behavior`, and `</style>` tag breakout sequences from user-provided landing page CSS
+- Email template previews use sandboxed iframes (`sandbox=""`) to prevent script execution
 
 ## Security Headers
 
@@ -132,6 +134,20 @@ The automation webhook action includes SSRF protection:
 - Cron endpoint requires a secret key (`CRON_KEY` in `.env`)
 - Key validated via GET parameter or CLI execution
 - CLI detection via `php_sapi_name() === 'cli'`
+
+## Short Link Code Generation
+
+- Iterative generation with uniqueness check (max 20 attempts)
+- Auto-increases code length after 10 collision attempts
+- Throws `RuntimeException` if unable to generate a unique code after exhausting all attempts
+- Prevents stack overflow from recursive generation under high load
+
+## Accessibility
+
+- `:focus-visible` outlines on all interactive elements for keyboard navigation
+- Modal overlays include `role="dialog"` and `aria-labelledby` attributes
+- Icon-only buttons (close, menu toggle, theme toggle) include `aria-label`
+- Disabled button states with `pointer-events: none` prevent interaction
 
 ## Static File Serving
 

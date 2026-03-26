@@ -24,7 +24,7 @@
 marketing/
 ├── public/                         # Web root (document root points here)
 │   ├── index.php                   # Main entry: router, middleware, dispatch
-│   ├── app.html                    # SPA shell — all 22 page templates inline
+│   ├── app.html                    # SPA shell — all 24 page templates inline
 │   ├── install.php                 # Web-based setup wizard
 │   ├── cron.php                    # External cron trigger
 │   ├── .htaccess                   # Apache rewrite + security headers
@@ -61,6 +61,7 @@ marketing/
 │               ├── rss.js          # RSS feed reader
 │               ├── competitors.js  # Competitor tracking
 │               ├── settings.js     # App config, health, backups
+│               ├── onboarding.js   # Onboarding wizard + AI Autopilot
 │               └── login.js        # Authentication flow
 │
 ├── src/                            # PHP backend classes

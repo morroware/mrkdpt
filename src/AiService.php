@@ -804,14 +804,18 @@ final class AiService
         $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
+        // Mask API keys in URLs before logging
+        $safeUrl = preg_replace('/([?&]key=)[^&]+/', '$1***', $url);
+        $safeUrl = preg_replace('/(\/v\d+\/)[\w-]{20,}/', '$1***', $safeUrl);
+
         if ($raw === false || $error !== '') {
-            error_log("AiService::postJson curl error: {$error} (URL: {$url})");
+            error_log("AiService::postJson curl error: {$error} (URL: {$safeUrl})");
             return ['error' => 'Network error: ' . $error];
         }
 
         $decoded = json_decode($raw, true);
         if (!is_array($decoded)) {
-            error_log("AiService::postJson invalid JSON response (HTTP {$httpCode}, URL: {$url})");
+            error_log("AiService::postJson invalid JSON response (HTTP {$httpCode}, URL: {$safeUrl})");
             return ['error' => "Invalid response from AI provider (HTTP {$httpCode})"];
         }
 
@@ -821,7 +825,7 @@ final class AiService
             if (is_array($apiError)) {
                 $apiError = $apiError['message'] ?? json_encode($apiError);
             }
-            error_log("AiService::postJson API error: {$apiError} (HTTP {$httpCode}, URL: {$url})");
+            error_log("AiService::postJson API error: {$apiError} (HTTP {$httpCode}, URL: {$safeUrl})");
             return ['error' => "AI provider error: {$apiError}"];
         }
 

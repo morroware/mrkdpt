@@ -25,6 +25,10 @@ final class Webhooks
 
     public function create(array $data): array
     {
+        $url = $data['url'] ?? '';
+        if (!filter_var($url, FILTER_VALIDATE_URL) || !preg_match('#^https?://#i', $url)) {
+            throw new \InvalidArgumentException('Webhook URL must be a valid HTTP(S) URL');
+        }
         $secret = bin2hex(random_bytes(24));
         $stmt = $this->pdo->prepare('INSERT INTO webhooks(event, url, secret, active, created_at) VALUES(:e,:u,:s,:a,:c)');
         $stmt->execute([
@@ -119,6 +123,8 @@ final class Webhooks
             CURLOPT_POSTFIELDS => $body,
             CURLOPT_TIMEOUT => 10,
             CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
         ]);
 
         $response = curl_exec($ch);

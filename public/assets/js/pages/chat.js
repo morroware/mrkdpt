@@ -159,7 +159,7 @@ async function refreshConversations() {
         deleteConversation(parseInt(btn.dataset.deleteConv));
       });
     });
-  } catch { /* ignore */ }
+  } catch (err) { console.warn('Failed to load conversations:', err); }
 }
 
 function newChat() {

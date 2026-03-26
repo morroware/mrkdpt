@@ -25,6 +25,10 @@ final class RssFetcher
 
     public function createFeed(array $data): array
     {
+        $url = $data['url'] ?? '';
+        if (!filter_var($url, FILTER_VALIDATE_URL) || !preg_match('#^https?://#i', $url)) {
+            throw new \InvalidArgumentException('Feed URL must be a valid HTTP(S) URL');
+        }
         $stmt = $this->pdo->prepare('INSERT INTO rss_feeds(url, name, is_active, last_fetched, created_at) VALUES(:u,:n,:a,NULL,:c)');
         $stmt->execute([
             ':u' => $data['url'],
@@ -109,7 +113,9 @@ final class RssFetcher
             return ['error' => 'Could not fetch feed URL', 'new_items' => 0];
         }
 
-        $parsed = @simplexml_load_string($xml);
+        $previousUseErrors = libxml_use_internal_errors(true);
+        $parsed = simplexml_load_string($xml, 'SimpleXMLElement', LIBXML_NONET | LIBXML_NOCDATA);
+        libxml_use_internal_errors($previousUseErrors);
         if (!$parsed) {
             return ['error' => 'Invalid XML', 'new_items' => 0];
         }

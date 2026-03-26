@@ -109,8 +109,10 @@ async function handleCreate(e) {
 async function viewContact(id) {
   try {
     const c = await api(`/api/contacts/${id}`);
-    $('contactModalTitle').textContent = `${c.first_name || ''} ${c.last_name || ''} - ${c.email}`;
+    const modalTitle = $('contactModalTitle');
+    if (modalTitle) modalTitle.textContent = `${c.first_name || ''} ${c.last_name || ''} - ${c.email}`;
     const body = $('contactModalBody');
+    if (!body) return;
     body.innerHTML = `
       <div class="row2 mb-2"><div><strong>Company:</strong> ${escapeHtml(c.company)}</div><div><strong>Phone:</strong> ${escapeHtml(c.phone)}</div></div>
       <div class="row3 mb-2"><div><strong>Stage:</strong> <span class="badge badge-${stageBadge(c.stage)}">${escapeHtml(c.stage)}</span></div><div><strong>Score:</strong> ${c.score}</div><div><strong>Source:</strong> ${escapeHtml(c.source)}</div></div>

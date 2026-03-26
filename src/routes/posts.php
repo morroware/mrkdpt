@@ -131,6 +131,8 @@ function register_post_routes(Router $router, PostRepository $posts, Analytics $
     $router->post('/api/posts/bulk', function () use ($posts) {
         $data = request_json();
         $ids = $data['ids'] ?? [];
+        if (!is_array($ids)) { json_response(['error' => 'IDs must be an array'], 422); return; }
+        $ids = array_map('intval', $ids);
         $action = $data['action'] ?? '';
         if (empty($ids)) { json_response(['error' => 'No IDs provided'], 422); return; }
         $count = match($action) {

@@ -116,7 +116,7 @@ function register_email_routes(
         $campaign = $emailCampaigns->find((int)$p['id']);
         if (!$campaign) { json_response(['error' => 'Campaign not found'], 404); return; }
         $to = $data['to'] ?? '';
-        if (!$to) { json_response(['error' => 'Missing: to'], 422); return; }
+        if (!$to || !filter_var($to, FILTER_VALIDATE_EMAIL)) { json_response(['error' => 'Invalid email address'], 422); return; }
         $ok = $emailService->sendTestEmail($to, $campaign['subject'], $campaign['body_html'], $campaign['body_text']);
         json_response(['success' => $ok]);
     });

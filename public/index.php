@@ -208,17 +208,24 @@ if ($path === '/api/track/click' && $method === 'GET') {
 if ($path === '/api/unsubscribe' && $method === 'GET') {
     $sid = (int)($_GET['s'] ?? 0);
     $lid = (int)($_GET['l'] ?? 0);
+    $unsubscribed = false;
     if ($sid && $lid) {
         $sub = $subscribers->find($sid);
-        if ($sub) {
-            $pdo->prepare("UPDATE subscribers SET status = 'unsubscribed', unsubscribed_at = :u WHERE id = :id")->execute([
+        if ($sub && (int)$sub['list_id'] === $lid) {
+            $pdo->prepare("UPDATE subscribers SET status = 'unsubscribed', unsubscribed_at = :u WHERE id = :id AND list_id = :lid")->execute([
                 ':u' => gmdate(DATE_ATOM),
                 ':id' => $sid,
+                ':lid' => $lid,
             ]);
+            $unsubscribed = true;
         }
     }
     header('Content-Type: text/html');
-    echo '<html><body style="font-family:sans-serif;text-align:center;padding:4rem"><h2>You have been unsubscribed.</h2><p>You will no longer receive emails from us.</p></body></html>';
+    if ($unsubscribed) {
+        echo '<html><body style="font-family:sans-serif;text-align:center;padding:4rem"><h2>You have been unsubscribed.</h2><p>You will no longer receive emails from us.</p></body></html>';
+    } else {
+        echo '<html><body style="font-family:sans-serif;text-align:center;padding:4rem"><h2>Unsubscribe</h2><p>This unsubscribe link is invalid or has already been used.</p></body></html>';
+    }
     return;
 }
 

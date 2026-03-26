@@ -223,7 +223,8 @@ export function init() {
         body: JSON.stringify({ list_id: parseInt(listId), csv }),
       });
       success(`Imported: ${result.imported}, Skipped: ${result.skipped}`);
-      $('csvImport').value = '';
+      const csvInput = $('csvImport');
+      if (csvInput) csvInput.value = '';
       refreshSubscribers();
     } catch (err) { error(err.message); }
   });

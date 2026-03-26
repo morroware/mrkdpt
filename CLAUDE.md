@@ -64,7 +64,12 @@ src/
   Database.php                # SQLite schema (35+ tables), auto-migration
   Auth.php                    # Session + bearer token, CSRF, rate limiting
   Router.php                  # Lightweight router with middleware
-  AiService.php               # Multi-provider AI (9 providers) - 26+ methods
+  AiService.php               # Multi-provider AI (9 providers) - core generate/chat methods
+  AiContentTools.php          # Content creation AI tools (generate, blog, video, captions, refine, etc.)
+  AiAnalysisTools.php         # Analysis AI tools (tone, score, SEO, hashtags, A/B variants)
+  AiStrategyTools.php         # Strategy AI tools (research, personas, competitor, calendar, insights)
+  AiChatService.php           # AI Marketing Chat with conversation history
+  AiAutopilot.php             # AI Autopilot for onboarding content bootstrapping
   Repositories.php            # Data access layer (Post, Campaign, Competitor, etc.)
   SocialPublisher.php         # Multi-platform publishing (Twitter, Bluesky, Mastodon, Facebook, Instagram)
   SocialQueue.php             # Queue with best-time optimization
@@ -86,7 +91,7 @@ src/
   MediaLibrary.php            # File uploads + thumbnails
   RssFetcher.php              # RSS/Atom parser
   Webhooks.php                # Event dispatch + HMAC signing
-  routes/                     # 28 route files (one per API domain)
+  routes/                     # 31 route files (one per API domain)
     ai.php                    # 26 AI tool endpoints + /api/ai/multi + /api/ai/providers + /api/ai/bulk
     posts.php                 # Full CRUD, calendar, bulk ops, approval workflows
     auth.php                  # Login, logout, setup status
@@ -106,38 +111,56 @@ src/
 - **xAI** (`AI_PROVIDER=xai`) - Grok models, OpenAI-compatible
 - **Together AI** (`AI_PROVIDER=together`) - Open models (Llama, Mixtral, Qwen), OpenAI-compatible
 
-### AiService.php Methods
-Each maps to an `/api/ai/*` endpoint:
+### AI Tool Methods
+Methods are split across tool classes, each mapping to `/api/ai/*` endpoints:
 
-**Content Creation (Original):**
-- `marketResearch()` -> `/api/ai/research`
-- `contentIdeas()` -> `/api/ai/ideas`
+**AiContentTools.php (Content Creation):**
 - `generateContent()` -> `/api/ai/content` (main content writer)
 - `blogPostGenerator()` -> `/api/ai/blog-post`
-- `seoKeywordResearch()` -> `/api/ai/seo-keywords`
-- `hashtagResearch()` -> `/api/ai/hashtags`
+- `videoScript()` -> `/api/ai/video-script`
+- `socialCaptionBatch()` -> `/api/ai/caption-batch`
 - `repurposeContent()` -> `/api/ai/repurpose`
 - `adVariations()` -> `/api/ai/ad-variations`
 - `emailSubjectLines()` -> `/api/ai/subject-lines`
-- `audiencePersona()` -> `/api/ai/persona`
-- `contentScore()` -> `/api/ai/score`
-- `scheduleSuggestion()` -> `/api/ai/calendar`
-- `videoScript()` -> `/api/ai/video-script`
-- `socialCaptionBatch()` -> `/api/ai/caption-batch`
-- `seoAudit()` -> `/api/ai/seo-audit`
-- `socialStrategy()` -> `/api/ai/social-strategy`
-- `competitorAnalysis()` -> `/api/ai/competitor-analysis`
-- `weeklyReport()` -> `/api/ai/report`
-
-**Enhanced AI (New):**
 - `refineContent()` -> `/api/ai/refine` (12 actions: improve, expand, shorten, formal, casual, persuasive, storytelling, simplify, add_hooks, add_cta, emoji, bullet_points)
-- `toneAnalysis()` -> `/api/ai/tone-analysis` (sentiment, readability, emotion map, brand alignment)
 - `contentBrief()` -> `/api/ai/brief` (full content brief with outline, SEO, distribution plan)
 - `headlineOptimizer()` -> `/api/ai/headlines` (10 variations with psychological triggers)
+- `contentWorkflow()` -> `/api/ai/content-workflow`
+- `buildBrandVoice()` -> `/api/ai/brand-voice`
+- `rssToPost()` -> `/api/ai/rss-to-post`
+- `emailDripSequence()` -> `/api/ai/drip-sequence`
+- `localizeContent()` -> `/api/ai/localize`
+- `imagePromptGenerator()` -> `/api/ai/image-prompt`
+- `generateImage()` -> `/api/ai/image`
+
+**AiAnalysisTools.php (Analysis):**
+- `toneAnalysis()` -> `/api/ai/tone-analysis` (sentiment, readability, emotion map, brand alignment)
+- `contentScore()` -> `/api/ai/score`
+- `seoKeywordResearch()` -> `/api/ai/seo-keywords`
+- `hashtagResearch()` -> `/api/ai/hashtags`
+- `seoAudit()` -> `/api/ai/seo-audit`
+- `preFlightCheck()` -> `/api/ai/pre-flight`
+- `predictPerformance()` -> `/api/ai/predict`
+- `generateAbVariants()` -> `/api/ai/ab-variants`
+- `analyzeAbResults()` -> `/api/ai/ab-analysis`
+
+**AiStrategyTools.php (Strategy):**
+- `marketResearch()` -> `/api/ai/research`
+- `contentIdeas()` -> `/api/ai/ideas`
+- `audiencePersona()` -> `/api/ai/persona`
+- `competitorAnalysis()` -> `/api/ai/competitor-analysis`
+- `socialStrategy()` -> `/api/ai/social-strategy`
+- `weeklyReport()` -> `/api/ai/report`
+- `scheduleSuggestion()` -> `/api/ai/calendar`
 - `campaignOptimizer()` -> `/api/ai/campaign-optimizer` (budget, channel mix, creative recommendations)
 - `contentCalendarMonth()` -> `/api/ai/calendar-month` (full month content plan)
 - `smartPostingTime()` -> `/api/ai/smart-times` (platform-specific optimal schedule)
 - `aiInsights()` -> `/api/ai/insights` (proactive recommendations from marketing data)
+- `smartSegmentation()` -> `/api/ai/smart-segments`
+- `competitorRadar()` -> `/api/ai/competitor-radar`
+- `funnelAdvisor()` -> `/api/ai/funnel-advisor`
+- `smartUtm()` -> `/api/ai/smart-utm`
+- `weeklyStandup()` -> `/api/ai/standup`
 
 ### AI Integration Points (throughout the app)
 - **AI Studio** (`pages/ai.js`): All 25+ tools with category tabs, sticky output panel, copy/use actions

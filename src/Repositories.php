@@ -480,24 +480,30 @@ final class SubscriberRepository
         $lines = str_getcsv_rows($csvContent);
         $imported = 0;
         $skipped = 0;
-        $errors = [];
 
-        foreach ($lines as $i => $row) {
-            if ($i === 0 && (stripos($row[0] ?? '', 'email') !== false)) {
-                continue; // skip header
+        $this->pdo->beginTransaction();
+        try {
+            foreach ($lines as $i => $row) {
+                if ($i === 0 && (stripos($row[0] ?? '', 'email') !== false)) {
+                    continue; // skip header
+                }
+                $email = trim($row[0] ?? '');
+                if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    $skipped++;
+                    continue;
+                }
+                $name = $row[1] ?? '';
+                $result = $this->create(['email' => $email, 'name' => $name, 'list_id' => $listId]);
+                if (is_string($result)) {
+                    $skipped++;
+                } else {
+                    $imported++;
+                }
             }
-            $email = trim($row[0] ?? '');
-            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                $skipped++;
-                continue;
-            }
-            $name = $row[1] ?? '';
-            $result = $this->create(['email' => $email, 'name' => $name, 'list_id' => $listId]);
-            if (is_string($result)) {
-                $skipped++;
-            } else {
-                $imported++;
-            }
+            $this->pdo->commit();
+        } catch (\Throwable $e) {
+            $this->pdo->rollBack();
+            throw $e;
         }
 
         return ['imported' => $imported, 'skipped' => $skipped];

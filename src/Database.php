@@ -627,11 +627,15 @@ final class Database
 
     private function applySafeAlter(string $table, string $column, string $type): void
     {
-        $stmt = $this->pdo->query(sprintf('PRAGMA table_info(%s)', $table));
+        // Validate identifiers: only allow alphanumeric and underscores
+        if (!preg_match('/^\w+$/', $table) || !preg_match('/^\w+$/', $column)) {
+            throw new \InvalidArgumentException('Invalid table or column name');
+        }
+        $stmt = $this->pdo->query(sprintf('PRAGMA table_info("%s")', $table));
         $columns = array_map(static fn(array $row) => $row['name'], $stmt->fetchAll(PDO::FETCH_ASSOC));
 
         if (!in_array($column, $columns, true)) {
-            $this->pdo->exec(sprintf('ALTER TABLE %s ADD COLUMN %s %s', $table, $column, $type));
+            $this->pdo->exec(sprintf('ALTER TABLE "%s" ADD COLUMN "%s" %s', $table, $column, $type));
         }
     }
 }

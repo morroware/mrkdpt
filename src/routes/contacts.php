@@ -106,15 +106,19 @@ function register_contact_routes(Router $router, ContactRepository $contacts, Au
     // CSV Export
     $router->get('/api/contacts/export', function () use ($contacts) {
         $all = $contacts->all();
+        $headers = ['email', 'first_name', 'last_name', 'company', 'phone', 'stage', 'score', 'source', 'tags', 'created_at'];
         if (empty($all)) {
-            csv_response('email,first_name,last_name,company,phone,stage,score,source,tags,created_at', 'contacts.csv');
+            csv_response(implode(',', $headers), 'contacts.csv');
             return;
         }
-        $headers = array_keys($all[0]);
         $output = fopen('php://temp', 'r+');
         fputcsv($output, $headers);
         foreach ($all as $row) {
-            fputcsv($output, $row);
+            $line = [];
+            foreach ($headers as $h) {
+                $line[] = $row[$h] ?? '';
+            }
+            fputcsv($output, $line);
         }
         rewind($output);
         $csv = stream_get_contents($output);
@@ -126,6 +130,8 @@ function register_contact_routes(Router $router, ContactRepository $contacts, Au
     $router->post('/api/contacts/bulk', function () use ($contacts) {
         $data = request_json();
         $ids = $data['ids'] ?? [];
+        if (!is_array($ids)) { json_response(['error' => 'IDs must be an array'], 422); return; }
+        $ids = array_map('intval', $ids);
         $action = $data['action'] ?? '';
         if (empty($ids)) {
             json_response(['error' => 'No IDs provided'], 422);

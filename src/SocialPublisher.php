@@ -265,6 +265,8 @@ final class SocialPublisher
             CURLOPT_HTTPHEADER     => array_merge($authHeaders, ["Content-Type: {$mimeType}"]),
             CURLOPT_POSTFIELDS     => $fileData,
             CURLOPT_TIMEOUT        => self::UPLOAD_TIMEOUT,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
         ]);
 
         $raw   = curl_exec($ch);
@@ -672,6 +674,8 @@ final class SocialPublisher
             ]),
             CURLOPT_POSTFIELDS     => $fileData,
             CURLOPT_TIMEOUT        => self::UPLOAD_TIMEOUT,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
         ]);
 
         curl_exec($ch);
@@ -897,6 +901,8 @@ final class SocialPublisher
                 ],
                 CURLOPT_POSTFIELDS     => $fileData,
                 CURLOPT_TIMEOUT        => self::UPLOAD_TIMEOUT,
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_SSL_VERIFYHOST => 2,
             ]);
 
             curl_exec($ch);
@@ -1099,6 +1105,8 @@ final class SocialPublisher
                 CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
                 CURLOPT_POSTFIELDS     => json_encode($payload),
                 CURLOPT_TIMEOUT        => self::TIMEOUT,
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_SSL_VERIFYHOST => 2,
             ]);
 
             $raw = curl_exec($ch);
@@ -1201,6 +1209,8 @@ final class SocialPublisher
             ]),
             CURLOPT_POSTFIELDS     => $fileData,
             CURLOPT_TIMEOUT        => self::UPLOAD_TIMEOUT,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
         ]);
 
         $raw = curl_exec($ch);
@@ -1244,6 +1254,8 @@ final class SocialPublisher
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_HTTPHEADER     => $authHeaders,
                 CURLOPT_TIMEOUT        => self::TIMEOUT,
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_SSL_VERIFYHOST => 2,
             ]);
             $raw = curl_exec($ch);
             curl_close($ch);
@@ -1683,6 +1695,8 @@ final class SocialPublisher
             CURLOPT_POSTFIELDS     => json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
             CURLOPT_TIMEOUT        => $timeout,
             CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
         ]);
 
         $raw   = curl_exec($ch);
@@ -1719,6 +1733,8 @@ final class SocialPublisher
             CURLOPT_POSTFIELDS     => $fields,
             CURLOPT_TIMEOUT        => $timeout,
             CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
         ]);
 
         $raw   = curl_exec($ch);
@@ -1749,6 +1765,8 @@ final class SocialPublisher
             CURLOPT_HTTPHEADER     => $headers,
             CURLOPT_TIMEOUT        => $timeout,
             CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
         ]);
 
         $raw   = curl_exec($ch);

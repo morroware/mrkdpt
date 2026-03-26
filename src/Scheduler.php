@@ -270,12 +270,15 @@ final class Scheduler
         $fetched = 0;
         foreach ($feeds as $feed) {
             try {
-                $xml = @file_get_contents($feed['url']);
+                $ctx = stream_context_create(['http' => ['timeout' => 15, 'user_agent' => 'MarketingSuite/2.0']]);
+                $xml = @file_get_contents($feed['url'], false, $ctx);
                 if (!$xml) {
                     continue;
                 }
 
-                $parsed = @simplexml_load_string($xml);
+                $previousUseErrors = libxml_use_internal_errors(true);
+                $parsed = simplexml_load_string($xml, 'SimpleXMLElement', LIBXML_NONET | LIBXML_NOCDATA);
+                libxml_use_internal_errors($previousUseErrors);
                 if (!$parsed) {
                     continue;
                 }

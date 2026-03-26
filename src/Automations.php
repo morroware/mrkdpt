@@ -206,9 +206,11 @@ final class AutomationRepository
 
             case 'send_webhook':
                 if (!empty($config['url']) && preg_match('#^https?://#i', $config['url'])) {
-                    // Basic SSRF protection: reject private/internal IPs
+                    // SSRF protection: reject private/internal IPs and pin DNS to prevent rebinding
                     $host = parse_url($config['url'], PHP_URL_HOST);
-                    if ($host && !filter_var(gethostbyname($host), FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                    $port = parse_url($config['url'], PHP_URL_PORT) ?: (parse_url($config['url'], PHP_URL_SCHEME) === 'https' ? 443 : 80);
+                    $resolvedIp = $host ? gethostbyname($host) : '';
+                    if (!$host || !filter_var($resolvedIp, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
                         break; // skip internal/private IPs
                     }
                     $ch = curl_init($config['url']);
@@ -225,6 +227,8 @@ final class AutomationRepository
                         CURLOPT_TIMEOUT => 10,
                         CURLOPT_SSL_VERIFYPEER => true,
                         CURLOPT_SSL_VERIFYHOST => 2,
+                        // Pin DNS resolution to prevent DNS rebinding attacks
+                        CURLOPT_RESOLVE => ["{$host}:{$port}:{$resolvedIp}"],
                     ]);
                     curl_exec($ch);
                     curl_close($ch);

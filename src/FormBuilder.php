@@ -173,7 +173,8 @@ final class FormRepository
         }
 
         $html .= '<button type="submit">' . htmlspecialchars($form['submit_label'] ?? 'Submit') . '</button></form></div>';
-        $html .= '<script>document.getElementById("captureForm").addEventListener("submit",async e=>{e.preventDefault();const fd=new FormData(e.target);const d=Object.fromEntries(fd.entries());const r=await fetch("/api/forms/' . htmlspecialchars($form['slug']) . '/submit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)});const j=await r.json();if(j.success){e.target.parentElement.innerHTML="<div class=\\"success\\">"+j.message+"</div>";}else{alert(j.error||"Error");}});</script></body></html>';
+        $safeSlug = json_encode($form['slug'], JSON_UNESCAPED_SLASHES);
+        $html .= '<script>document.getElementById("captureForm").addEventListener("submit",async e=>{e.preventDefault();const fd=new FormData(e.target);const d=Object.fromEntries(fd.entries());const r=await fetch("/api/forms/"+' . $safeSlug . '+"/submit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)});const j=await r.json();if(j.success){e.target.parentElement.innerHTML="<div class=\\"success\\">"+j.message+"</div>";}else{alert(j.error||"Error");}});</script></body></html>';
 
         return $html;
     }

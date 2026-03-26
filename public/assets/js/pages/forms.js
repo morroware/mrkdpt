@@ -22,7 +22,8 @@ async function loadForms() {
     const base = window.location.origin + getBasePath();
     el.innerHTML = data.map(f => {
       const embedUrl = `${base}/f/${f.slug}`;
-      const fieldCount = (JSON.parse(f.fields || '[]')).length;
+      let fieldCount = 0;
+      try { fieldCount = (JSON.parse(f.fields || '[]')).length; } catch { /* invalid JSON */ }
       return `<div class="card">
         <div class="flex-between"><h3>${escapeHtml(f.name)}</h3><span class="badge badge-${f.status === 'active' ? 'success' : 'muted'}">${f.status}</span></div>
         <p class="text-muted text-small mt-1">${fieldCount} fields &middot; ${f.submissions} submissions &middot; ${getBasePath()}/f/${escapeHtml(f.slug)}</p>

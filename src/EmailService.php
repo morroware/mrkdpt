@@ -111,7 +111,7 @@ class EmailService
      */
     private function smtpStartTls($socket): bool
     {
-        $this->smtpCommand($socket, 'STARTTLS', 220);
+        $this->smtpCommand($socket, 'STARTTLS', 220); // RFC 2487: server responds 220 Ready to start TLS
 
         $crypto = stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
         if ($crypto !== true) {
@@ -285,6 +285,8 @@ class EmailService
         if ($value === '') {
             return '';
         }
+        // Strip CR/LF to prevent header injection
+        $value = str_replace(["\r", "\n"], '', $value);
         if (preg_match('/[^\x20-\x7E]/', $value)) {
             return '=?UTF-8?B?' . base64_encode($value) . '?=';
         }

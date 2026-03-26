@@ -171,6 +171,11 @@ final class LandingPageRepository
         $css = preg_replace('#@import\b#i', '', $css);
         $css = preg_replace('#-moz-binding\s*:#i', '', $css);
         $css = preg_replace('#behavior\s*:#i', '', $css);
+        // Block url() with data: or blob: schemes to prevent script injection
+        $css = preg_replace('#url\s*\(\s*["\']?\s*data\s*:#i', 'url(blocked:', $css);
+        $css = preg_replace('#url\s*\(\s*["\']?\s*blob\s*:#i', 'url(blocked:', $css);
+        // Strip HTML event attributes that could sneak in via CSS escape sequences
+        $css = preg_replace('#\\\\[0-9a-fA-F]{1,6}#', '', $css);
         return $css;
     }
 

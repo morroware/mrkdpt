@@ -50,6 +50,9 @@ $dataDir = APP_ROOT . '/data';
 $db = new Database($dataDir . '/marketing.sqlite');
 $pdo = $db->pdo();
 
+// Initialize DB-backed settings
+db_setting('_init', null, $pdo);
+
 $campaigns      = new CampaignRepository($pdo);
 $posts          = new PostRepository($pdo);
 $competitors    = new CompetitorRepository($pdo);
@@ -81,12 +84,14 @@ $campaignMetrics = new CampaignMetricsRepository($pdo);
 $auth      = new Auth($pdo);
 $mediaLib  = new MediaLibrary($pdo, $dataDir);
 $scheduler = new Scheduler($pdo, class_exists('SocialPublisher') ? new SocialPublisher($pdo) : null, $dataDir);
+$scheduler->setAutomations($automations);
+$scheduler->setQueue($socialQueue);
 
 $ai = new AiService(
-    env_value('AI_PROVIDER', 'openai'),
-    env_value('BUSINESS_NAME', 'My Small Business'),
-    env_value('BUSINESS_INDUSTRY', 'Local services'),
-    env_value('TIMEZONE', 'America/New_York'),
+    app_config('AI_PROVIDER', 'openai'),
+    app_config('BUSINESS_NAME', 'My Small Business'),
+    app_config('BUSINESS_INDUSTRY', 'Local services'),
+    app_config('TIMEZONE', 'America/New_York'),
     [
         'openai_api_key'    => env_value('OPENAI_API_KEY'),
         'openai_base_url'   => env_value('OPENAI_BASE_URL', 'https://api.openai.com/v1'),
@@ -230,6 +235,12 @@ if (preg_match('#^/s/([a-zA-Z0-9]+)$#', $path, $m)) {
         if (!empty($link['utm_link_id'])) {
             $utmBuilder->incrementClicks((int)$link['utm_link_id']);
         }
+        // Fire automation for link click
+        $automations->fire('link.clicked', [
+            'link_id' => (int)$link['id'],
+            'short_code' => $m[1],
+            'destination_url' => $link['destination_url'] ?? '',
+        ]);
         header('Location: ' . $link['destination_url']);
         http_response_code(302);
     } else {
@@ -371,13 +382,13 @@ if (str_starts_with($path, '/api/')) {
     register_settings_routes($router, $ai, $scheduler, $dataDir, $pdo);
     register_dashboard_routes($router, $posts, $campaigns, $kpis, $aiLogs);
     register_campaign_routes($router, $campaigns, $webhooks);
-    register_post_routes($router, $posts, $analytics, $webhooks, $pdo);
+    register_post_routes($router, $posts, $analytics, $webhooks, $pdo, $automations);
     register_competitor_routes($router, $competitors);
     register_kpi_routes($router, $kpis, $aiLogs);
     register_template_routes($router, $templates, $brandProfiles);
     register_media_routes($router, $mediaLib);
     register_social_routes($router, $socialAccounts, $socialPublisher);
-    register_email_routes($router, $emailLists, $subscribers, $emailCampaigns, $emailService, $webhooks);
+    register_email_routes($router, $emailLists, $subscribers, $emailCampaigns, $emailService, $webhooks, $automations);
     register_analytics_routes($router, $analytics);
     register_rss_routes($router, $rssFetcher);
     register_webhook_routes($router, $webhooks);

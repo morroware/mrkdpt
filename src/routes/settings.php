@@ -4,16 +4,44 @@ declare(strict_types=1);
 
 function register_settings_routes(Router $router, AiService $ai, Scheduler $scheduler, string $dataDir, PDO $pdo): void
 {
-    $router->get('/api/settings', function () use ($ai) {
+    $router->get('/api/settings', function () use ($ai, $pdo) {
+        // Load DB-backed overrides merged with .env defaults
+        $dbSettings = [];
+        try {
+            $dbSettings = $pdo->query('SELECT setting_key, setting_value FROM app_settings')->fetchAll(PDO::FETCH_KEY_PAIR);
+        } catch (\Throwable) {}
+
         json_response([
-            'business_name' => env_value('BUSINESS_NAME', 'My Small Business'),
-            'business_industry' => env_value('BUSINESS_INDUSTRY', 'Local services'),
-            'timezone' => env_value('TIMEZONE', 'America/New_York'),
+            'business_name' => app_config('BUSINESS_NAME', 'My Small Business'),
+            'business_industry' => app_config('BUSINESS_INDUSTRY', 'Local services'),
+            'timezone' => app_config('TIMEZONE', 'America/New_York'),
             'ai' => $ai->providerStatus(),
+            'ai_provider' => app_config('AI_PROVIDER', 'openai'),
+            'ai_system_prompt' => $dbSettings['AI_SYSTEM_PROMPT'] ?? '',
             'smtp_configured' => env_value('SMTP_HOST', '') !== '',
             'cron_key' => env_value('CRON_KEY', ''),
-            'app_url' => env_value('APP_URL', ''),
+            'app_url' => app_config('APP_URL', ''),
         ]);
+    });
+
+    $router->put('/api/settings', function () use ($pdo) {
+        $data = request_json();
+        $allowedKeys = [
+            'BUSINESS_NAME', 'BUSINESS_INDUSTRY', 'TIMEZONE',
+            'AI_PROVIDER', 'AI_SYSTEM_PROMPT', 'APP_URL',
+        ];
+        $updated = [];
+        foreach ($allowedKeys as $key) {
+            if (array_key_exists($key, $data)) {
+                db_setting($key, (string)$data[$key], $pdo);
+                $updated[$key] = $data[$key];
+            }
+        }
+        if (empty($updated)) {
+            json_response(['error' => 'No valid settings provided'], 422);
+            return;
+        }
+        json_response(['updated' => $updated]);
     });
 
     $router->get('/api/settings/health', function () use ($pdo, $scheduler, $dataDir) {

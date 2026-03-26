@@ -6,12 +6,25 @@ final class Scheduler
 {
     private string $lockFile;
 
+    private ?AutomationRepository $automations = null;
+    private ?SocialQueue $queue = null;
+
     public function __construct(
         private PDO $pdo,
         private ?SocialPublisher $publisher = null,
         string $dataDir = '',
     ) {
         $this->lockFile = rtrim($dataDir ?: __DIR__ . '/../data', '/') . '/cron.lock';
+    }
+
+    public function setAutomations(AutomationRepository $automations): void
+    {
+        $this->automations = $automations;
+    }
+
+    public function setQueue(SocialQueue $queue): void
+    {
+        $this->queue = $queue;
     }
 
     /**
@@ -22,6 +35,7 @@ final class Scheduler
         $summary = [
             'started_at' => gmdate(DATE_ATOM),
             'posts_published' => 0,
+            'queue_published' => 0,
             'recurring_created' => 0,
             'rss_fetched' => 0,
             'errors' => [],
@@ -45,7 +59,14 @@ final class Scheduler
             $recurring = $this->processRecurring();
             $summary['recurring_created'] = $recurring;
 
-            // 3. Fetch RSS feeds (if RssFetcher is available)
+            // 3. Process social publish queue
+            $queueResult = $this->processQueue();
+            $summary['queue_published'] = $queueResult['count'];
+            if ($queueResult['errors']) {
+                $summary['errors'] = array_merge($summary['errors'], $queueResult['errors']);
+            }
+
+            // 4. Fetch RSS feeds (if RssFetcher is available)
             $summary['rss_fetched'] = $this->fetchRssFeeds();
 
             $this->logRun('cron', 'success', json_encode($summary));
@@ -117,6 +138,19 @@ final class Scheduler
                     ':id' => $post['id'],
                 ]);
                 $count++;
+                // Fire automation event
+                if ($this->automations) {
+                    try {
+                        $this->automations->fire('post.published', [
+                            'post_id' => $post['id'],
+                            'platform' => $post['platform'] ?? '',
+                            'campaign_id' => $post['campaign_id'] ?? null,
+                            'title' => $post['title'] ?? '',
+                        ]);
+                    } catch (\Throwable $e) {
+                        $errors[] = "Automation error for post #{$post['id']}: " . $e->getMessage();
+                    }
+                }
             } else {
                 // Increment retry count
                 $retries = (int)($post['retry_count'] ?? 0) + 1;
@@ -304,6 +338,75 @@ final class Scheduler
         }
 
         return $fetched;
+    }
+
+    /**
+     * Process queued items from the social publish queue.
+     */
+    private function processQueue(): array
+    {
+        if (!$this->queue || !$this->publisher) {
+            return ['count' => 0, 'errors' => []];
+        }
+
+        $now = gmdate('Y-m-d\TH:i:s');
+        $stmt = $this->pdo->prepare("
+            SELECT sq.*, p.platform, p.title, p.body, p.cta, p.tags, p.campaign_id, p.content_type
+            FROM social_queue sq
+            JOIN posts p ON p.id = sq.post_id
+            WHERE sq.status = 'queued'
+              AND (sq.optimal_time IS NULL OR sq.optimal_time <= :now)
+            ORDER BY sq.priority DESC, sq.queued_at ASC
+            LIMIT 20
+        ");
+        $stmt->execute([':now' => $now]);
+        $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $count = 0;
+        $errors = [];
+
+        foreach ($items as $item) {
+            $acctStmt = $this->pdo->prepare('SELECT * FROM social_accounts WHERE id = :id LIMIT 1');
+            $acctStmt->execute([':id' => (int)$item['social_account_id']]);
+            $account = $acctStmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$account) {
+                $this->queue->updateStatus((int)$item['id'], 'failed', 'Social account not found');
+                $errors[] = "Queue #{$item['id']}: social account not found";
+                continue;
+            }
+
+            $post = [
+                'id' => $item['post_id'],
+                'platform' => $item['platform'],
+                'title' => $item['title'],
+                'body' => $item['body'],
+                'cta' => $item['cta'] ?? '',
+                'tags' => $item['tags'] ?? '',
+                'content_type' => $item['content_type'] ?? 'social_post',
+            ];
+
+            $result = $this->publisher->publish($post, $account);
+            if ($result['success']) {
+                $this->queue->updateStatus((int)$item['id'], 'published');
+                $count++;
+                // Fire automation
+                if ($this->automations) {
+                    try {
+                        $this->automations->fire('post.published', [
+                            'post_id' => $item['post_id'],
+                            'platform' => $item['platform'],
+                            'campaign_id' => $item['campaign_id'] ?? null,
+                        ]);
+                    } catch (\Throwable) {}
+                }
+            } else {
+                $this->queue->updateStatus((int)$item['id'], 'failed', $result['error'] ?? 'Unknown error');
+                $errors[] = "Queue #{$item['id']} to {$account['platform']}: " . ($result['error'] ?? 'Unknown');
+            }
+        }
+
+        return ['count' => $count, 'errors' => $errors];
     }
 
     /* ---- lock ---- */

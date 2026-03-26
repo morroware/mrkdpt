@@ -153,7 +153,12 @@ final class AutomationRepository
                     $stmt->execute([':id' => $contactId]);
                     $contact = $stmt->fetch(PDO::FETCH_ASSOC);
                     if ($contact) {
-                        $tags = $contact['tags'] ? $contact['tags'] . ',' . $config['tag'] : $config['tag'];
+                        $existing = array_filter(array_map('trim', explode(',', $contact['tags'] ?? '')));
+                        $newTag = trim($config['tag']);
+                        if (!in_array($newTag, $existing, true)) {
+                            $existing[] = $newTag;
+                        }
+                        $tags = implode(',', $existing);
                         $this->pdo->prepare('UPDATE contacts SET tags = :t WHERE id = :id')->execute([':t' => $tags, ':id' => $contactId]);
                     }
                 }

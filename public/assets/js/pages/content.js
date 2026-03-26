@@ -339,7 +339,7 @@ export function init() {
       const tagsField = form.querySelector('[name="tags"]');
       if (tagsField && item?.hashtags) {
         // Extract hashtags from response
-        const hashtags = item.hashtags.match(/#\w+/g);
+        const hashtags = item.hashtags.match(/#[\p{L}\p{N}_]+/gu);
         if (hashtags) {
           tagsField.value = hashtags.slice(0, 15).join(' ');
           success(`${hashtags.length} hashtags generated`);

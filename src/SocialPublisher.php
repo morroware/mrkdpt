@@ -629,7 +629,7 @@ final class SocialPublisher
     /**
      * Upload an image to LinkedIn via the Images API and return the image URN.
      *
-     * Uses POST /rest/images?action=initializeUpload (replaces deprecated /v2/assets).
+     * Uses POST /rest/images?action=initializeUpload with LinkedIn-Version header.
      */
     private function linkedInUploadImage(array $authHeaders, string $ownerUrn, string $filePath): ?string
     {
@@ -638,8 +638,18 @@ final class SocialPublisher
             return null;
         }
 
+        // Ensure LinkedIn-Version header is present for REST API
+        $restHeaders = $authHeaders;
+        $hasVersion = false;
+        foreach ($restHeaders as $h) {
+            if (stripos($h, 'LinkedIn-Version') !== false) { $hasVersion = true; break; }
+        }
+        if (!$hasVersion) {
+            $restHeaders[] = 'LinkedIn-Version: 202405';
+        }
+
         // Step 1: Initialize the upload.
-        $init = $this->postJson('https://api.linkedin.com/rest/images?action=initializeUpload', $authHeaders, [
+        $init = $this->postJson('https://api.linkedin.com/rest/images?action=initializeUpload', $restHeaders, [
             'initializeUploadRequest' => [
                 'owner' => $ownerUrn,
             ],
@@ -827,11 +837,11 @@ final class SocialPublisher
             $authHeaders = ["Authorization: Bearer {$token}"];
             $fileSize = filesize($mediaPath);
 
-            // Privacy level from meta or default to SELF_ONLY for safety.
+            // Privacy level from meta or default to PUBLIC_TO_EVERYONE for real publishing.
             $validPrivacy = ['PUBLIC_TO_EVERYONE', 'MUTUAL_FOLLOW_FRIENDS', 'FOLLOWER_OF_CREATOR', 'SELF_ONLY'];
-            $privacyLevel = strtoupper((string)($meta['privacy_level'] ?? 'SELF_ONLY'));
+            $privacyLevel = strtoupper((string)($meta['privacy_level'] ?? 'PUBLIC_TO_EVERYONE'));
             if (!in_array($privacyLevel, $validPrivacy, true)) {
-                $privacyLevel = 'SELF_ONLY';
+                $privacyLevel = 'PUBLIC_TO_EVERYONE';
             }
 
             // Detect media type from extension/mime.

@@ -20,6 +20,8 @@ require $srcDir . '/Database.php';
 require $srcDir . '/Repositories.php';
 require $srcDir . '/Templates.php';
 require $srcDir . '/Scheduler.php';
+require $srcDir . '/Automations.php';
+require $srcDir . '/SocialQueue.php';
 
 // Auth check: either CLI or valid cron key
 $isCli = php_sapi_name() === 'cli';
@@ -55,6 +57,8 @@ if (is_file($publisherFile)) {
 }
 
 $scheduler = new Scheduler($pdo, $publisher, $dataDir);
+$scheduler->setAutomations(new AutomationRepository($pdo));
+$scheduler->setQueue(new SocialQueue($pdo));
 $result = $scheduler->run();
 
 if ($isCli) {

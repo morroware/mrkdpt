@@ -1,24 +1,81 @@
 /**
- * Settings page — business info, health, token, backup, webhooks, cron log.
+ * Settings page — editable business info, health, token, backup, webhooks, cron log.
  */
 
 import { api, setApiToken } from '../core/api.js';
 import { $, escapeHtml, formatDateTime, onSubmit, formData, onClick } from '../core/utils.js';
 import { success, error } from '../core/toast.js';
 
+let currentSettings = {};
+
 async function refreshSettingsInfo() {
   try {
     const data = await api('/api/settings');
+    currentSettings = data;
     const el = $('settingsInfo');
     if (el) {
       el.innerHTML = `
-        <p><strong>Business:</strong> ${escapeHtml(data.business_name)}</p>
-        <p><strong>Industry:</strong> ${escapeHtml(data.business_industry)}</p>
-        <p><strong>Timezone:</strong> ${escapeHtml(data.timezone)}</p>
-        <p><strong>AI Provider:</strong> ${escapeHtml(data.ai?.active_provider || 'none')}</p>
-        <p><strong>SMTP:</strong> ${data.smtp_configured ? 'Configured' : 'Not configured'}</p>
-        <p><strong>App URL:</strong> ${escapeHtml(data.app_url || 'Not set')}</p>
+        <form id="settingsForm" class="form-grid">
+          <div class="form-group">
+            <label for="set_business_name">Business Name</label>
+            <input type="text" id="set_business_name" name="BUSINESS_NAME" class="input" value="${escapeHtml(data.business_name || '')}" />
+          </div>
+          <div class="form-group">
+            <label for="set_business_industry">Industry</label>
+            <input type="text" id="set_business_industry" name="BUSINESS_INDUSTRY" class="input" value="${escapeHtml(data.business_industry || '')}" />
+          </div>
+          <div class="form-group">
+            <label for="set_timezone">Timezone</label>
+            <input type="text" id="set_timezone" name="TIMEZONE" class="input" value="${escapeHtml(data.timezone || '')}" placeholder="America/New_York" />
+          </div>
+          <div class="form-group">
+            <label for="set_ai_provider">AI Provider</label>
+            <select id="set_ai_provider" name="AI_PROVIDER" class="input">
+              ${['openai','anthropic','gemini','deepseek','groq','mistral','openrouter','xai','together'].map(p =>
+                `<option value="${p}" ${(data.ai_provider || 'openai') === p ? 'selected' : ''}>${p.charAt(0).toUpperCase() + p.slice(1)}</option>`
+              ).join('')}
+            </select>
+          </div>
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label for="set_ai_system_prompt">Custom AI System Prompt <span class="text-muted text-small">(leave blank for default)</span></label>
+            <textarea id="set_ai_system_prompt" name="AI_SYSTEM_PROMPT" class="input" rows="3" placeholder="You are a practical SMB marketing strategist. Be concise but specific.">${escapeHtml(data.ai_system_prompt || '')}</textarea>
+          </div>
+          <div class="form-group">
+            <label for="set_app_url">App URL</label>
+            <input type="text" id="set_app_url" name="APP_URL" class="input" value="${escapeHtml(data.app_url || '')}" placeholder="https://yourdomain.com" />
+          </div>
+          <div class="form-group flex" style="align-items: flex-end;">
+            <button type="submit" class="btn btn-ai">Save Settings</button>
+          </div>
+        </form>
+        <div class="mt-1">
+          <p class="text-muted text-small"><strong>SMTP:</strong> ${data.smtp_configured ? 'Configured' : 'Not configured (set in .env)'}</p>
+        </div>
       `;
+
+      const form = document.getElementById('settingsForm');
+      if (form) {
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const btn = form.querySelector('button[type="submit"]');
+          btn.disabled = true;
+          btn.classList.add('loading');
+          try {
+            const fd = new FormData(form);
+            const payload = {};
+            for (const [k, v] of fd.entries()) {
+              payload[k] = v;
+            }
+            await api('/api/settings', { method: 'PUT', body: JSON.stringify(payload) });
+            success('Settings saved');
+          } catch (err) {
+            error('Failed to save: ' + err.message);
+          } finally {
+            btn.disabled = false;
+            btn.classList.remove('loading');
+          }
+        });
+      }
     }
   } catch (err) {
     error('Failed to load settings: ' + err.message);
@@ -36,8 +93,8 @@ async function refreshHealth() {
         <p><strong>SQLite:</strong> ${escapeHtml(data.sqlite_version)}</p>
         <p><strong>Disk Free:</strong> ${data.disk_free_mb ? data.disk_free_mb + ' MB' : 'Unknown'}</p>
         <p><strong>Data Dir:</strong> ${data.data_dir_writable ? 'Writable' : 'NOT writable'}</p>
-        <p><strong>Extensions:</strong> ${Object.entries(exts).map(([k, v]) => `${k}: ${v ? 'OK' : 'Missing'}`).join(', ')}</p>
-        ${data.last_cron ? `<p><strong>Last Cron:</strong> ${formatDateTime(data.last_cron.ran_at)}</p>` : ''}
+        <p><strong>Extensions:</strong> ${Object.entries(exts).map(([k, v]) => `${k}: ${v ? '<span class="text-success">OK</span>' : '<span class="text-danger">Missing</span>'}`).join(', ')}</p>
+        ${data.last_cron ? `<p><strong>Last Cron:</strong> ${formatDateTime(data.last_cron.ran_at)}</p>` : '<p class="text-muted">No cron runs recorded yet</p>'}
       `;
     }
   } catch (err) {
@@ -50,12 +107,25 @@ async function refreshToken() {
     const data = await api('/api/me');
     const el = $('tokenInfo');
     if (el) {
+      const token = data.api_token || '';
+      const masked = token.length > 8 ? '••••••••' + token.slice(-8) : token;
       el.innerHTML = `
         <p class="text-small">Use this token for API access:</p>
-        <code class="token-display">${escapeHtml(data.api_token || 'No token')}</code>
-        <button class="btn btn-sm btn-outline mt-1" id="regenToken">Regenerate</button>
+        <div class="flex gap-1" style="align-items: center;">
+          <code class="token-display" id="tokenDisplay">${escapeHtml(masked)}</code>
+          <button class="btn btn-sm btn-ghost" id="copyToken" title="Copy full token" aria-label="Copy token">Copy</button>
+          <button class="btn btn-sm btn-outline" id="regenToken">Regenerate</button>
+        </div>
       `;
+      const fullToken = token;
+      onClick('copyToken', async () => {
+        try {
+          await navigator.clipboard.writeText(fullToken);
+          success('Token copied to clipboard');
+        } catch { error('Failed to copy'); }
+      });
       onClick('regenToken', async () => {
+        if (!confirm('Regenerate API token? The current token will stop working.')) return;
         try {
           const result = await api('/api/regenerate-token', { method: 'POST' });
           if (result.api_token) setApiToken(result.api_token);

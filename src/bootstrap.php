@@ -34,6 +34,53 @@ function env_value(string $key, ?string $default = null): ?string
     return $env !== false ? $env : $default;
 }
 
+/**
+ * DB-backed settings cache. Loaded once from app_settings table, overrides .env values.
+ */
+function db_setting(string $key, ?string $value = null, ?PDO $pdo = null): ?string
+{
+    static $cache = null;
+    static $dbHandle = null;
+
+    // Initialize DB handle
+    if ($pdo !== null) {
+        $dbHandle = $pdo;
+    }
+
+    // Write mode
+    if ($value !== null && $dbHandle) {
+        $stmt = $dbHandle->prepare('INSERT INTO app_settings(setting_key, setting_value, updated_at) VALUES(:k,:v,:u) ON CONFLICT(setting_key) DO UPDATE SET setting_value = :v2, updated_at = :u2');
+        $stmt->execute([':k' => $key, ':v' => $value, ':u' => gmdate(DATE_ATOM), ':v2' => $value, ':u2' => gmdate(DATE_ATOM)]);
+        if ($cache !== null) {
+            $cache[$key] = $value;
+        }
+        return $value;
+    }
+
+    // Load cache on first read
+    if ($cache === null && $dbHandle) {
+        try {
+            $rows = $dbHandle->query('SELECT setting_key, setting_value FROM app_settings')->fetchAll(PDO::FETCH_KEY_PAIR);
+            $cache = $rows ?: [];
+        } catch (\Throwable) {
+            $cache = [];
+        }
+    }
+
+    if ($cache !== null && isset($cache[$key]) && $cache[$key] !== '') {
+        return $cache[$key];
+    }
+    return null;
+}
+
+/**
+ * Get a config value: DB setting > .env > default.
+ */
+function app_config(string $key, ?string $default = null): ?string
+{
+    return db_setting($key) ?? env_value($key, $default);
+}
+
 function json_response(array $payload, int $status = 200): void
 {
     http_response_code($status);

@@ -298,7 +298,7 @@ export function init() {
       if (item?.subjects) {
         // Extract first subject line
         const lines = item.subjects.split('\n').filter((l) => l.trim());
-        const firstSubject = lines[0]?.replace(/^\d+[\.\)]\s*/, '').replace(/^["*]+|["*]+$/g, '').trim();
+        const firstSubject = lines[0]?.replace(/^\d+[\.\)]\s*/, '').replace(/^["*]+|["*]+$/g, '').replace(/^Subject:\s*/i, '').replace(/^-\s*/, '').trim();
         if (firstSubject) {
           const subjectField = form.querySelector('[name="subject"]');
           if (subjectField) subjectField.value = firstSubject.slice(0, 80);

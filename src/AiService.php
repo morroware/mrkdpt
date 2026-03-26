@@ -166,7 +166,10 @@ final class AiService
 
     public function buildSystemPrompt(string $extra = ''): string
     {
-        $base = 'You are a practical SMB marketing strategist. Be concise but specific.';
+        $customPrompt = function_exists('db_setting') ? db_setting('AI_SYSTEM_PROMPT') : null;
+        $base = ($customPrompt && trim($customPrompt) !== '')
+            ? trim($customPrompt)
+            : 'You are a practical SMB marketing strategist. Be concise but specific.';
 
         if ($this->businessProfile !== null) {
             $bp = $this->businessProfile;
@@ -200,7 +203,7 @@ final class AiService
 
         if (!empty($this->sharedMemory)) {
             $memoryLines = [];
-            foreach (array_slice($this->sharedMemory, 0, 20) as $memory) {
+            foreach (array_slice($this->sharedMemory, 0, 50) as $memory) {
                 $key = trim((string)($memory['memory_key'] ?? ''));
                 $content = trim((string)($memory['content'] ?? ''));
                 if ($content === '') {

@@ -7,25 +7,7 @@ import { $, escapeHtml, onClick } from '../core/utils.js';
 import { success, error } from '../core/toast.js';
 
 let currentConversationId = 0;
-const MODELS = {
-  openai: {
-    'gpt-4.1': 'GPT-4.1 (Best)',
-    'gpt-4.1-mini': 'GPT-4.1 Mini',
-    'gpt-4.1-nano': 'GPT-4.1 Nano',
-    'gpt-4o': 'GPT-4o',
-    'gpt-4o-mini': 'GPT-4o Mini',
-  },
-  anthropic: {
-    'claude-sonnet-4-20250514': 'Claude Sonnet 4',
-    'claude-haiku-4-5-20251001': 'Claude Haiku 4.5',
-    'claude-opus-4-20250514': 'Claude Opus 4',
-  },
-  gemini: {
-    'gemini-2.5-pro': 'Gemini 2.5 Pro',
-    'gemini-2.5-flash': 'Gemini 2.5 Flash',
-    'gemini-2.0-flash': 'Gemini 2.0 Flash',
-  },
-};
+let providerModels = {}; // Fetched from API, not hardcoded
 
 function appendMessage(role, content) {
   const el = $('chatMessages');
@@ -115,6 +97,33 @@ async function loadConversation(id) {
   }
 }
 
+async function renameConversation(id, currentTitle) {
+  const newTitle = prompt('Rename conversation:', currentTitle || 'Chat');
+  if (!newTitle || newTitle.trim() === '' || newTitle === currentTitle) return;
+  try {
+    await api(`/api/ai/conversations/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ title: newTitle.trim() }),
+    });
+    success('Conversation renamed');
+    refreshConversations();
+  } catch (err) {
+    error(err.message);
+  }
+}
+
+async function deleteConversation(id) {
+  if (!confirm('Delete this conversation?')) return;
+  try {
+    await api(`/api/ai/conversations/${id}`, { method: 'DELETE' });
+    success('Conversation deleted');
+    if (currentConversationId === id) newChat();
+    refreshConversations();
+  } catch (err) {
+    error(err.message);
+  }
+}
+
 async function refreshConversations() {
   try {
     const { items } = await api('/api/ai/conversations');
@@ -122,14 +131,33 @@ async function refreshConversations() {
     if (!list) return;
 
     list.innerHTML = (items || []).map((c) => `
-      <button class="chat-conv-item${c.id === currentConversationId ? ' active' : ''}" data-conv-id="${c.id}">
-        ${escapeHtml(c.title || 'Chat')}
+      <div class="chat-conv-item${c.id === currentConversationId ? ' active' : ''}" data-conv-id="${c.id}">
+        <div class="conv-title">${escapeHtml(c.title || 'Chat')}</div>
         <div class="conv-meta">${c.message_count || 0} msgs &middot; ${c.provider || ''}</div>
-      </button>
+        <div class="conv-actions">
+          <button class="btn btn-sm btn-ghost" data-rename-conv="${c.id}" data-conv-title="${escapeHtml(c.title || 'Chat')}" title="Rename" aria-label="Rename">&#9998;</button>
+          <button class="btn btn-sm btn-ghost text-danger" data-delete-conv="${c.id}" title="Delete" aria-label="Delete">&times;</button>
+        </div>
+      </div>
     `).join('') || '<p class="text-muted text-small">No conversations yet</p>';
 
-    list.querySelectorAll('.chat-conv-item').forEach((btn) => {
-      btn.addEventListener('click', () => loadConversation(parseInt(btn.dataset.convId)));
+    list.querySelectorAll('.chat-conv-item').forEach((el) => {
+      el.addEventListener('click', (e) => {
+        if (e.target.closest('[data-rename-conv]') || e.target.closest('[data-delete-conv]')) return;
+        loadConversation(parseInt(el.dataset.convId));
+      });
+    });
+    list.querySelectorAll('[data-rename-conv]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        renameConversation(parseInt(btn.dataset.renameConv), btn.dataset.convTitle);
+      });
+    });
+    list.querySelectorAll('[data-delete-conv]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteConversation(parseInt(btn.dataset.deleteConv));
+      });
     });
   } catch { /* ignore */ }
 }
@@ -166,21 +194,67 @@ function wiresuggestions() {
   });
 }
 
+async function loadProviderModels() {
+  try {
+    const data = await api('/api/ai/providers');
+    providerModels = {};
+    if (data.providers) {
+      for (const [key, info] of Object.entries(data.providers)) {
+        if (info.models && Array.isArray(info.models)) {
+          providerModels[key] = {};
+          info.models.forEach((m) => { providerModels[key][m] = m; });
+        }
+      }
+    }
+    // Also populate provider select with available providers
+    const providerSelect = $('chatProviderSelect');
+    if (providerSelect && data.providers) {
+      const currentVal = providerSelect.value;
+      providerSelect.innerHTML = '<option value="">Auto (Default)</option>';
+      for (const [key, info] of Object.entries(data.providers)) {
+        if (info.configured) {
+          const opt = document.createElement('option');
+          opt.value = key;
+          opt.textContent = key.charAt(0).toUpperCase() + key.slice(1) + (info.model ? ` (${info.model})` : '');
+          if (key === currentVal) opt.selected = true;
+          providerSelect.appendChild(opt);
+        }
+      }
+    }
+  } catch {
+    // Fallback: provider select stays with defaults
+  }
+}
+
+function updateModelSelect() {
+  const providerSelect = $('chatProviderSelect');
+  const modelSelect = $('chatModelSelect');
+  if (!modelSelect || !providerSelect) return;
+  const provider = providerSelect.value;
+  if (provider && providerModels[provider]) {
+    modelSelect.innerHTML = '<option value="">Default Model</option>' +
+      Object.entries(providerModels[provider]).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+  } else {
+    modelSelect.innerHTML = '<option value="">Default Model</option>';
+  }
+}
+
 async function refreshSharedMemory() {
   const list = $('chatMemoryList');
   if (!list) return;
   try {
-    const { items } = await api('/api/ai/shared-memory?limit=8');
+    const { items } = await api('/api/ai/shared-memory?limit=20');
     list.innerHTML = (items || []).map((item) => `
       <div class="chat-memory-item">
         <div class="chat-memory-title">${escapeHtml(item.memory_key || 'General memory')}</div>
         <div class="chat-memory-body">${escapeHtml(item.content || '')}</div>
         <button class="btn btn-sm btn-outline chat-memory-delete" data-memory-id="${item.id}">Delete</button>
       </div>
-    `).join('') || '<p class="text-muted text-small">No shared memory yet.</p>';
+    `).join('') || '<p class="text-muted text-small">No shared memory yet. Add context that all AI tools will use.</p>';
 
     list.querySelectorAll('.chat-memory-delete').forEach((btn) => {
       btn.addEventListener('click', async () => {
+        if (!confirm('Delete this memory item? All AI tools use shared memory.')) return;
         try {
           await api(`/api/ai/shared-memory/${btn.dataset.memoryId}`, { method: 'DELETE' });
           success('Memory deleted');
@@ -224,8 +298,11 @@ async function saveSharedMemory() {
 }
 
 export async function refresh() {
-  await refreshConversations();
-  await refreshSharedMemory();
+  await Promise.all([
+    refreshConversations(),
+    refreshSharedMemory(),
+    loadProviderModels(),
+  ]);
 }
 
 export function init() {
@@ -244,23 +321,14 @@ export function init() {
     });
   }
 
-  // Provider change updates model list
+  // Provider change updates model list (fetched from API)
   const providerSelect = $('chatProviderSelect');
   if (providerSelect) {
-    providerSelect.addEventListener('change', () => {
-      const modelSelect = $('chatModelSelect');
-      if (!modelSelect) return;
-      const provider = providerSelect.value;
-      if (provider && MODELS[provider]) {
-        modelSelect.innerHTML = '<option value="">Default Model</option>' +
-          Object.entries(MODELS[provider]).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
-      } else {
-        modelSelect.innerHTML = '<option value="">Default Model</option>';
-      }
-    });
+    providerSelect.addEventListener('change', updateModelSelect);
   }
 
   // Wire initial suggestion buttons
   wiresuggestions();
   refreshSharedMemory();
+  loadProviderModels();
 }

@@ -25,6 +25,21 @@ function register_social_routes(Router $router, SocialAccountRepository $socialA
         if (!$socialPublisher) { json_response(['error' => 'Social publisher not available'], 500); return; }
         $account = $socialAccounts->find((int)$p['id']);
         if (!$account) { json_response(['error' => 'Account not found'], 404); return; }
-        json_response(['ok' => true, 'platform' => $account['platform'], 'account' => $account['account_name']]);
+        $result = $socialPublisher->testConnection($account);
+        if ($result['success']) {
+            json_response([
+                'ok'       => true,
+                'platform' => $account['platform'],
+                'account'  => $account['account_name'],
+                'info'     => $result['info'],
+            ]);
+        } else {
+            json_response([
+                'ok'       => false,
+                'platform' => $account['platform'],
+                'account'  => $account['account_name'],
+                'error'    => $result['error'],
+            ], 422);
+        }
     });
 }

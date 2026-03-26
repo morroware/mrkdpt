@@ -5,12 +5,15 @@ declare(strict_types=1);
 /**
  * SocialPublisher — zero-dependency social media publishing service.
  *
- * Supports Twitter/X, Bluesky, Mastodon, Facebook Pages, and Instagram.
+ * Supports 15 platforms: Twitter/X, Bluesky, Mastodon, Facebook Pages, Instagram,
+ * LinkedIn, Threads, Pinterest, TikTok, Reddit, Telegram, Discord, Slack, WordPress, Medium.
  * Uses only cURL for HTTP; no Composer packages required.
+ *
+ * Updated March 2026: LinkedIn Posts API, Graph API v22.0, Threads v2.0, X API v2 media.
  *
  * Each platform method expects an $account array containing at minimum:
  *   - id            (int)    — internal account row ID
- *   - platform      (string) — one of: twitter, bluesky, mastodon, facebook, instagram
+ *   - platform      (string) — platform identifier
  *   - access_token  (string) — OAuth token (usage varies per platform)
  *   - meta_json     (string|array) — JSON string or decoded array with platform-specific fields
  */
@@ -80,14 +83,14 @@ final class SocialPublisher
     }
 
     // =========================================================================
-    //  Twitter / X  (API v2 + v1.1 media upload)
+    //  Twitter / X  (API v2)
     // =========================================================================
 
     /**
-     * Publish a tweet via Twitter API v2.
+     * Publish a tweet via X (Twitter) API v2.
      *
      * Auth: OAuth 2.0 Bearer token (User-context) in $account['access_token'].
-     * Media upload uses the v1.1 chunked upload endpoint because v2 has no media route.
+     * Media upload uses the X API v2 media upload endpoint.
      *
      * @param  array       $account   Decoded account row.
      * @param  string      $text      Tweet text (max 280 chars enforced by API).
@@ -128,16 +131,19 @@ final class SocialPublisher
     }
 
     /**
-     * Upload media to Twitter via v1.1 simple media/upload (images < 5 MB).
+     * Upload media to X (Twitter) via the v2 media upload endpoint.
      *
      * Returns the media_id_string on success, or null on failure.
      */
     private function twitterUploadMedia(string $token, string $filePath): ?string
     {
+        $mimeType = mime_content_type($filePath) ?: 'application/octet-stream';
         $data = $this->postForm(
-            'https://upload.twitter.com/1.1/media/upload.json',
+            'https://api.twitter.com/2/media/upload',
             ["Authorization: Bearer {$token}"],
-            ['media_data' => base64_encode((string)file_get_contents($filePath))],
+            [
+                'media' => new \CURLFile($filePath, $mimeType, basename($filePath)),
+            ],
             self::UPLOAD_TIMEOUT,
         );
 
@@ -397,7 +403,7 @@ final class SocialPublisher
     }
 
     // =========================================================================
-    //  Facebook Pages  (Graph API v19.0)
+    //  Facebook Pages  (Graph API v22.0)
     // =========================================================================
 
     /**
@@ -425,7 +431,7 @@ final class SocialPublisher
                 return ['success' => false, 'external_id' => null, 'error' => 'Facebook page_id or access_token missing'];
             }
 
-            $baseUrl = "https://graph.facebook.com/v19.0/{$pageId}";
+            $baseUrl = "https://graph.facebook.com/v22.0/{$pageId}";
 
             // Photo post.
             if ($mediaPath !== null && is_file($mediaPath)) {
@@ -503,7 +509,7 @@ final class SocialPublisher
                 return ['success' => false, 'external_id' => null, 'error' => 'Instagram requires a publicly accessible image_url'];
             }
 
-            $baseUrl = "https://graph.facebook.com/v19.0/{$igId}";
+            $baseUrl = "https://graph.facebook.com/v22.0/{$igId}";
 
             // Step 1 — Create the media container.
             $container = $this->postForm(
@@ -544,14 +550,17 @@ final class SocialPublisher
     }
 
     // =========================================================================
-    //  LinkedIn  (REST API v2 — Community Management)
+    //  LinkedIn  (Community Management Posts API — replaces deprecated ugcPosts)
     // =========================================================================
 
     /**
-     * Publish a post to LinkedIn via the REST API v2.
+     * Publish a post to LinkedIn via the Posts API (Community Management API).
      *
      * Auth: OAuth 2.0 Bearer token with w_member_social or w_organization_social scope.
      * meta_json must contain 'urn' — the author URN (e.g. "urn:li:person:xxx" or "urn:li:organization:xxx").
+     *
+     * Uses POST /rest/posts (replaces deprecated /v2/ugcPosts).
+     * Image upload via POST /rest/images?action=initializeUpload.
      */
     public function publishToLinkedIn(array $account, string $text, ?string $mediaPath = null): array
     {
@@ -566,7 +575,7 @@ final class SocialPublisher
 
             $authHeaders = [
                 "Authorization: Bearer {$token}",
-                'LinkedIn-Version: 202405',
+                'LinkedIn-Version: 202501',
                 'X-Restli-Protocol-Version: 2.0.0',
             ];
 
@@ -577,33 +586,40 @@ final class SocialPublisher
             }
 
             $payload = [
-                'author'          => $urn,
-                'lifecycleState'  => 'PUBLISHED',
-                'specificContent' => [
-                    'com.linkedin.ugc.ShareContent' => [
-                        'shareCommentary' => ['text' => $text],
-                        'shareMediaCategory' => $imageUrn ? 'IMAGE' : 'NONE',
-                    ],
+                'author'       => $urn,
+                'commentary'   => $text,
+                'visibility'   => 'PUBLIC',
+                'distribution' => [
+                    'feedDistribution'          => 'MAIN_FEED',
+                    'targetEntities'            => [],
+                    'thirdPartyDistributionChannels' => [],
                 ],
-                'visibility' => [
-                    'com.linkedin.ugc.MemberNetworkVisibility' => 'PUBLIC',
-                ],
+                'lifecycleState' => 'PUBLISHED',
             ];
 
             if ($imageUrn) {
-                $payload['specificContent']['com.linkedin.ugc.ShareContent']['media'] = [[
-                    'status' => 'READY',
-                    'media'  => $imageUrn,
-                ]];
+                $payload['content'] = [
+                    'media' => [
+                        'title' => mb_substr($text, 0, 200),
+                        'id'    => $imageUrn,
+                    ],
+                ];
             }
 
-            $data = $this->postJson('https://api.linkedin.com/v2/ugcPosts', $authHeaders, $payload);
+            $data = $this->postJson('https://api.linkedin.com/rest/posts', $authHeaders, $payload);
 
+            // Posts API returns 201 with x-restli-id header; body may be empty on success.
             if (!empty($data['id'])) {
                 return ['success' => true, 'external_id' => (string)$data['id'], 'error' => null];
             }
 
-            $error = $data['message'] ?? json_encode($data);
+            // Check for the common "created" response (empty body = success with 201).
+            if (empty($data) || (isset($data['value']) && isset($data['value']['id']))) {
+                $postId = $data['value']['id'] ?? 'created';
+                return ['success' => true, 'external_id' => (string)$postId, 'error' => null];
+            }
+
+            $error = $data['message'] ?? $data['status'] ?? json_encode($data);
             return ['success' => false, 'external_id' => null, 'error' => "LinkedIn API error: {$error}"];
         } catch (\Throwable $e) {
             return ['success' => false, 'external_id' => null, 'error' => "LinkedIn exception: {$e->getMessage()}"];
@@ -611,35 +627,32 @@ final class SocialPublisher
     }
 
     /**
-     * Upload an image to LinkedIn and return the asset URN.
+     * Upload an image to LinkedIn via the Images API and return the image URN.
+     *
+     * Uses POST /rest/images?action=initializeUpload (replaces deprecated /v2/assets).
      */
     private function linkedInUploadImage(array $authHeaders, string $ownerUrn, string $filePath): ?string
     {
-        // Step 1: Register the upload.
-        $register = $this->postJson('https://api.linkedin.com/v2/assets?action=registerUpload', $authHeaders, [
-            'registerUploadRequest' => [
-                'recipes'      => ['urn:li:digitalmediaRecipe:feedshare-image'],
-                'owner'        => $ownerUrn,
-                'serviceRelationships' => [[
-                    'relationshipType' => 'OWNER',
-                    'identifier'       => 'urn:li:userGeneratedContent',
-                ]],
-            ],
-        ]);
-
-        $uploadUrl = $register['value']['uploadMechanism']['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest']['uploadUrl'] ?? null;
-        $asset     = $register['value']['asset'] ?? null;
-
-        if (!$uploadUrl || !$asset) {
-            return null;
-        }
-
-        // Step 2: Upload the binary.
         $fileData = file_get_contents($filePath);
         if ($fileData === false) {
             return null;
         }
 
+        // Step 1: Initialize the upload.
+        $init = $this->postJson('https://api.linkedin.com/rest/images?action=initializeUpload', $authHeaders, [
+            'initializeUploadRequest' => [
+                'owner' => $ownerUrn,
+            ],
+        ]);
+
+        $uploadUrl = $init['value']['uploadUrl'] ?? null;
+        $imageUrn  = $init['value']['image'] ?? null;
+
+        if (!$uploadUrl || !$imageUrn) {
+            return null;
+        }
+
+        // Step 2: Upload the binary via PUT.
         $ch = curl_init($uploadUrl);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
@@ -655,7 +668,7 @@ final class SocialPublisher
         $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        return ($httpCode >= 200 && $httpCode < 300) ? (string)$asset : null;
+        return ($httpCode >= 200 && $httpCode < 300) ? (string)$imageUrn : null;
     }
 
     // =========================================================================
@@ -682,7 +695,7 @@ final class SocialPublisher
                 return ['success' => false, 'external_id' => null, 'error' => 'Threads user_id or access_token missing'];
             }
 
-            $baseUrl = "https://graph.threads.net/v1.0/{$userId}";
+            $baseUrl = "https://graph.threads.net/v2.0/{$userId}";
 
             // Step 1: Create container.
             $containerFields = [
@@ -784,10 +797,16 @@ final class SocialPublisher
     // =========================================================================
 
     /**
-     * Publish to TikTok using the Content Posting API (photo or video).
+     * Publish to TikTok using the Content Posting API v2 (photo or video).
      *
      * Auth: OAuth 2.0 Bearer token. Requires 'video.publish' scope for video,
      * or 'video.upload' for photo mode.
+     *
+     * meta_json options:
+     *   - privacy_level: PUBLIC_TO_EVERYONE | MUTUAL_FOLLOW_FRIENDS | FOLLOWER_OF_CREATOR | SELF_ONLY (default)
+     *   - disable_comment: bool (default false)
+     *   - disable_duet: bool (default false)
+     *   - disable_stitch: bool (default false)
      *
      * TikTok's API uses a two-step init + upload flow.
      */
@@ -795,6 +814,8 @@ final class SocialPublisher
     {
         try {
             $token = (string)($account['access_token'] ?? '');
+            $meta  = $account['meta_json'] ?? [];
+
             if ($token === '') {
                 return ['success' => false, 'external_id' => null, 'error' => 'TikTok access_token missing'];
             }
@@ -806,28 +827,40 @@ final class SocialPublisher
             $authHeaders = ["Authorization: Bearer {$token}"];
             $fileSize = filesize($mediaPath);
 
+            // Privacy level from meta or default to SELF_ONLY for safety.
+            $validPrivacy = ['PUBLIC_TO_EVERYONE', 'MUTUAL_FOLLOW_FRIENDS', 'FOLLOWER_OF_CREATOR', 'SELF_ONLY'];
+            $privacyLevel = strtoupper((string)($meta['privacy_level'] ?? 'SELF_ONLY'));
+            if (!in_array($privacyLevel, $validPrivacy, true)) {
+                $privacyLevel = 'SELF_ONLY';
+            }
+
+            // Detect media type from extension/mime.
+            $mimeType = mime_content_type($mediaPath) ?: 'video/mp4';
+            $isVideo  = str_starts_with($mimeType, 'video/');
+
             // Step 1: Initialize the upload.
             $initPayload = [
                 'post_info' => [
                     'title'           => mb_substr($text, 0, 150),
-                    'privacy_level'   => 'SELF_ONLY',  // Default to private; user changes in TikTok app
-                    'disable_comment' => false,
-                    'disable_duet'    => false,
-                    'disable_stitch'  => false,
+                    'description'     => mb_substr($text, 0, 2200),
+                    'privacy_level'   => $privacyLevel,
+                    'disable_comment' => (bool)($meta['disable_comment'] ?? false),
+                    'disable_duet'    => (bool)($meta['disable_duet'] ?? false),
+                    'disable_stitch'  => (bool)($meta['disable_stitch'] ?? false),
                 ],
                 'source_info' => [
-                    'source'         => 'FILE_UPLOAD',
-                    'video_size'     => $fileSize,
-                    'chunk_size'     => $fileSize,
+                    'source'            => 'FILE_UPLOAD',
+                    'video_size'        => $fileSize,
+                    'chunk_size'        => $fileSize,
                     'total_chunk_count' => 1,
                 ],
             ];
 
-            $init = $this->postJson(
-                'https://open.tiktokapis.com/v2/post/publish/video/init/',
-                $authHeaders,
-                $initPayload,
-            );
+            $initEndpoint = $isVideo
+                ? 'https://open.tiktokapis.com/v2/post/publish/video/init/'
+                : 'https://open.tiktokapis.com/v2/post/publish/content/init/';
+
+            $init = $this->postJson($initEndpoint, $authHeaders, $initPayload);
 
             $uploadUrl = $init['data']['upload_url'] ?? null;
             $publishId = $init['data']['publish_id'] ?? null;
@@ -848,7 +881,7 @@ final class SocialPublisher
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_CUSTOMREQUEST  => 'PUT',
                 CURLOPT_HTTPHEADER     => [
-                    'Content-Type: video/mp4',
+                    "Content-Type: {$mimeType}",
                     "Content-Length: {$fileSize}",
                     'Content-Range: bytes 0-' . ($fileSize - 1) . "/{$fileSize}",
                 ],
@@ -877,7 +910,10 @@ final class SocialPublisher
     /**
      * Submit a post to a Reddit subreddit.
      *
-     * Auth: OAuth 2.0 Bearer token. meta_json must contain 'subreddit'.
+     * Auth: OAuth 2.0 Bearer token in access_token. meta_json must contain 'subreddit'.
+     * For proper OAuth flow, meta_json should also contain 'client_id' and 'client_secret'
+     * (used for token refresh). If only access_token is provided, it's used directly.
+     *
      * Supports link posts (with media URL) or self posts (text only).
      */
     public function publishToReddit(array $account, string $text, ?string $mediaUrl = null): array
@@ -886,6 +922,7 @@ final class SocialPublisher
             $meta      = $account['meta_json'] ?? [];
             $token     = (string)($account['access_token'] ?? '');
             $subreddit = (string)($meta['subreddit'] ?? '');
+            $clientId  = (string)($meta['client_id'] ?? '');
 
             if ($token === '' || $subreddit === '') {
                 return ['success' => false, 'external_id' => null, 'error' => 'Reddit access_token or subreddit missing'];
@@ -910,9 +947,14 @@ final class SocialPublisher
                 $fields['text'] = $body;
             }
 
+            // Reddit requires a descriptive User-Agent; include client_id if available.
+            $userAgent = $clientId !== ''
+                ? "php:MarketingSuite:v2.0 (by /u/{$clientId})"
+                : 'MarketingSuite/2.0';
+
             $data = $this->postForm(
                 'https://oauth.reddit.com/api/submit',
-                ["Authorization: Bearer {$token}", 'User-Agent: MarketingSuite/1.0'],
+                ["Authorization: Bearer {$token}", "User-Agent: {$userAgent}"],
                 $fields,
             );
 
@@ -1171,6 +1213,10 @@ final class SocialPublisher
      *
      * Auth: Integration token in access_token.
      * First line of text becomes the title.
+     *
+     * NOTE: Medium stopped issuing new integration tokens in 2023.
+     * This integration is maintained for existing token holders but may stop working.
+     * Consider using the WordPress integration as an alternative.
      */
     public function publishToMedium(array $account, string $text): array
     {
@@ -1287,28 +1333,317 @@ final class SocialPublisher
     }
 
     // =========================================================================
-    //  Token refresh (stub)
+    //  Connection testing
+    // =========================================================================
+
+    /**
+     * Test connection to a social platform by making a lightweight API call.
+     *
+     * @param  array $account Decoded account row.
+     * @return array{success: bool, error: string|null, info: string|null}
+     */
+    public function testConnection(array $account): array
+    {
+        $account  = $this->decodeMeta($account);
+        $platform = $account['platform'] ?? '';
+        $token    = (string)($account['access_token'] ?? '');
+        $meta     = $account['meta_json'] ?? [];
+
+        if ($token === '' && !in_array($platform, ['bluesky'], true)) {
+            return ['success' => false, 'error' => 'Access token is empty', 'info' => null];
+        }
+
+        try {
+            return match ($platform) {
+                'twitter'   => $this->testTwitter($token),
+                'bluesky'   => $this->testBluesky($meta),
+                'mastodon'  => $this->testMastodon($token, $meta),
+                'facebook'  => $this->testFacebook($token, $meta),
+                'instagram' => $this->testInstagram($token, $meta),
+                'linkedin'  => $this->testLinkedIn($token),
+                'threads'   => $this->testThreads($token, $meta),
+                'pinterest' => $this->testPinterest($token),
+                'tiktok'    => $this->testTikTok($token),
+                'reddit'    => $this->testReddit($token, $meta),
+                'telegram'  => $this->testTelegram($token, $meta),
+                'discord'   => $this->testDiscord($token),
+                'slack'     => $this->testSlack($token),
+                'wordpress' => $this->testWordPress($token, $meta),
+                'medium'    => $this->testMedium($token),
+                default     => ['success' => false, 'error' => "Unknown platform: {$platform}", 'info' => null],
+            };
+        } catch (\Throwable $e) {
+            return ['success' => false, 'error' => $e->getMessage(), 'info' => null];
+        }
+    }
+
+    private function testTwitter(string $token): array
+    {
+        $data = $this->getJson('https://api.twitter.com/2/users/me', ["Authorization: Bearer {$token}"]);
+        if (!empty($data['data']['id'])) {
+            return ['success' => true, 'error' => null, 'info' => '@' . ($data['data']['username'] ?? 'unknown')];
+        }
+        return ['success' => false, 'error' => $data['detail'] ?? $data['title'] ?? 'Auth failed', 'info' => null];
+    }
+
+    private function testBluesky(array $meta): array
+    {
+        $identifier = (string)($meta['identifier'] ?? '');
+        $password   = (string)($meta['password'] ?? '');
+        if ($identifier === '' || $password === '') {
+            return ['success' => false, 'error' => 'Identifier and password required', 'info' => null];
+        }
+        $session = $this->postJson('https://bsky.social/xrpc/com.atproto.server.createSession', [], [
+            'identifier' => $identifier, 'password' => $password,
+        ]);
+        if (!empty($session['did'])) {
+            return ['success' => true, 'error' => null, 'info' => $session['handle'] ?? $identifier];
+        }
+        return ['success' => false, 'error' => $session['message'] ?? 'Auth failed', 'info' => null];
+    }
+
+    private function testMastodon(string $token, array $meta): array
+    {
+        $instanceUrl = rtrim((string)($meta['instance_url'] ?? ''), '/');
+        if ($instanceUrl === '') {
+            return ['success' => false, 'error' => 'Instance URL required', 'info' => null];
+        }
+        $data = $this->getJson("{$instanceUrl}/api/v1/accounts/verify_credentials", ["Authorization: Bearer {$token}"]);
+        if (!empty($data['id'])) {
+            return ['success' => true, 'error' => null, 'info' => '@' . ($data['acct'] ?? 'unknown')];
+        }
+        return ['success' => false, 'error' => $data['error'] ?? 'Auth failed', 'info' => null];
+    }
+
+    private function testFacebook(string $token, array $meta): array
+    {
+        $pageId = (string)($meta['page_id'] ?? '');
+        if ($pageId === '') {
+            return ['success' => false, 'error' => 'Page ID required', 'info' => null];
+        }
+        $data = $this->getJson("https://graph.facebook.com/v22.0/{$pageId}?fields=name,id&access_token={$token}", []);
+        if (!empty($data['name'])) {
+            return ['success' => true, 'error' => null, 'info' => $data['name']];
+        }
+        return ['success' => false, 'error' => $data['error']['message'] ?? 'Auth failed', 'info' => null];
+    }
+
+    private function testInstagram(string $token, array $meta): array
+    {
+        $igId = (string)($meta['ig_account_id'] ?? '');
+        if ($igId === '') {
+            return ['success' => false, 'error' => 'Instagram Account ID required', 'info' => null];
+        }
+        $data = $this->getJson("https://graph.facebook.com/v22.0/{$igId}?fields=username,id&access_token={$token}", []);
+        if (!empty($data['username'])) {
+            return ['success' => true, 'error' => null, 'info' => '@' . $data['username']];
+        }
+        return ['success' => false, 'error' => $data['error']['message'] ?? 'Auth failed', 'info' => null];
+    }
+
+    private function testLinkedIn(string $token): array
+    {
+        $data = $this->getJson('https://api.linkedin.com/v2/userinfo', [
+            "Authorization: Bearer {$token}",
+            'LinkedIn-Version: 202501',
+        ]);
+        if (!empty($data['sub'])) {
+            return ['success' => true, 'error' => null, 'info' => $data['name'] ?? $data['email'] ?? 'Connected'];
+        }
+        return ['success' => false, 'error' => $data['message'] ?? 'Auth failed', 'info' => null];
+    }
+
+    private function testThreads(string $token, array $meta): array
+    {
+        $userId = (string)($meta['threads_user_id'] ?? '');
+        if ($userId === '') {
+            return ['success' => false, 'error' => 'Threads User ID required', 'info' => null];
+        }
+        $data = $this->getJson("https://graph.threads.net/v2.0/{$userId}?fields=username&access_token={$token}", []);
+        if (!empty($data['username'])) {
+            return ['success' => true, 'error' => null, 'info' => '@' . $data['username']];
+        }
+        return ['success' => false, 'error' => $data['error']['message'] ?? 'Auth failed', 'info' => null];
+    }
+
+    private function testPinterest(string $token): array
+    {
+        $data = $this->getJson('https://api.pinterest.com/v5/user_account', ["Authorization: Bearer {$token}"]);
+        if (!empty($data['username'])) {
+            return ['success' => true, 'error' => null, 'info' => '@' . $data['username']];
+        }
+        return ['success' => false, 'error' => $data['message'] ?? 'Auth failed', 'info' => null];
+    }
+
+    private function testTikTok(string $token): array
+    {
+        $data = $this->getJson('https://open.tiktokapis.com/v2/user/info/?fields=display_name,username', [
+            "Authorization: Bearer {$token}",
+        ]);
+        if (!empty($data['data']['user']['username'])) {
+            return ['success' => true, 'error' => null, 'info' => '@' . $data['data']['user']['username']];
+        }
+        return ['success' => false, 'error' => $data['error']['message'] ?? 'Auth failed', 'info' => null];
+    }
+
+    private function testReddit(string $token, array $meta): array
+    {
+        $clientId = (string)($meta['client_id'] ?? '');
+        $userAgent = $clientId !== ''
+            ? "php:MarketingSuite:v2.0 (by /u/{$clientId})"
+            : 'MarketingSuite/2.0';
+        $data = $this->getJson('https://oauth.reddit.com/api/v1/me', [
+            "Authorization: Bearer {$token}",
+            "User-Agent: {$userAgent}",
+        ]);
+        if (!empty($data['name'])) {
+            return ['success' => true, 'error' => null, 'info' => 'u/' . $data['name']];
+        }
+        return ['success' => false, 'error' => $data['message'] ?? 'Auth failed', 'info' => null];
+    }
+
+    private function testTelegram(string $token, array $meta): array
+    {
+        $chatId = (string)($meta['chat_id'] ?? '');
+        if ($chatId === '') {
+            return ['success' => false, 'error' => 'Chat ID required', 'info' => null];
+        }
+        $data = $this->getJson("https://api.telegram.org/bot{$token}/getMe", []);
+        if (!empty($data['ok']) && !empty($data['result']['username'])) {
+            return ['success' => true, 'error' => null, 'info' => '@' . $data['result']['username']];
+        }
+        return ['success' => false, 'error' => $data['description'] ?? 'Auth failed', 'info' => null];
+    }
+
+    private function testDiscord(string $webhookUrl): array
+    {
+        if (!str_contains($webhookUrl, 'discord.com/api/webhooks/')) {
+            return ['success' => false, 'error' => 'Invalid webhook URL', 'info' => null];
+        }
+        $data = $this->getJson($webhookUrl, []);
+        if (!empty($data['id'])) {
+            return ['success' => true, 'error' => null, 'info' => $data['name'] ?? 'Webhook active'];
+        }
+        return ['success' => false, 'error' => $data['message'] ?? 'Webhook invalid', 'info' => null];
+    }
+
+    private function testSlack(string $webhookUrl): array
+    {
+        if (!str_contains($webhookUrl, 'hooks.slack.com/')) {
+            return ['success' => false, 'error' => 'Invalid webhook URL', 'info' => null];
+        }
+        // Slack webhooks don't have a test endpoint; we validate the URL format.
+        return ['success' => true, 'error' => null, 'info' => 'Webhook URL format valid'];
+    }
+
+    private function testWordPress(string $creds, array $meta): array
+    {
+        $siteUrl = rtrim((string)($meta['site_url'] ?? ''), '/');
+        if ($siteUrl === '') {
+            return ['success' => false, 'error' => 'Site URL required', 'info' => null];
+        }
+        $data = $this->getJson("{$siteUrl}/wp-json/wp/v2/users/me", [
+            'Authorization: Basic ' . base64_encode($creds),
+        ]);
+        if (!empty($data['name'])) {
+            return ['success' => true, 'error' => null, 'info' => $data['name']];
+        }
+        return ['success' => false, 'error' => $data['message'] ?? 'Auth failed', 'info' => null];
+    }
+
+    private function testMedium(string $token): array
+    {
+        $data = $this->getJson('https://api.medium.com/v1/me', ["Authorization: Bearer {$token}"]);
+        if (!empty($data['data']['id'])) {
+            return ['success' => true, 'error' => null, 'info' => $data['data']['username'] ?? 'Connected'];
+        }
+        return ['success' => false, 'error' => 'Auth failed — Medium stopped issuing new tokens in 2023', 'info' => null];
+    }
+
+    // =========================================================================
+    //  Token refresh
     // =========================================================================
 
     /**
      * Refresh an OAuth token for the given account.
      *
-     * This is a stub for future implementation. Each platform will require its own
-     * refresh logic (e.g. Facebook long-lived tokens, Twitter OAuth 2.0 refresh_token).
+     * Supports token refresh for platforms that use OAuth 2.0 with refresh tokens:
+     * - Facebook: Exchange short-lived token for long-lived token
+     * - Twitter/X: OAuth 2.0 PKCE refresh_token grant
      *
-     * @param  array $account Decoded account row.
-     * @return array|null     New token data, or null if not implemented / not needed.
+     * @param  array $account Decoded account row (must contain refresh_token for applicable platforms).
+     * @return array|null     Updated token fields [access_token, refresh_token?, token_expires?], or null if not supported.
      */
     public function refreshToken(array $account): ?array
     {
-        // TODO: Implement per-platform token refresh logic.
-        // Example future structure:
-        //   return match ($account['platform'] ?? '') {
-        //       'facebook'  => $this->refreshFacebookToken($account),
-        //       'twitter'   => $this->refreshTwitterToken($account),
-        //       'mastodon'  => $this->refreshMastodonToken($account),
-        //       default     => null,
-        //   };
+        $account = $this->decodeMeta($account);
+
+        return match ($account['platform'] ?? '') {
+            'facebook', 'instagram' => $this->refreshFacebookToken($account),
+            'twitter'               => $this->refreshTwitterToken($account),
+            default                 => null,
+        };
+    }
+
+    /**
+     * Exchange a Facebook/Instagram short-lived token for a long-lived one (~60 days).
+     */
+    private function refreshFacebookToken(array $account): ?array
+    {
+        $meta         = $account['meta_json'] ?? [];
+        $token        = (string)($account['access_token'] ?? '');
+        $appId        = (string)($meta['app_id'] ?? '');
+        $appSecret    = (string)($meta['app_secret'] ?? '');
+
+        if ($token === '' || $appId === '' || $appSecret === '') {
+            return null;
+        }
+
+        $data = $this->getJson(
+            "https://graph.facebook.com/v22.0/oauth/access_token?grant_type=fb_exchange_token&client_id={$appId}&client_secret={$appSecret}&fb_exchange_token={$token}",
+            [],
+        );
+
+        if (!empty($data['access_token'])) {
+            return [
+                'access_token'  => $data['access_token'],
+                'token_expires' => isset($data['expires_in'])
+                    ? gmdate(DATE_ATOM, time() + (int)$data['expires_in'])
+                    : null,
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * Refresh a Twitter/X OAuth 2.0 PKCE access token using the refresh_token grant.
+     */
+    private function refreshTwitterToken(array $account): ?array
+    {
+        $meta         = $account['meta_json'] ?? [];
+        $refreshToken = (string)($account['refresh_token'] ?? '');
+        $clientId     = (string)($meta['client_id'] ?? '');
+
+        if ($refreshToken === '' || $clientId === '') {
+            return null;
+        }
+
+        $data = $this->postForm('https://api.twitter.com/2/oauth2/token', [], [
+            'grant_type'    => 'refresh_token',
+            'refresh_token' => $refreshToken,
+            'client_id'     => $clientId,
+        ]);
+
+        if (!empty($data['access_token'])) {
+            return [
+                'access_token'  => $data['access_token'],
+                'refresh_token' => $data['refresh_token'] ?? $refreshToken,
+                'token_expires' => isset($data['expires_in'])
+                    ? gmdate(DATE_ATOM, time() + (int)$data['expires_in'])
+                    : null,
+            ];
+        }
 
         return null;
     }
@@ -1372,6 +1707,36 @@ final class SocialPublisher
             CURLOPT_POST           => true,
             CURLOPT_HTTPHEADER     => $headers,
             CURLOPT_POSTFIELDS     => $fields,
+            CURLOPT_TIMEOUT        => $timeout,
+            CURLOPT_CONNECTTIMEOUT => 10,
+        ]);
+
+        $raw   = curl_exec($ch);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        if ($error !== '' || !is_string($raw)) {
+            return [];
+        }
+
+        $decoded = json_decode($raw, true);
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    /**
+     * Send a GET request and return the decoded JSON response.
+     *
+     * @param  string $url     Fully qualified URL.
+     * @param  array  $headers HTTP headers.
+     * @param  int    $timeout Request timeout in seconds.
+     * @return array  Decoded JSON response, or empty array on failure.
+     */
+    private function getJson(string $url, array $headers, int $timeout = self::TIMEOUT): array
+    {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER     => $headers,
             CURLOPT_TIMEOUT        => $timeout,
             CURLOPT_CONNECTTIMEOUT => 10,
         ]);

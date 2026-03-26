@@ -749,8 +749,66 @@ Tip: Use the provider selector above to compare results from different AI models
       <!-- Social Accounts -->
       <section id="page-social" class="page">
         <form id="socialForm" class="stack card">
-          <div class="row3"><div><label>Platform</label><select name="platform" id="socialPlatformSelect"><option>twitter</option><option>bluesky</option><option>mastodon</option><option>facebook</option><option>instagram</option><option>linkedin</option><option>threads</option><option>pinterest</option><option>tiktok</option><option>reddit</option><option>telegram</option><option>discord</option><option>slack</option><option>wordpress</option><option>medium</option></select></div><div><label>Account Name</label><input name="account_name" placeholder="@username" required /></div><div><label>Access Token</label><input name="access_token" placeholder="Token/password/webhook URL" /></div></div>
-          <div><label>Meta (JSON)</label><input name="meta_json" placeholder='{"instance_url":"https://mastodon.social"}' /><small id="socialMetaHint" class="text-muted"></small></div>
+          <div class="row2"><div><label>Platform</label><select name="platform" id="socialPlatformSelect"><option value="twitter">Twitter / X</option><option value="bluesky">Bluesky</option><option value="mastodon">Mastodon</option><option value="facebook">Facebook Page</option><option value="instagram">Instagram</option><option value="linkedin">LinkedIn</option><option value="threads">Threads</option><option value="pinterest">Pinterest</option><option value="tiktok">TikTok</option><option value="reddit">Reddit</option><option value="telegram">Telegram</option><option value="discord">Discord</option><option value="slack">Slack</option><option value="wordpress">WordPress</option><option value="medium">Medium</option></select></div><div><label>Account Name</label><input name="account_name" placeholder="@username or display name" required /></div></div>
+
+          <!-- Universal token field (label changes per platform) -->
+          <div id="socialTokenWrap"><label id="socialTokenLabel">Access Token</label><input name="access_token" id="socialTokenInput" placeholder="OAuth token" /><small id="socialTokenHint" class="text-muted"></small></div>
+
+          <!-- Platform-specific fields (shown/hidden by JS) -->
+          <div id="socialPlatformFields">
+            <div data-platform="bluesky" class="social-fields" style="display:none">
+              <div class="row2"><div><label>Handle</label><input data-meta="identifier" placeholder="yourname.bsky.social" /></div><div><label>App Password</label><input data-meta="password" type="password" placeholder="xxxx-xxxx-xxxx-xxxx" /></div></div>
+              <small class="text-muted">Generate an App Password at Settings &rarr; Privacy and Security &rarr; App Passwords in the Bluesky app.</small>
+            </div>
+            <div data-platform="mastodon" class="social-fields" style="display:none">
+              <div><label>Instance URL</label><input data-meta="instance_url" placeholder="https://mastodon.social" /></div>
+            </div>
+            <div data-platform="facebook" class="social-fields" style="display:none">
+              <div class="row2"><div><label>Page ID</label><input data-meta="page_id" placeholder="123456789" /></div><div><label>App ID <small>(for token refresh)</small></label><input data-meta="app_id" placeholder="Optional" /></div></div>
+              <div><label>App Secret <small>(for token refresh)</small></label><input data-meta="app_secret" type="password" placeholder="Optional — enables automatic token renewal" /></div>
+            </div>
+            <div data-platform="instagram" class="social-fields" style="display:none">
+              <div class="row2"><div><label>Instagram Account ID</label><input data-meta="ig_account_id" placeholder="17841400000000000" /></div><div><label>App ID <small>(for token refresh)</small></label><input data-meta="app_id" placeholder="Optional" /></div></div>
+              <div><label>App Secret <small>(for token refresh)</small></label><input data-meta="app_secret" type="password" placeholder="Optional — enables automatic token renewal" /></div>
+              <small class="text-muted">Uses the Facebook Graph API. Requires a publicly accessible image URL for media posts.</small>
+            </div>
+            <div data-platform="linkedin" class="social-fields" style="display:none">
+              <div><label>Author URN</label><input data-meta="urn" placeholder="urn:li:person:AbCdEf or urn:li:organization:12345" /></div>
+              <small class="text-muted">Uses the LinkedIn Posts API (Community Management). Requires w_member_social or w_organization_social scope.</small>
+            </div>
+            <div data-platform="threads" class="social-fields" style="display:none">
+              <div><label>Threads User ID</label><input data-meta="threads_user_id" placeholder="123456789" /></div>
+              <small class="text-muted">Uses the Meta Threads API v2.0. Requires publicly accessible image URL for media posts.</small>
+            </div>
+            <div data-platform="pinterest" class="social-fields" style="display:none">
+              <div class="row2"><div><label>Board ID</label><input data-meta="board_id" placeholder="123456789" /></div><div><label>Link URL <small>(optional)</small></label><input data-meta="link" placeholder="https://yoursite.com/page" /></div></div>
+              <small class="text-muted">Requires pins:write scope. Media posts require publicly accessible image URL.</small>
+            </div>
+            <div data-platform="tiktok" class="social-fields" style="display:none">
+              <div><label>Default Privacy</label><select data-meta="privacy_level"><option value="SELF_ONLY">Private (Self Only)</option><option value="FOLLOWER_OF_CREATOR">Followers Only</option><option value="MUTUAL_FOLLOW_FRIENDS">Friends Only</option><option value="PUBLIC_TO_EVERYONE">Public</option></select></div>
+              <small class="text-muted">Requires video.publish scope. Privacy can be changed per-post in TikTok.</small>
+            </div>
+            <div data-platform="reddit" class="social-fields" style="display:none">
+              <div class="row2"><div><label>Subreddit</label><input data-meta="subreddit" placeholder="marketing" /></div><div><label>Client ID <small>(for User-Agent)</small></label><input data-meta="client_id" placeholder="Optional" /></div></div>
+              <div><label>Client Secret <small>(optional)</small></label><input data-meta="client_secret" type="password" placeholder="Optional — for token refresh" /></div>
+            </div>
+            <div data-platform="telegram" class="social-fields" style="display:none">
+              <div><label>Chat ID</label><input data-meta="chat_id" placeholder="@channelname or -1001234567890" /></div>
+              <small class="text-muted">Bot token goes in the Access Token field above. Chat ID is the channel/group to post to.</small>
+            </div>
+            <div data-platform="wordpress" class="social-fields" style="display:none">
+              <div class="row2"><div><label>Site URL</label><input data-meta="site_url" placeholder="https://myblog.com" /></div><div><label>Post Status</label><select data-meta="status"><option value="draft">Draft</option><option value="publish">Publish</option></select></div></div>
+              <small class="text-muted">Access Token format: <code>username:application_password</code>. Generate in WordPress under Users &rarr; Profile.</small>
+            </div>
+            <div data-platform="medium" class="social-fields" style="display:none">
+              <div class="row2"><div><label>Publish Status</label><select data-meta="publish_status"><option value="draft">Draft</option><option value="public">Public</option></select></div><div><label>Tags <small>(comma-separated, max 5)</small></label><input data-meta="tags" placeholder="marketing, social, tips" /></div></div>
+              <small class="text-muted" style="color: var(--warning, #f59e0b)">Medium stopped issuing new integration tokens in 2023. This only works with existing tokens.</small>
+            </div>
+            <div data-platform="twitter" class="social-fields" style="display:none">
+              <div><label>Client ID <small>(for token refresh)</small></label><input data-meta="client_id" placeholder="Optional — enables OAuth 2.0 PKCE refresh" /></div>
+            </div>
+          </div>
+
           <button type="submit">Connect Account</button>
         </form>
         <div id="socialList" class="card-grid mt-1"></div>

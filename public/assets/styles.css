@@ -1418,6 +1418,41 @@ label {
   .chat-sidebar { display: none; }
 }
 
+/* ---- Onboarding Wizard ---- */
+.onboard-container { max-width: 700px; margin: 0 auto; }
+.onboard-header { text-align: center; margin-bottom: 1.5rem; }
+.onboard-header h2 { background: linear-gradient(135deg, #6366f1, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.onboard-progress { margin-top: 1rem; }
+.onboard-progress-bar { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.onboard-progress-fill { height: 100%; background: linear-gradient(135deg, #6366f1, #a855f7); transition: width 0.4s ease; }
+.onboard-steps-indicators { display: flex; justify-content: space-between; margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-muted, #888); }
+.onboard-step-indicator.active { color: #a855f7; font-weight: 600; }
+.onboard-step-indicator.completed { color: #22c55e; }
+.onboard-step.card { padding: 1.5rem; }
+.checkbox-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.5rem; }
+.checkbox-card { display: flex; align-items: center; gap: 0.5rem; padding: 0.625rem 0.75rem; background: var(--input-bg); border: 1px solid var(--line); border-radius: var(--radius); cursor: pointer; transition: border-color 0.2s; }
+.checkbox-card:hover { border-color: #a855f7; }
+.checkbox-card input:checked + span { color: #a855f7; font-weight: 500; }
+.onboard-launch-info { background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(168,85,247,0.08)); border: 1px solid rgba(168,85,247,0.2); }
+.onboard-launch-info h4 { margin-bottom: 0.5rem; }
+.onboard-launch-list { list-style: none; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0.25rem; }
+.onboard-launch-list li::before { content: "\2713 "; color: #a855f7; font-weight: bold; }
+.btn-lg { padding: 0.75rem 2rem; font-size: 1rem; }
+
+/* ---- Autopilot Dashboard ---- */
+.autopilot-summary-card { border-left: 3px solid #a855f7; }
+.autopilot-steps-summary { display: flex; flex-wrap: wrap; gap: 0.375rem; margin-top: 0.5rem; }
+.autopilot-step-badge { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.25rem 0.625rem; border-radius: var(--radius); font-size: 0.75rem; }
+.autopilot-step-badge.step-ok { background: rgba(34,197,94,0.12); color: #22c55e; }
+.autopilot-step-badge.step-warn { background: rgba(245,158,11,0.12); color: #f59e0b; }
+
+.ai-assets-card { border-left: 3px solid #6366f1; }
+.ai-assets-list { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.75rem; }
+.ai-asset-item { padding: 0.75rem; background: var(--input-bg); border-radius: var(--radius); border: 1px solid var(--line); }
+.ai-asset-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.375rem; }
+.ai-asset-preview { white-space: pre-wrap; color: var(--text-muted, #aaa); max-height: 200px; overflow-y: auto; }
+.ai-asset-actions { display: flex; gap: 0.375rem; }
+
 /* ---- Print ---- */
 @media print {
   .sidebar, .header-bar, .bulk-bar, .toast-container, form, button, .filters { display: none !important; }

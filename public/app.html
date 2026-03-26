@@ -157,9 +157,174 @@
 
     <div class="content-area">
 
+      <!-- Onboarding Wizard -->
+      <section id="page-onboarding" class="page">
+        <div class="onboard-container">
+          <div class="onboard-header">
+            <h2>Welcome to Your AI Marketing Suite</h2>
+            <p class="text-muted">Tell us about your business and we'll build your entire marketing foundation with AI.</p>
+            <div class="onboard-progress">
+              <div class="onboard-progress-bar"><div class="onboard-progress-fill" id="onboardProgressFill" style="width:20%"></div></div>
+              <div class="onboard-steps-indicators">
+                <span class="onboard-step-indicator active" data-step="1">1. Business</span>
+                <span class="onboard-step-indicator" data-step="2">2. Audience</span>
+                <span class="onboard-step-indicator" data-step="3">3. Competition</span>
+                <span class="onboard-step-indicator" data-step="4">4. Goals</span>
+                <span class="onboard-step-indicator" data-step="5">5. Voice</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 1: Your Business -->
+          <div class="onboard-step card" id="onboardStep1">
+            <h3>Tell us about your business</h3>
+            <div class="stack">
+              <div>
+                <label>What does your business do? <span class="text-danger">*</span></label>
+                <textarea id="obBusinessDesc" class="input" rows="3" placeholder="e.g. We sell organic skincare products for women aged 25-45 who care about sustainability..."></textarea>
+              </div>
+              <div>
+                <label>Products or Services</label>
+                <textarea id="obProducts" class="input" rows="2" placeholder="e.g. Anti-aging serum, moisturizer, face wash, subscription boxes..."></textarea>
+              </div>
+              <div class="row2">
+                <div><label>Website URL</label><input id="obWebsite" class="input" type="url" placeholder="https://yourbusiness.com"></div>
+                <div><label>What makes you different? (USPs)</label><input id="obUSPs" class="input" placeholder="e.g. 100% organic, cruelty-free, female-founded"></div>
+              </div>
+              <div class="flex-between mt-1">
+                <button type="button" class="btn btn-ghost" id="skipOnboarding">Skip for now</button>
+                <button type="button" class="btn btn-ai onboard-next"><span class="btn-ai-icon">&#9733;</span> Next: Your Audience</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 2: Your Audience -->
+          <div class="onboard-step card" id="onboardStep2" style="display:none">
+            <h3>Who is your target audience?</h3>
+            <div class="stack">
+              <div>
+                <label>Describe your ideal customer</label>
+                <textarea id="obAudience" class="input" rows="3" placeholder="e.g. Health-conscious women aged 25-45, urban professionals, interested in natural beauty, active on Instagram and Pinterest..."></textarea>
+              </div>
+              <div class="flex-between mt-1">
+                <button type="button" class="btn btn-ghost onboard-prev">&larr; Back</button>
+                <button type="button" class="btn btn-ai onboard-next"><span class="btn-ai-icon">&#9733;</span> Next: Competition</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 3: Competition -->
+          <div class="onboard-step card" id="onboardStep3" style="display:none">
+            <h3>Who are your competitors?</h3>
+            <p class="text-muted text-small">Add up to 5 competitors. We'll analyze them to find your advantages.</p>
+            <div class="stack">
+              <div id="competitorFields">
+                <div class="flex gap-1 mb-1"><input type="text" class="input competitor-input" placeholder="Competitor name or URL"></div>
+                <div class="flex gap-1 mb-1"><input type="text" class="input competitor-input" placeholder="Another competitor (optional)"></div>
+              </div>
+              <button type="button" class="btn btn-sm btn-outline" id="addCompetitorField">+ Add Competitor</button>
+              <div class="flex-between mt-1">
+                <button type="button" class="btn btn-ghost onboard-prev">&larr; Back</button>
+                <button type="button" class="btn btn-ai onboard-next"><span class="btn-ai-icon">&#9733;</span> Next: Goals &amp; Channels</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 4: Goals & Channels -->
+          <div class="onboard-step card" id="onboardStep4" style="display:none">
+            <h3>What are your marketing goals?</h3>
+            <div class="stack">
+              <div class="checkbox-grid">
+                <label class="checkbox-card"><input type="checkbox" class="goal-checkbox" value="brand awareness" checked><span>Brand Awareness</span></label>
+                <label class="checkbox-card"><input type="checkbox" class="goal-checkbox" value="lead generation"><span>Lead Generation</span></label>
+                <label class="checkbox-card"><input type="checkbox" class="goal-checkbox" value="sales"><span>Drive Sales</span></label>
+                <label class="checkbox-card"><input type="checkbox" class="goal-checkbox" value="engagement"><span>Engagement</span></label>
+                <label class="checkbox-card"><input type="checkbox" class="goal-checkbox" value="retention"><span>Customer Retention</span></label>
+                <label class="checkbox-card"><input type="checkbox" class="goal-checkbox" value="thought leadership"><span>Thought Leadership</span></label>
+              </div>
+              <h4 class="mt-1">Which platforms do you use?</h4>
+              <div class="checkbox-grid">
+                <label class="checkbox-card"><input type="checkbox" class="platform-checkbox" value="instagram" checked><span>Instagram</span></label>
+                <label class="checkbox-card"><input type="checkbox" class="platform-checkbox" value="twitter"><span>Twitter / X</span></label>
+                <label class="checkbox-card"><input type="checkbox" class="platform-checkbox" value="linkedin"><span>LinkedIn</span></label>
+                <label class="checkbox-card"><input type="checkbox" class="platform-checkbox" value="facebook"><span>Facebook</span></label>
+                <label class="checkbox-card"><input type="checkbox" class="platform-checkbox" value="tiktok"><span>TikTok</span></label>
+                <label class="checkbox-card"><input type="checkbox" class="platform-checkbox" value="email"><span>Email</span></label>
+                <label class="checkbox-card"><input type="checkbox" class="platform-checkbox" value="blog"><span>Blog</span></label>
+                <label class="checkbox-card"><input type="checkbox" class="platform-checkbox" value="youtube"><span>YouTube</span></label>
+              </div>
+              <div class="flex-between mt-1">
+                <button type="button" class="btn btn-ghost onboard-prev">&larr; Back</button>
+                <button type="button" class="btn btn-ai onboard-next"><span class="btn-ai-icon">&#9733;</span> Next: Brand Voice</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 5: Voice & Launch -->
+          <div class="onboard-step card" id="onboardStep5" style="display:none">
+            <h3>Your Brand Voice <span class="badge">Optional</span></h3>
+            <p class="text-muted text-small">Paste 2-3 examples of content you've written, or describe your desired tone. If left blank, AI will generate a voice based on your business profile.</p>
+            <div class="stack">
+              <div>
+                <label>Content examples or tone description</label>
+                <textarea id="obExamples" class="input" rows="4" placeholder="Paste existing social posts, email copy, or describe your brand voice (e.g. 'friendly and casual, with a touch of humor')..."></textarea>
+              </div>
+              <div>
+                <label>Monthly marketing budget (optional)</label>
+                <select id="obBudget" class="input">
+                  <option value="">Prefer not to say</option>
+                  <option value="under_500">Under $500</option>
+                  <option value="500_2000">$500 - $2,000</option>
+                  <option value="2000_5000">$2,000 - $5,000</option>
+                  <option value="5000_plus">$5,000+</option>
+                </select>
+              </div>
+              <div class="onboard-launch-section mt-1">
+                <div class="onboard-launch-info card">
+                  <h4><span class="btn-ai-icon">&#9733;</span> AI Autopilot will generate:</h4>
+                  <ul class="onboard-launch-list">
+                    <li>Market research brief</li>
+                    <li>Audience persona</li>
+                    <li>Competitor analysis</li>
+                    <li>Brand voice profile</li>
+                    <li>Social media strategy</li>
+                    <li>Content calendar for this month</li>
+                    <li>7 days of draft posts</li>
+                    <li>Your first campaign</li>
+                    <li>Content ideas backlog</li>
+                  </ul>
+                </div>
+                <div class="flex-between mt-1">
+                  <button type="button" class="btn btn-ghost onboard-prev">&larr; Back</button>
+                  <button type="button" class="btn btn-ai btn-lg" id="launchAutopilot"><span class="btn-ai-icon">&#9733;</span> Launch AI Autopilot</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- Dashboard -->
       <section id="page-dashboard" class="page">
         <div id="dashboardMetrics" class="metrics-row"></div>
+
+        <!-- Autopilot Summary (shown after autopilot completes) -->
+        <div class="card autopilot-summary-card mb-2" id="autopilotSummary" style="display:none">
+          <div class="flex-between">
+            <h3><span class="btn-ai-icon">&#9733;</span> AI Autopilot Summary</h3>
+            <button class="btn btn-sm btn-ghost" id="dismissAutopilotSummary">&times;</button>
+          </div>
+          <div id="autopilotSummaryContent"></div>
+        </div>
+
+        <!-- AI Generated Assets (pending review) -->
+        <div class="card ai-assets-card mb-2" id="aiAssetsCard" style="display:none">
+          <div class="flex-between">
+            <h3><span class="btn-ai-icon">&#9733;</span> AI Generated Assets — Review</h3>
+            <span class="badge" id="assetCount">0</span>
+          </div>
+          <div id="aiAssetsList" class="ai-assets-list"></div>
+        </div>
 
         <!-- AI Quick Actions -->
         <div class="card ai-quick-actions-card mb-2">

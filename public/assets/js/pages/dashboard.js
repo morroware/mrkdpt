@@ -1,13 +1,29 @@
 /**
- * Dashboard page — metrics cards, recent posts/ideas.
+ * Dashboard page — metrics cards, recent posts/ideas, autopilot integration.
  */
 
 import { api } from '../core/api.js';
 import { $, escapeHtml, formatDateTime, truncate } from '../core/utils.js';
-import { error } from '../core/toast.js';
+import { error, success } from '../core/toast.js';
 import { navigate } from '../core/router.js';
 
+let onboardingChecked = false;
+
 export async function refresh() {
+  // Check onboarding status on first load
+  if (!onboardingChecked) {
+    onboardingChecked = true;
+    try {
+      const status = await api('/api/onboarding/status');
+      if (!status.onboarding_completed) {
+        navigate('onboarding');
+        return;
+      }
+    } catch (_) {
+      // If endpoint fails (e.g. fresh install), continue to dashboard
+    }
+  }
+
   try {
     const [dashData, settings] = await Promise.all([
       api('/api/dashboard'),
@@ -64,6 +80,136 @@ export async function refresh() {
   } catch (err) {
     error('Failed to load dashboard: ' + err.message);
   }
+
+  // Load autopilot summary and assets
+  loadAutopilotSummary();
+  loadAssets();
+
+  // Auto-load AI insights on dashboard refresh
+  loadAiInsights();
+}
+
+async function loadAutopilotSummary() {
+  try {
+    const { task } = await api('/api/autopilot/status?type=onboarding');
+    const card = $('autopilotSummary');
+    const content = $('autopilotSummaryContent');
+    if (!card || !content || !task) return;
+
+    if (task.status === 'completed') {
+      const results = task.results || {};
+      const steps = task.steps_config || [];
+      const labels = task.step_labels || [];
+      const errors = (task.error || '').trim();
+
+      let html = '<div class="autopilot-results">';
+      html += `<p class="text-small text-muted">Completed ${steps.length} steps</p>`;
+      html += '<div class="autopilot-steps-summary">';
+      for (let i = 0; i < steps.length; i++) {
+        const key = steps[i];
+        const hasResult = results[key] && results[key].length > 0;
+        const icon = hasResult ? '&#10003;' : '&#10007;';
+        const cls = hasResult ? 'step-ok' : 'step-warn';
+        html += `<span class="autopilot-step-badge ${cls}" title="${escapeHtml(labels[i] || key)}">${icon} ${escapeHtml(labels[i] || key)}</span>`;
+      }
+      html += '</div>';
+      if (errors) {
+        html += `<details class="mt-1"><summary class="text-small text-muted">Some steps had issues</summary><pre class="text-small">${escapeHtml(errors)}</pre></details>`;
+      }
+      html += '</div>';
+
+      content.innerHTML = html;
+      card.style.display = '';
+    }
+  } catch (_) {
+    // No autopilot data yet — that's fine
+  }
+}
+
+async function loadAssets() {
+  try {
+    const { items } = await api('/api/autopilot/assets?status=pending_review');
+    const card = $('aiAssetsCard');
+    const list = $('aiAssetsList');
+    const countBadge = $('assetCount');
+    if (!card || !list) return;
+
+    if (!items || items.length === 0) {
+      card.style.display = 'none';
+      return;
+    }
+
+    card.style.display = '';
+    if (countBadge) countBadge.textContent = items.length;
+
+    list.innerHTML = items.map(asset => `
+      <div class="ai-asset-item" data-asset-id="${asset.id}">
+        <div class="ai-asset-header">
+          <span class="badge badge-info">${escapeHtml(asset.asset_type)}</span>
+          <strong>${escapeHtml(asset.title)}</strong>
+        </div>
+        <div class="ai-asset-preview text-small">${escapeHtml(truncate(asset.content, 200))}</div>
+        <div class="ai-asset-actions mt-1">
+          <button class="btn btn-sm btn-ai asset-approve-btn" data-id="${asset.id}">Approve</button>
+          <button class="btn btn-sm btn-ghost asset-reject-btn" data-id="${asset.id}">Dismiss</button>
+          <button class="btn btn-sm btn-outline asset-expand-btn" data-id="${asset.id}">View Full</button>
+        </div>
+      </div>
+    `).join('');
+
+    // Wire asset action buttons
+    list.querySelectorAll('.asset-approve-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = parseInt(btn.dataset.id);
+        try {
+          await api('/api/autopilot/assets/approve', { method: 'POST', body: JSON.stringify({ id }) });
+          btn.closest('.ai-asset-item')?.remove();
+          success('Asset approved');
+          updateAssetCount(-1);
+        } catch (e) { error(e.message); }
+      });
+    });
+
+    list.querySelectorAll('.asset-reject-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = parseInt(btn.dataset.id);
+        try {
+          await api('/api/autopilot/assets/reject', { method: 'POST', body: JSON.stringify({ id }) });
+          btn.closest('.ai-asset-item')?.remove();
+          updateAssetCount(-1);
+        } catch (e) { error(e.message); }
+      });
+    });
+
+    list.querySelectorAll('.asset-expand-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const item = btn.closest('.ai-asset-item');
+        const preview = item?.querySelector('.ai-asset-preview');
+        if (!preview) return;
+        const asset = items.find(a => a.id == btn.dataset.id);
+        if (asset) {
+          const isExpanded = preview.dataset.expanded === '1';
+          preview.textContent = isExpanded ? truncate(asset.content, 200) : asset.content;
+          preview.dataset.expanded = isExpanded ? '0' : '1';
+          btn.textContent = isExpanded ? 'View Full' : 'Collapse';
+        }
+      });
+    });
+  } catch (_) {
+    // No assets yet
+  }
+}
+
+function updateAssetCount(delta) {
+  const badge = $('assetCount');
+  if (badge) {
+    const count = Math.max(0, parseInt(badge.textContent || '0') + delta);
+    badge.textContent = count;
+    if (count === 0) {
+      const card = $('aiAssetsCard');
+      if (card) card.style.display = 'none';
+    }
+  }
 }
 
 async function loadAiInsights() {
@@ -105,7 +251,6 @@ export function init() {
       switch (action) {
         case 'ideas':
           navigate('ai');
-          // Switch to "Content Ideas" tool after nav
           break;
         case 'post':
           navigate('content');
@@ -114,7 +259,6 @@ export function init() {
         case 'blog':
           navigate('ai');
           setTimeout(() => {
-            // Filter to creation category and scroll to blog tool
             document.querySelector('.ai-cat-btn[data-ai-cat="creation"]')?.click();
             document.getElementById('aiBlogTitle')?.focus();
           }, 100);
@@ -163,6 +307,15 @@ export function init() {
         refreshInsightsBtn.classList.remove('loading');
         refreshInsightsBtn.disabled = false;
       });
+    });
+  }
+
+  // Dismiss autopilot summary
+  const dismissBtn = $('dismissAutopilotSummary');
+  if (dismissBtn) {
+    dismissBtn.addEventListener('click', () => {
+      const card = $('autopilotSummary');
+      if (card) card.style.display = 'none';
     });
   }
 }

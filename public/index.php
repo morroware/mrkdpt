@@ -41,6 +41,7 @@ require $srcDir . '/Segments.php';
 require $srcDir . '/SocialQueue.php';
 require $srcDir . '/EmailTemplates.php';
 require $srcDir . '/CampaignMetrics.php';
+require $srcDir . '/AiAutopilot.php';
 
 security_headers();
 
@@ -120,6 +121,14 @@ $chatService   = new AiChatService($ai, $pdo);
 $activeBrand = $brandProfiles->getActive();
 if ($activeBrand && method_exists($ai, 'setBrandVoice')) {
     $ai->setBrandVoice($activeBrand);
+}
+
+$autopilot = new AiAutopilot($pdo, $strategyTools, $contentTools, $aiLogs, $posts, $campaigns, $brandProfiles, $competitors);
+
+// Load business profile and inject into AI system prompts
+$businessProfile = $autopilot->getBusinessProfile();
+if ($businessProfile) {
+    $ai->setBusinessProfile($businessProfile);
 }
 
 $emailService = null;
@@ -293,6 +302,8 @@ if (str_starts_with($path, '/api/')) {
     require APP_ROOT . '/src/routes/email_templates.php';
     require APP_ROOT . '/src/routes/campaign_metrics.php';
     require APP_ROOT . '/src/routes/wordpress_plugin.php';
+    require APP_ROOT . '/src/routes/onboarding.php';
+    require APP_ROOT . '/src/routes/autopilot.php';
 
     // Register public routes (before middleware)
     register_auth_routes($router, $auth);
@@ -380,6 +391,8 @@ if (str_starts_with($path, '/api/')) {
     register_email_template_routes($router, $emailTemplates);
     register_campaign_metric_routes($router, $campaignMetrics);
     register_wordpress_plugin_routes($router, $posts, $campaigns, $contactRepo, $pdo);
+    register_onboarding_routes($router, $autopilot);
+    register_autopilot_routes($router, $autopilot);
 
     // Dispatch using the base-path-stripped path
     $query = parse_url($uri, PHP_URL_QUERY);

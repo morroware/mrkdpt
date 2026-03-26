@@ -534,6 +534,51 @@ final class Database
             FOREIGN KEY(conversation_id) REFERENCES ai_chat_conversations(id)
         )');
 
+        /* ---- Phase 8: AI Autopilot & Onboarding ---- */
+
+        $this->pdo->exec('CREATE TABLE IF NOT EXISTS business_profile (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            business_description TEXT DEFAULT "",
+            target_audience TEXT DEFAULT "",
+            products_services TEXT DEFAULT "",
+            competitors TEXT DEFAULT "",
+            marketing_goals TEXT DEFAULT "",
+            active_platforms TEXT DEFAULT "",
+            content_examples TEXT DEFAULT "",
+            budget_range TEXT DEFAULT "",
+            website_url TEXT DEFAULT "",
+            unique_selling_points TEXT DEFAULT "",
+            onboarding_completed INTEGER DEFAULT 0,
+            autopilot_run INTEGER DEFAULT 0,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )');
+
+        $this->pdo->exec('CREATE TABLE IF NOT EXISTS ai_tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_type TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT "pending",
+            step_current INTEGER DEFAULT 0,
+            step_total INTEGER DEFAULT 0,
+            steps_config TEXT DEFAULT "[]",
+            results TEXT DEFAULT "{}",
+            error TEXT DEFAULT "",
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )');
+
+        $this->pdo->exec('CREATE TABLE IF NOT EXISTS ai_generated_assets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_id INTEGER,
+            asset_type TEXT NOT NULL,
+            title TEXT DEFAULT "",
+            content TEXT NOT NULL,
+            metadata TEXT DEFAULT "{}",
+            status TEXT DEFAULT "pending_review",
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(task_id) REFERENCES ai_tasks(id)
+        )');
+
         /* ---- safe column additions for upgrades ---- */
 
         $this->applySafeAlter('campaigns', 'start_date', 'TEXT');

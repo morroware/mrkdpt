@@ -18,6 +18,7 @@ declare(strict_types=1);
 final class AiService
 {
     private ?array $brandVoice = null;
+    private ?array $businessProfile = null;
 
     /** Available models per provider for the frontend model picker. */
     private const MODELS = [
@@ -104,6 +105,16 @@ final class AiService
         return $this->brandVoice;
     }
 
+    public function setBusinessProfile(?array $profile): void
+    {
+        $this->businessProfile = $profile;
+    }
+
+    public function getBusinessProfile(): ?array
+    {
+        return $this->businessProfile;
+    }
+
     /* ------------------------------------------------------------------ */
     /*  Provider / Model info                                             */
     /* ------------------------------------------------------------------ */
@@ -145,6 +156,21 @@ final class AiService
     public function buildSystemPrompt(string $extra = ''): string
     {
         $base = 'You are a practical SMB marketing strategist. Be concise but specific.';
+
+        if ($this->businessProfile !== null) {
+            $bp = $this->businessProfile;
+            $parts = [];
+            if (!empty($bp['business_description'])) { $parts[] = "- Business: {$this->businessName} — {$bp['business_description']}"; }
+            if (!empty($bp['products_services']))     { $parts[] = "- Products/Services: {$bp['products_services']}"; }
+            if (!empty($bp['target_audience']))        { $parts[] = "- Target Audience: {$bp['target_audience']}"; }
+            if (!empty($bp['unique_selling_points']))  { $parts[] = "- USPs: {$bp['unique_selling_points']}"; }
+            if (!empty($bp['marketing_goals']))        { $parts[] = "- Marketing Goals: {$bp['marketing_goals']}"; }
+            if (!empty($bp['active_platforms']))        { $parts[] = "- Active Platforms: {$bp['active_platforms']}"; }
+            if (!empty($bp['website_url']))             { $parts[] = "- Website: {$bp['website_url']}"; }
+            if (!empty($parts)) {
+                $base .= "\n\nBusiness Context:\n" . implode("\n", $parts);
+            }
+        }
 
         if ($this->brandVoice !== null) {
             $tone       = $this->brandVoice['voice_tone'] ?? 'professional';

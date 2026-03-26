@@ -100,8 +100,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $adminUser = trim($_POST['admin_username'] ?? '');
     $adminPass = $_POST['admin_password'] ?? '';
 
-    if ($adminPass !== '' && strlen($adminPass) < 8) {
-        $errors[] = 'Admin password must be at least 8 characters.';
+    if ($adminPass !== '') {
+        $passwordStrong = strlen($adminPass) >= 10
+            && preg_match('/[A-Z]/', $adminPass)
+            && preg_match('/[a-z]/', $adminPass)
+            && preg_match('/\d/', $adminPass)
+            && preg_match('/[^a-zA-Z0-9]/', $adminPass);
+        if (!$passwordStrong) {
+            $errors[] = 'Admin password must be 10+ chars with uppercase, lowercase, number, and symbol.';
+        }
     }
 
     if ($errors === []) {

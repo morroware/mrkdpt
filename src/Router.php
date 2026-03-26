@@ -85,4 +85,42 @@ final class Router
 
         return false;
     }
+
+    /**
+     * Return allowed HTTP methods for a given URI path.
+     *
+     * @return string[]
+     */
+    public function allowedMethodsForPath(string $uri): array
+    {
+        $path = parse_url($uri, PHP_URL_PATH) ?: '/';
+        $allowed = [];
+
+        foreach ($this->routes as $routeMethod => $methodRoutes) {
+            foreach ($methodRoutes as $pattern => $_handler) {
+                if ($this->matchesPath($pattern, $path)) {
+                    $allowed[] = $routeMethod;
+                    break;
+                }
+            }
+        }
+
+        sort($allowed);
+        return array_values(array_unique($allowed));
+    }
+
+    private function matchesPath(string $pattern, string $path): bool
+    {
+        if ($pattern === $path) {
+            return true;
+        }
+
+        $escaped = preg_quote($pattern, '#');
+        $regex = preg_replace('#\\\\\\{(\\w+)\\\\\\}#', '(?P<$1>[^/]+)', $escaped);
+        if ($regex === $escaped) {
+            return false;
+        }
+
+        return (bool)preg_match('#^' . $regex . '$#D', $path);
+    }
 }

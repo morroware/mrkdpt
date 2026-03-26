@@ -97,6 +97,7 @@ Valid values: `openai`, `anthropic`, `gemini`, `deepseek`, `groq`, `mistral`, `o
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `APP_URL` | Yes | — | Public URL (e.g., `https://marketing.example.com`) |
+| `APP_FORCE_HTTPS` | No | `false` | Force HTTP requests to redirect to HTTPS in production |
 | `MAX_UPLOAD_MB` | No | `10` | Maximum upload file size (1-100 MB) |
 | `CRON_KEY` | Yes | — | Secret key for cron endpoint authentication |
 
@@ -116,7 +117,7 @@ Valid values: `openai`, `anthropic`, `gemini`, `deepseek`, `groq`, `mistral`, `o
 The setup wizard at `/install.php` provides a guided setup:
 
 1. **Business Information** — Name, industry, timezone, URL
-2. **Admin Account** — Username and password (minimum 8 characters)
+2. **Admin Account** — Username and password (minimum 10 chars with uppercase, lowercase, number, symbol)
 3. **AI Provider** — Select provider and enter API key
 4. **Additional Providers** — Optional secondary AI provider keys
 5. **SMTP Configuration** — Email marketing settings

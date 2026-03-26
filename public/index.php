@@ -45,6 +45,16 @@ require $srcDir . '/AiAutopilot.php';
 
 security_headers();
 
+$forceHttps = in_array(strtolower((string)app_config('APP_FORCE_HTTPS', 'false')), ['1', 'true', 'yes', 'on'], true);
+$isHttps = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+$host = $_SERVER['HTTP_HOST'] ?? '';
+$isLocalDevHost = in_array(strtolower($host), ['localhost', '127.0.0.1'], true) || str_starts_with(strtolower($host), 'localhost:') || str_starts_with($host, '127.0.0.1:');
+if ($forceHttps && !$isHttps && !$isLocalDevHost) {
+    $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
+    header('Location: https://' . $host . $requestUri, true, 301);
+    exit;
+}
+
 /* ---- Database & Repositories ---- */
 $dataDir = APP_ROOT . '/data';
 $db = new Database($dataDir . '/marketing.sqlite');
@@ -190,12 +200,7 @@ if ($path === '/api/track/open' && $method === 'GET') {
 if ($path === '/api/track/click' && $method === 'GET') {
     $cid = (int)($_GET['c'] ?? 0);
     $sid = (int)($_GET['s'] ?? 0);
-    $url = $_GET['url'] ?? '/';
-    // Prevent open redirect - only allow http/https URLs
-    if (!preg_match('#^https?://#i', $url)) {
-        $url = '/';
-    }
-    $url = str_replace(["\r", "\n"], '', $url);
+    $url = sanitize_redirect_url((string)($_GET['url'] ?? '/'), '/', true);
     if ($cid && $sid && $emailService) {
         $emailService->trackClick($cid, $sid, $url);
     }
@@ -248,7 +253,8 @@ if (preg_match('#^/s/([a-zA-Z0-9]+)$#', $path, $m)) {
             'short_code' => $m[1],
             'destination_url' => $link['destination_url'] ?? '',
         ]);
-        header('Location: ' . $link['destination_url']);
+        $destinationUrl = sanitize_redirect_url((string)($link['destination_url'] ?? ''), '/');
+        header('Location: ' . $destinationUrl);
         http_response_code(302);
     } else {
         http_response_code(404);
@@ -421,6 +427,12 @@ if (str_starts_with($path, '/api/')) {
     $query = parse_url($uri, PHP_URL_QUERY);
     $dispatchUri = $path . ($query ? '?' . $query : '');
     if (!$router->dispatch($method, $dispatchUri)) {
+        $allowedMethods = $router->allowedMethodsForPath($dispatchUri);
+        if ($allowedMethods !== []) {
+            header('Allow: ' . implode(', ', $allowedMethods));
+            json_response(['error' => 'Method not allowed'], 405);
+            return;
+        }
         json_response(['error' => 'Not found'], 404);
     }
     return;

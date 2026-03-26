@@ -132,6 +132,17 @@ The `/api/ai/refine` endpoint supports 12 actions:
 | `GET /api/ai/conversations/{id}` | Get conversation with messages |
 | `DELETE /api/ai/conversations/{id}` | Delete conversation |
 
+### Shared AI Memory
+
+All AI tools (chat, content generation, strategy, and analysis) now consume a shared memory layer that stores durable business facts, offers, constraints, and operating context.
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/ai/shared-memory` | List global memory entries used by all AI tools |
+| `POST /api/ai/shared-memory` | Add a shared memory entry |
+| `PUT /api/ai/shared-memory/{id}` | Update a shared memory entry |
+| `DELETE /api/ai/shared-memory/{id}` | Remove a shared memory entry |
+
 The chat system gathers real database context (posts, campaigns, metrics) to provide informed marketing advice.
 
 ## Brand Voice

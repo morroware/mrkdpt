@@ -19,6 +19,7 @@ final class AiService
 {
     private ?array $brandVoice = null;
     private ?array $businessProfile = null;
+    private array $sharedMemory = [];
 
     /** Available models per provider for the frontend model picker. */
     private const MODELS = [
@@ -115,6 +116,16 @@ final class AiService
         return $this->businessProfile;
     }
 
+    public function setSharedMemory(array $memoryItems): void
+    {
+        $this->sharedMemory = array_values(array_filter($memoryItems, static fn($item) => is_array($item)));
+    }
+
+    public function getSharedMemory(): array
+    {
+        return $this->sharedMemory;
+    }
+
     /* ------------------------------------------------------------------ */
     /*  Provider / Model info                                             */
     /* ------------------------------------------------------------------ */
@@ -185,6 +196,23 @@ final class AiService
                 . "\n- Vocabulary to use: {$vocabulary}"
                 . "\n- Words/phrases to avoid: {$avoid}"
                 . "\n- Example of our voice: {$example}";
+        }
+
+        if (!empty($this->sharedMemory)) {
+            $memoryLines = [];
+            foreach (array_slice($this->sharedMemory, 0, 20) as $memory) {
+                $key = trim((string)($memory['memory_key'] ?? ''));
+                $content = trim((string)($memory['content'] ?? ''));
+                if ($content === '') {
+                    continue;
+                }
+                $source = trim((string)($memory['source'] ?? 'system'));
+                $memoryLines[] = '- ' . ($key !== '' ? "{$key}: " : '') . $content . " (source: {$source})";
+            }
+            if (!empty($memoryLines)) {
+                $base .= "\n\nShared Team Memory:\n" . implode("\n", $memoryLines);
+                $base .= "\nTreat this as persistent company memory and keep outputs aligned with it.";
+            }
         }
 
         if ($extra !== '') {

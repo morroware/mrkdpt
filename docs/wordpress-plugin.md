@@ -175,6 +175,8 @@ The plugin communicates with these Marketing Suite endpoints:
 | `GET /api/wordpress-plugin/posts/{id}` | Content sync - get post |
 | `POST /api/wordpress-plugin/posts` | Push content to Marketing Suite |
 | `PUT /api/wordpress-plugin/posts/{id}` | Update content in Marketing Suite |
+| `GET /api/wordpress-plugin/memory` | Pull shared AI memory from Marketing Suite |
+| `POST /api/wordpress-plugin/memory` | Push shared AI memory from WordPress |
 | `POST /api/ai/content` | AI content generation |
 | `POST /api/ai/refine` | AI content refinement |
 

@@ -124,6 +124,12 @@ RULES:
         if (preg_match('/schedule|queue|upcoming|planned/', $q)) {
             $ctx[] = $this->getUpcoming();
         }
+        if (preg_match('/memory|remember|context|knowledge|wordpress|site/', $q)) {
+            $ctx[] = $this->getSharedMemory();
+        }
+
+        // Always include shared memory so all AI assistants stay aligned.
+        $ctx[] = $this->getSharedMemory();
 
         return implode("\n\n", array_filter($ctx));
     }
@@ -258,7 +264,7 @@ RULES:
 
     private function summarizeContext(): string
     {
-        return 'posts, campaigns, email, contacts, competitors, platforms, funnels, schedule';
+        return 'posts, campaigns, email, contacts, competitors, platforms, funnels, schedule, shared-memory';
     }
 
     private static array $allowedTables = [
@@ -280,6 +286,32 @@ RULES:
             error_log("AiChatService::count error on {$table}: " . $e->getMessage());
             return 0;
         }
+    }
+
+    private function getSharedMemory(): string
+    {
+        $stmt = $this->pdo->query("SELECT memory_key, content, source, tags, updated_at FROM ai_shared_memory ORDER BY updated_at DESC LIMIT 15");
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (!$rows) return 'SHARED MEMORY: None saved yet.';
+
+        $lines = "SHARED MEMORY:\n";
+        foreach ($rows as $row) {
+            $key = trim((string)($row['memory_key'] ?? ''));
+            $content = trim((string)($row['content'] ?? ''));
+            if ($content === '') {
+                continue;
+            }
+            $tags = trim((string)($row['tags'] ?? ''));
+            $source = trim((string)($row['source'] ?? 'manual'));
+            $prefix = $key !== '' ? "{$key}: " : '';
+            $meta = "source={$source}";
+            if ($tags !== '') {
+                $meta .= ", tags={$tags}";
+            }
+            $lines .= "- {$prefix}{$content} ({$meta})\n";
+        }
+
+        return $lines;
     }
 
     private function chatViaOpenAi(string $system, array $messages, ?string $model): string

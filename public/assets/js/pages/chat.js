@@ -166,13 +166,72 @@ function wiresuggestions() {
   });
 }
 
+async function refreshSharedMemory() {
+  const list = $('chatMemoryList');
+  if (!list) return;
+  try {
+    const { items } = await api('/api/ai/shared-memory?limit=8');
+    list.innerHTML = (items || []).map((item) => `
+      <div class="chat-memory-item">
+        <div class="chat-memory-title">${escapeHtml(item.memory_key || 'General memory')}</div>
+        <div class="chat-memory-body">${escapeHtml(item.content || '')}</div>
+        <button class="btn btn-sm btn-outline chat-memory-delete" data-memory-id="${item.id}">Delete</button>
+      </div>
+    `).join('') || '<p class="text-muted text-small">No shared memory yet.</p>';
+
+    list.querySelectorAll('.chat-memory-delete').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        try {
+          await api(`/api/ai/shared-memory/${btn.dataset.memoryId}`, { method: 'DELETE' });
+          success('Memory deleted');
+          refreshSharedMemory();
+        } catch (err) {
+          error(err.message);
+        }
+      });
+    });
+  } catch {
+    list.innerHTML = '<p class="text-muted text-small">Memory unavailable.</p>';
+  }
+}
+
+async function saveSharedMemory() {
+  const content = $('chatMemoryContent')?.value?.trim();
+  if (!content) {
+    error('Please add memory content');
+    return;
+  }
+  const key = $('chatMemoryKey')?.value?.trim() || '';
+  const tags = $('chatMemoryTags')?.value?.trim() || '';
+  try {
+    await api('/api/ai/shared-memory', {
+      method: 'POST',
+      body: JSON.stringify({
+        memory_key: key,
+        content,
+        tags,
+        source: 'manual_ui',
+      }),
+    });
+    if ($('chatMemoryContent')) $('chatMemoryContent').value = '';
+    if ($('chatMemoryKey')) $('chatMemoryKey').value = '';
+    if ($('chatMemoryTags')) $('chatMemoryTags').value = '';
+    success('Shared memory saved for all AI tools');
+    refreshSharedMemory();
+  } catch (err) {
+    error(err.message);
+  }
+}
+
 export async function refresh() {
   await refreshConversations();
+  await refreshSharedMemory();
 }
 
 export function init() {
   onClick('chatSendBtn', sendMessage);
   onClick('newChatBtn', newChat);
+  onClick('saveChatMemoryBtn', saveSharedMemory);
 
   // Enter to send (Shift+Enter for newline)
   const input = $('chatInput');
@@ -203,4 +262,5 @@ export function init() {
 
   // Wire initial suggestion buttons
   wiresuggestions();
+  refreshSharedMemory();
 }

@@ -579,6 +579,19 @@ final class Database
             FOREIGN KEY(task_id) REFERENCES ai_tasks(id)
         )');
 
+        $this->pdo->exec('CREATE TABLE IF NOT EXISTS ai_shared_memory (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            memory_key TEXT DEFAULT "",
+            content TEXT NOT NULL,
+            source TEXT DEFAULT "manual",
+            source_ref TEXT DEFAULT "",
+            tags TEXT DEFAULT "",
+            metadata_json TEXT DEFAULT "{}",
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )');
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_ai_shared_memory_updated ON ai_shared_memory(updated_at DESC)');
+
         /* ---- safe column additions for upgrades ---- */
 
         $this->applySafeAlter('campaigns', 'start_date', 'TEXT');

@@ -131,6 +131,11 @@ if ($businessProfile) {
     $ai->setBusinessProfile($businessProfile);
 }
 
+$sharedMemoryRows = $pdo->query('SELECT memory_key, content, source, tags, updated_at FROM ai_shared_memory ORDER BY updated_at DESC LIMIT 50')->fetchAll(PDO::FETCH_ASSOC);
+if (!empty($sharedMemoryRows)) {
+    $ai->setSharedMemory($sharedMemoryRows);
+}
+
 $emailService = null;
 if (class_exists('EmailService')) {
     $emailService = new EmailService($pdo, [

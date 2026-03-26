@@ -187,6 +187,44 @@ final class Marketing_Suite_Connector {
             'callback'            => [$this->sync, 'rest_ai_refine'],
             'permission_callback' => fn() => current_user_can('edit_posts'),
         ]);
+
+        // Shared AI memory pull
+        register_rest_route('msc/v1', '/memory', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'rest_pull_memory'],
+            'permission_callback' => fn() => current_user_can('edit_posts'),
+        ]);
+
+        // Shared AI memory push
+        register_rest_route('msc/v1', '/memory', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'rest_push_memory'],
+            'permission_callback' => fn() => current_user_can('edit_posts'),
+        ]);
+    }
+
+    public function rest_pull_memory(\WP_REST_Request $request): \WP_REST_Response {
+        $limit = max(1, min(200, (int)$request->get_param('limit')));
+        if ($limit <= 0) {
+            $limit = 50;
+        }
+        $result = $this->api->get('/api/wordpress-plugin/memory', ['limit' => $limit]);
+        if (isset($result['error'])) {
+            return new \WP_REST_Response(['success' => false, 'message' => $result['error']], 502);
+        }
+        return new \WP_REST_Response(['success' => true, 'items' => $result['items'] ?? []], 200);
+    }
+
+    public function rest_push_memory(\WP_REST_Request $request): \WP_REST_Response {
+        $payload = $request->get_json_params();
+        if (!is_array($payload)) {
+            $payload = [];
+        }
+        $result = $this->api->post('/api/wordpress-plugin/memory', $payload);
+        if (isset($result['error'])) {
+            return new \WP_REST_Response(['success' => false, 'message' => $result['error']], 502);
+        }
+        return new \WP_REST_Response(['success' => true, 'data' => $result], 200);
     }
 
     public function api(): MSC_API_Client {

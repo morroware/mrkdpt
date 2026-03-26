@@ -499,6 +499,88 @@ function register_ai_routes(
     });
 
     /* ================================================================== */
+    /*  SHARED MEMORY (GLOBAL AI CONTEXT)                                 */
+    /* ================================================================== */
+
+    $router->get('/api/ai/shared-memory', function () use ($pdo) {
+        $limit = max(1, min(200, (int)($_GET['limit'] ?? 50)));
+        $stmt = $pdo->prepare("SELECT id, memory_key, content, source, source_ref, tags, metadata_json, created_at, updated_at FROM ai_shared_memory ORDER BY updated_at DESC LIMIT :limit");
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        json_response(['items' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+    });
+
+    $router->post('/api/ai/shared-memory', function () use ($pdo, $ai) {
+        $p = request_json();
+        $content = trim((string)($p['content'] ?? ''));
+        if ($content === '') { json_response(['error' => 'Missing: content'], 422); return; }
+
+        $now = gmdate(DATE_ATOM);
+        $stmt = $pdo->prepare("INSERT INTO ai_shared_memory (memory_key, content, source, source_ref, tags, metadata_json, created_at, updated_at)
+                               VALUES (:memory_key, :content, :source, :source_ref, :tags, :metadata_json, :created_at, :updated_at)");
+        $stmt->execute([
+            ':memory_key' => trim((string)($p['memory_key'] ?? '')),
+            ':content' => $content,
+            ':source' => trim((string)($p['source'] ?? 'manual')),
+            ':source_ref' => trim((string)($p['source_ref'] ?? '')),
+            ':tags' => trim((string)($p['tags'] ?? '')),
+            ':metadata_json' => json_encode($p['metadata'] ?? new stdClass(), JSON_UNESCAPED_SLASHES),
+            ':created_at' => $now,
+            ':updated_at' => $now,
+        ]);
+
+        $items = $pdo->query("SELECT memory_key, content, source, tags, updated_at FROM ai_shared_memory ORDER BY updated_at DESC LIMIT 50")->fetchAll(PDO::FETCH_ASSOC);
+        $ai->setSharedMemory($items);
+
+        $id = (int)$pdo->lastInsertId();
+        $row = $pdo->prepare("SELECT id, memory_key, content, source, source_ref, tags, metadata_json, created_at, updated_at FROM ai_shared_memory WHERE id = :id");
+        $row->execute([':id' => $id]);
+        json_response(['item' => $row->fetch(PDO::FETCH_ASSOC)], 201);
+    });
+
+    $router->put('/api/ai/shared-memory/{id}', function (array $params) use ($pdo, $ai) {
+        $id = (int)($params['id'] ?? 0);
+        $existing = $pdo->prepare("SELECT * FROM ai_shared_memory WHERE id = :id");
+        $existing->execute([':id' => $id]);
+        $row = $existing->fetch(PDO::FETCH_ASSOC);
+        if (!$row) { json_response(['error' => 'Not found'], 404); return; }
+
+        $p = request_json();
+        $content = array_key_exists('content', $p) ? trim((string)$p['content']) : trim((string)$row['content']);
+        if ($content === '') { json_response(['error' => 'content cannot be empty'], 422); return; }
+
+        $stmt = $pdo->prepare("UPDATE ai_shared_memory
+                               SET memory_key = :memory_key, content = :content, source = :source, source_ref = :source_ref, tags = :tags,
+                                   metadata_json = :metadata_json, updated_at = :updated_at
+                               WHERE id = :id");
+        $stmt->execute([
+            ':id' => $id,
+            ':memory_key' => array_key_exists('memory_key', $p) ? trim((string)$p['memory_key']) : $row['memory_key'],
+            ':content' => $content,
+            ':source' => array_key_exists('source', $p) ? trim((string)$p['source']) : $row['source'],
+            ':source_ref' => array_key_exists('source_ref', $p) ? trim((string)$p['source_ref']) : $row['source_ref'],
+            ':tags' => array_key_exists('tags', $p) ? trim((string)$p['tags']) : $row['tags'],
+            ':metadata_json' => array_key_exists('metadata', $p) ? json_encode($p['metadata'] ?? new stdClass(), JSON_UNESCAPED_SLASHES) : $row['metadata_json'],
+            ':updated_at' => gmdate(DATE_ATOM),
+        ]);
+
+        $items = $pdo->query("SELECT memory_key, content, source, tags, updated_at FROM ai_shared_memory ORDER BY updated_at DESC LIMIT 50")->fetchAll(PDO::FETCH_ASSOC);
+        $ai->setSharedMemory($items);
+
+        $fresh = $pdo->prepare("SELECT id, memory_key, content, source, source_ref, tags, metadata_json, created_at, updated_at FROM ai_shared_memory WHERE id = :id");
+        $fresh->execute([':id' => $id]);
+        json_response(['item' => $fresh->fetch(PDO::FETCH_ASSOC)]);
+    });
+
+    $router->delete('/api/ai/shared-memory/{id}', function (array $params) use ($pdo, $ai) {
+        $id = (int)($params['id'] ?? 0);
+        $pdo->prepare("DELETE FROM ai_shared_memory WHERE id = :id")->execute([':id' => $id]);
+        $items = $pdo->query("SELECT memory_key, content, source, tags, updated_at FROM ai_shared_memory ORDER BY updated_at DESC LIMIT 50")->fetchAll(PDO::FETCH_ASSOC);
+        $ai->setSharedMemory($items);
+        json_response(['ok' => true]);
+    });
+
+    /* ================================================================== */
     /*  BULK / MULTI / PROVIDER STATUS                                    */
     /* ================================================================== */
 

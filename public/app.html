@@ -934,6 +934,15 @@ Tip: Use the provider selector above to compare results from different AI models
                 <option value="">Default Model</option>
               </select>
             </div>
+            <div class="card mt-1 chat-memory-card">
+              <h4 class="mt-0">Shared AI Memory</h4>
+              <p class="text-muted text-small">These notes are global context used by all AI tools and chat.</p>
+              <input id="chatMemoryKey" placeholder="Memory key (e.g. offer)" />
+              <textarea id="chatMemoryContent" rows="3" placeholder="Add evergreen context from your team or WordPress..."></textarea>
+              <input id="chatMemoryTags" placeholder="tags (comma separated)" />
+              <button class="btn btn-sm btn-ai w-full" id="saveChatMemoryBtn"><span class="btn-ai-icon">&#9733;</span> Save Memory</button>
+              <div id="chatMemoryList" class="chat-memory-list mt-1"></div>
+            </div>
             <div id="chatConversationList" class="chat-conversations mt-1"></div>
           </div>
           <div class="chat-main">

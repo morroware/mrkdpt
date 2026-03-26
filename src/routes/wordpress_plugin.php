@@ -43,6 +43,7 @@ function register_wordpress_plugin_routes(
         $campaignCount = (int) $pdo->query('SELECT COUNT(*) FROM campaigns')->fetchColumn();
         $contactCount  = (int) $pdo->query('SELECT COUNT(*) FROM contacts')->fetchColumn();
         $draftCount    = (int) $pdo->query("SELECT COUNT(*) FROM posts WHERE status = 'draft'")->fetchColumn();
+        $memoryCount   = (int) $pdo->query('SELECT COUNT(*) FROM ai_shared_memory')->fetchColumn();
 
         // Recent posts (last 10)
         $recentStmt = $pdo->query('SELECT id, title, status, platform, created_at FROM posts ORDER BY created_at DESC LIMIT 10');
@@ -59,6 +60,7 @@ function register_wordpress_plugin_routes(
             'draft_posts'     => $draftCount,
             'campaigns'       => $campaignCount,
             'contacts'        => $contactCount,
+            'shared_memory_items' => $memoryCount,
             'avg_ai_score'    => $postMetrics['avg_score'],
             'recent_posts'    => $recentPosts,
             'campaigns_list'  => $campaignsList,
@@ -140,5 +142,72 @@ function register_wordpress_plugin_routes(
 
         $item = $posts->update($id, $update);
         json_response(['item' => $item]);
+    });
+
+    // -----------------------------------------------------------------
+    //  Shared Memory Sync (WordPress <-> Marketing Suite AI memory)
+    // -----------------------------------------------------------------
+    $router->get('/api/wordpress-plugin/memory', function () use ($pdo) {
+        $limit = max(1, min(200, (int)($_GET['limit'] ?? 50)));
+        $stmt = $pdo->prepare("SELECT id, memory_key, content, source, source_ref, tags, metadata_json, created_at, updated_at
+                               FROM ai_shared_memory ORDER BY updated_at DESC LIMIT :limit");
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        json_response(['items' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+    });
+
+    $router->post('/api/wordpress-plugin/memory', function () use ($pdo) {
+        $p = request_json();
+        $entries = $p['items'] ?? null;
+
+        if (is_array($entries)) {
+            $created = [];
+            foreach ($entries as $entry) {
+                if (!is_array($entry)) {
+                    continue;
+                }
+                $content = trim((string)($entry['content'] ?? ''));
+                if ($content === '') {
+                    continue;
+                }
+                $now = gmdate(DATE_ATOM);
+                $stmt = $pdo->prepare("INSERT INTO ai_shared_memory (memory_key, content, source, source_ref, tags, metadata_json, created_at, updated_at)
+                                       VALUES (:memory_key, :content, :source, :source_ref, :tags, :metadata_json, :created_at, :updated_at)");
+                $stmt->execute([
+                    ':memory_key' => trim((string)($entry['memory_key'] ?? '')),
+                    ':content' => $content,
+                    ':source' => trim((string)($entry['source'] ?? 'wordpress')),
+                    ':source_ref' => trim((string)($entry['source_ref'] ?? '')),
+                    ':tags' => trim((string)($entry['tags'] ?? '')),
+                    ':metadata_json' => json_encode($entry['metadata'] ?? new stdClass(), JSON_UNESCAPED_SLASHES),
+                    ':created_at' => $now,
+                    ':updated_at' => $now,
+                ]);
+                $created[] = (int)$pdo->lastInsertId();
+            }
+            json_response(['ok' => true, 'created_ids' => $created], 201);
+            return;
+        }
+
+        $content = trim((string)($p['content'] ?? ''));
+        if ($content === '') {
+            json_response(['error' => 'Missing: content (or items[])'], 422);
+            return;
+        }
+
+        $now = gmdate(DATE_ATOM);
+        $stmt = $pdo->prepare("INSERT INTO ai_shared_memory (memory_key, content, source, source_ref, tags, metadata_json, created_at, updated_at)
+                               VALUES (:memory_key, :content, :source, :source_ref, :tags, :metadata_json, :created_at, :updated_at)");
+        $stmt->execute([
+            ':memory_key' => trim((string)($p['memory_key'] ?? '')),
+            ':content' => $content,
+            ':source' => trim((string)($p['source'] ?? 'wordpress')),
+            ':source_ref' => trim((string)($p['source_ref'] ?? '')),
+            ':tags' => trim((string)($p['tags'] ?? '')),
+            ':metadata_json' => json_encode($p['metadata'] ?? new stdClass(), JSON_UNESCAPED_SLASHES),
+            ':created_at' => $now,
+            ':updated_at' => $now,
+        ]);
+        json_response(['item' => ['id' => (int)$pdo->lastInsertId()]], 201);
     });
 }

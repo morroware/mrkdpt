@@ -119,6 +119,37 @@ function security_headers(): void
 }
 
 /**
+ * Validate redirect URLs and optionally enforce same-host redirects.
+ */
+function sanitize_redirect_url(string $url, ?string $fallback = '/', bool $sameHostOnly = false): string
+{
+    $clean = str_replace(["\r", "\n"], '', trim($url));
+    if ($clean === '') {
+        return $fallback ?? '/';
+    }
+
+    $parsed = parse_url($clean);
+    if (!is_array($parsed) || empty($parsed['scheme']) || empty($parsed['host'])) {
+        return $fallback ?? '/';
+    }
+
+    $scheme = strtolower((string)$parsed['scheme']);
+    if (!in_array($scheme, ['http', 'https'], true)) {
+        return $fallback ?? '/';
+    }
+
+    if ($sameHostOnly) {
+        $appUrl = app_config('APP_URL', '');
+        $appHost = (string)(parse_url((string)$appUrl, PHP_URL_HOST) ?? '');
+        if ($appHost !== '' && !hash_equals(strtolower($appHost), strtolower((string)$parsed['host']))) {
+            return $fallback ?? '/';
+        }
+    }
+
+    return $clean;
+}
+
+/**
  * Serve an uploaded file from the data/uploads directory.
  */
 function serve_upload(string $path, string $dataDir): void

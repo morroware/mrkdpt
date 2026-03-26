@@ -32,6 +32,9 @@ final class Auth
 
     public function createUser(string $username, string $password, string $role = 'admin'): array
     {
+        if (!$this->isStrongPassword($password)) {
+            throw new InvalidArgumentException('Password must be at least 10 characters and include uppercase, lowercase, number, and symbol.');
+        }
         $token = bin2hex(random_bytes(32));
         $stmt = $this->pdo->prepare('INSERT INTO users(username, password_hash, role, api_token, created_at) VALUES(:u,:p,:r,:t,:c)');
         $stmt->execute([
@@ -42,6 +45,17 @@ final class Auth
             ':c' => gmdate(DATE_ATOM),
         ]);
         return $this->findUser((int)$this->pdo->lastInsertId());
+    }
+
+    public function isStrongPassword(string $password): bool
+    {
+        if (strlen($password) < 10) {
+            return false;
+        }
+        return (bool)preg_match('/[A-Z]/', $password)
+            && (bool)preg_match('/[a-z]/', $password)
+            && (bool)preg_match('/\d/', $password)
+            && (bool)preg_match('/[^a-zA-Z0-9]/', $password);
     }
 
     public function findUser(int $id): ?array

@@ -10,9 +10,9 @@ A catalog of identified issues, limitations, and improvement recommendations org
 
 **Description:** The `/api/track/click` endpoint accepts any HTTPS URL as the redirect destination. An attacker could craft tracking links that redirect to phishing pages.
 
-**Current behavior:** Only validates that the URL starts with `http://` or `https://`.
+**Status (March 26, 2026):** Resolved in code. Redirects are now sanitized and restricted to the `APP_URL` host for click-tracking links.
 
-**Recommendation:** Whitelist the application's own domain or maintain an allowlist of permitted redirect domains.
+**Remaining recommendation:** Expand to a multi-domain allowlist for multi-brand tenants if needed.
 
 ---
 
@@ -57,9 +57,11 @@ A catalog of identified issues, limitations, and improvement recommendations org
 
 **Location:** `public/cron.php`, `public/index.php`
 
-**Description:** The cron key is passed as a URL query parameter over potentially unencrypted connections. No automatic HTTPS redirect exists.
+**Description:** The cron key is passed as a URL query parameter over potentially unencrypted connections.
 
-**Recommendation:** Move the cron key to a request header. Add HTTPS redirect in `index.php` for production environments.
+**Status (March 26, 2026):** Partially resolved — optional `APP_FORCE_HTTPS=true` now enforces HTTPS redirects in `index.php`.
+
+**Recommendation:** Move the cron key to a request header to fully remove URL-based secret exposure.
 
 ---
 
@@ -67,9 +69,7 @@ A catalog of identified issues, limitations, and improvement recommendations org
 
 **Location:** `public/install.php`
 
-**Description:** Only an 8-character minimum length is enforced. No requirements for uppercase, numbers, or special characters.
-
-**Recommendation:** Add password complexity requirements or use a password strength estimator.
+**Status (March 26, 2026):** Resolved in installer and auth layer. Passwords now require 10+ characters with uppercase, lowercase, number, and symbol.
 
 ---
 
@@ -193,9 +193,7 @@ A catalog of identified issues, limitations, and improvement recommendations org
 
 **Location:** `src/Router.php`
 
-**Description:** When a route exists but the HTTP method doesn't match, the router returns 404 instead of 405 Method Not Allowed.
-
-**Recommendation:** Implement proper 405 responses with `Allow` header listing valid methods.
+**Status (March 26, 2026):** Resolved. Router now returns 405 with an `Allow` header when a path exists for other methods.
 
 ---
 
@@ -213,9 +211,7 @@ A catalog of identified issues, limitations, and improvement recommendations org
 
 **Location:** Project root
 
-**Description:** No `.env.example` template file is provided. Users must rely on the web installer or documentation for configuration reference.
-
-**Recommendation:** Create a `.env.example` with all configuration options and comments.
+**Status (March 26, 2026):** Resolved — `.env.example` added at project root.
 
 ---
 

@@ -21,6 +21,8 @@ export function currentPageName() {
 }
 
 function showPage(page) {
+  const resolvedPage = $('page-' + page) ? page : 'dashboard';
+
   // Hide all pages
   document.querySelectorAll('.content-area > .page').forEach((el) => {
     el.classList.remove('active');
@@ -28,7 +30,7 @@ function showPage(page) {
   });
 
   // Show target page
-  const target = $('page-' + page);
+  const target = $('page-' + resolvedPage);
   if (target) {
     target.classList.add('active');
     target.style.display = '';
@@ -36,20 +38,20 @@ function showPage(page) {
 
   // Update nav highlight
   document.querySelectorAll('.sidebar-nav a').forEach((a) => {
-    a.classList.toggle('active', a.dataset.page === page);
+    a.classList.toggle('active', a.dataset.page === resolvedPage);
   });
 
   // Update page title
   const titleEl = $('pageTitle');
   if (titleEl) {
-    const link = document.querySelector(`.sidebar-nav a[data-page="${page}"]`);
-    titleEl.textContent = link ? link.textContent.trim() : page;
+    const link = document.querySelector(`.sidebar-nav a[data-page="${resolvedPage}"]`);
+    titleEl.textContent = link ? link.textContent.trim() : resolvedPage;
   }
 
-  currentPage = page;
+  currentPage = resolvedPage;
 
   // Call the page module's refresh
-  const mod = pageModules[page];
+  const mod = pageModules[resolvedPage];
   if (mod && typeof mod.refresh === 'function') {
     mod.refresh();
   }

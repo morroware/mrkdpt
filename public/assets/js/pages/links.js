@@ -2,7 +2,7 @@
  * Links & UTM Builder page module.
  */
 import { api, getBasePath } from '../core/api.js';
-import { $, formatDate } from '../core/utils.js';
+import { $, escapeHtml, formatDate } from '../core/utils.js';
 import { toast } from '../core/toast.js';
 
 export function init() {
@@ -58,17 +58,19 @@ async function loadUtmLinks() {
     const tb = $('utmTable');
     if (!tb) return;
     tb.innerHTML = data.map(l => `<tr>
-      <td>${esc(l.campaign_name)}</td>
-      <td>${esc(l.utm_source)}</td>
-      <td>${esc(l.utm_medium)}</td>
-      <td class="text-small" style="max-width:300px;overflow:hidden;text-overflow:ellipsis">${esc(l.full_url)}</td>
+      <td>${escapeHtml(l.campaign_name)}</td>
+      <td>${escapeHtml(l.utm_source)}</td>
+      <td>${escapeHtml(l.utm_medium)}</td>
+      <td class="text-small" style="max-width:300px;overflow:hidden;text-overflow:ellipsis">${escapeHtml(l.full_url)}</td>
       <td><strong>${l.clicks}</strong></td>
       <td>
-        <button class="btn btn-sm btn-outline" onclick="window._copyText('${esc(l.full_url)}')">Copy</button>
+        <button class="btn btn-sm btn-outline" onclick="window._copyText('${escapeHtml(l.full_url)}')">Copy</button>
         <button class="btn btn-sm btn-danger" onclick="window._deleteUtm(${l.id})">Del</button>
       </td>
     </tr>`).join('');
-  } catch {}
+  } catch (err) {
+    toast('Failed to load UTM links: ' + err.message, 'error');
+  }
 }
 
 async function loadShortLinks() {
@@ -80,9 +82,9 @@ async function loadShortLinks() {
     tb.innerHTML = data.map(l => {
       const shortUrl = `${base}/s/${l.code}`;
       return `<tr>
-        <td><a href="${shortUrl}" target="_blank">${getBasePath()}/s/${esc(l.code)}</a></td>
-        <td>${esc(l.title)}</td>
-        <td class="text-small" style="max-width:250px;overflow:hidden;text-overflow:ellipsis">${esc(l.destination_url)}</td>
+        <td><a href="${shortUrl}" target="_blank">${getBasePath()}/s/${escapeHtml(l.code)}</a></td>
+        <td>${escapeHtml(l.title)}</td>
+        <td class="text-small" style="max-width:250px;overflow:hidden;text-overflow:ellipsis">${escapeHtml(l.destination_url)}</td>
         <td><strong>${l.clicks}</strong></td>
         <td class="text-muted text-small">${formatDate(l.created_at)}</td>
         <td>
@@ -91,7 +93,9 @@ async function loadShortLinks() {
         </td>
       </tr>`;
     }).join('');
-  } catch {}
+  } catch (err) {
+    toast('Failed to load short links: ' + err.message, 'error');
+  }
 }
 
 async function handleUtmCreate(e) {
@@ -150,4 +154,3 @@ window._deleteShortLink = async (id) => {
   try { await api(`/api/links/${id}`, { method: 'DELETE' }); toast('Deleted', 'success'); refresh(); } catch (e) { toast(e.message, 'error'); }
 };
 
-function esc(s) { return (s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;'); }

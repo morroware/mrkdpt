@@ -56,6 +56,19 @@ function register_autopilot_routes(Router $router, AiAutopilot $autopilot): void
         json_response(['approved' => true]);
     });
 
+    // Approve all pending assets
+    $router->post('/api/autopilot/assets/approve-all', function () use ($autopilot) {
+        $assets = $autopilot->getAssets('pending_review');
+        $count = 0;
+        foreach ($assets as $asset) {
+            $id = (int)($asset['id'] ?? 0);
+            if ($id > 0 && $autopilot->approveAsset($id)) {
+                $count++;
+            }
+        }
+        json_response(['approved' => $count]);
+    });
+
     // Reject an asset
     $router->post('/api/autopilot/assets/reject', function () use ($autopilot) {
         $data = request_json();
@@ -63,5 +76,18 @@ function register_autopilot_routes(Router $router, AiAutopilot $autopilot): void
         if (!$id) { json_response(['error' => 'Missing asset ID'], 422); return; }
         $autopilot->rejectAsset($id);
         json_response(['rejected' => true]);
+    });
+
+    // Reject all pending assets
+    $router->post('/api/autopilot/assets/reject-all', function () use ($autopilot) {
+        $assets = $autopilot->getAssets('pending_review');
+        $count = 0;
+        foreach ($assets as $asset) {
+            $id = (int)($asset['id'] ?? 0);
+            if ($id > 0 && $autopilot->rejectAsset($id)) {
+                $count++;
+            }
+        }
+        json_response(['rejected' => $count]);
     });
 }

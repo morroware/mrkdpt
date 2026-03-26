@@ -62,8 +62,9 @@ export async function refresh() {
       try {
         const { data } = await api(`/api/analytics/chart/posts_by_day?days=${days}`);
         renderChart(chartEl, data, 'Posts by Day');
-      } catch {
+      } catch (err) {
         chartEl.innerHTML = '<p class="text-muted">No chart data available</p>';
+        error('Unable to load chart data: ' + err.message);
       }
     }
   } catch (err) {

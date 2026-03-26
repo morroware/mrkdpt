@@ -252,6 +252,97 @@ final class AiService
         return $results;
     }
 
+    /**
+     * Multi-provider collaboration workflow.
+     *
+     * Providers work sequentially on shared context:
+     *  1) planner creates a first draft plan
+     *  2) reviewers critique and improve the draft
+     *  3) synthesizer creates a cohesive final plan
+     */
+    public function collaboratePlan(string $goal, array $providers = [], string $context = ''): array
+    {
+        $providers = $this->normalizeCollaborators($providers);
+        $sharedContext = trim($context) === '' ? 'No additional context provided.' : trim($context);
+        $steps = [];
+
+        $planner = $providers[0] ?? $this->provider;
+        $planningPrompt = "Goal:\n{$goal}\n\nBusiness context:\n{$sharedContext}\n\nCreate a structured marketing plan covering positioning, channel strategy, campaign concept, content themes, KPI targets, and a 30-day execution outline.";
+        $planDraft = $this->generateAdvanced(
+            $this->buildSystemPrompt('You are the planner model in a multi-model collaboration. Produce a concrete first draft plan in markdown with clear sections.'),
+            $planningPrompt,
+            $planner
+        );
+        $steps[] = ['role' => 'planner', 'provider' => $planner, 'output' => $planDraft];
+
+        $current = $planDraft;
+        foreach (array_slice($providers, 1, 2) as $reviewer) {
+            $reviewPrompt = "Goal:\n{$goal}\n\nShared business context:\n{$sharedContext}\n\nCurrent draft plan:\n{$current}\n\nReview this plan, improve weak areas, and return a better version.";
+            $improved = $this->generateAdvanced(
+                $this->buildSystemPrompt('You are a reviewer model in a multi-model collaboration. Improve clarity, channel fit, and execution readiness.'),
+                $reviewPrompt,
+                $reviewer
+            );
+            $steps[] = ['role' => 'reviewer', 'provider' => $reviewer, 'output' => $improved];
+            $current = $improved;
+        }
+
+        $synthProvider = $providers[count($providers) - 1] ?? $this->provider;
+        $history = [];
+        foreach ($steps as $i => $step) {
+            $n = $i + 1;
+            $history[] = "Step {$n} ({$step['role']} via {$step['provider']}):\n" . $step['output'];
+        }
+        $synthesisPrompt = "Goal:\n{$goal}\n\nBusiness context:\n{$sharedContext}\n\nCollaboration history:\n" . implode("\n\n", $history) . "\n\nSynthesize a single cohesive final plan with: executive summary, 30-day roadmap, cross-channel content matrix, and approval checkpoints.";
+        $final = $this->generateAdvanced(
+            $this->buildSystemPrompt('You are the synthesizer model. Merge all model outputs into one cohesive, implementation-ready plan.'),
+            $synthesisPrompt,
+            $synthProvider
+        );
+        $steps[] = ['role' => 'synthesizer', 'provider' => $synthProvider, 'output' => $final];
+
+        return [
+            'providers' => $providers,
+            'steps' => $steps,
+            'final_plan' => $final,
+        ];
+    }
+
+    private function normalizeCollaborators(array $providers): array
+    {
+        $allowed = ['openai', 'anthropic', 'gemini', 'deepseek', 'groq', 'mistral', 'openrouter', 'xai', 'together'];
+        $clean = [];
+        foreach ($providers as $provider) {
+            $p = strtolower(trim((string)$provider));
+            if ($p === '' || !in_array($p, $allowed, true)) continue;
+            if (!$this->providerHasKey($p)) continue;
+            if (!in_array($p, $clean, true)) $clean[] = $p;
+            if (count($clean) >= 4) break;
+        }
+
+        if (empty($clean)) {
+            $clean[] = $this->provider;
+        }
+
+        return $clean;
+    }
+
+    private function providerHasKey(string $provider): bool
+    {
+        return match ($provider) {
+            'openai' => !empty($this->config['openai_api_key']),
+            'anthropic' => !empty($this->config['anthropic_api_key']),
+            'gemini' => !empty($this->config['gemini_api_key']),
+            'deepseek' => !empty($this->config['deepseek_api_key']),
+            'groq' => !empty($this->config['groq_api_key']),
+            'mistral' => !empty($this->config['mistral_api_key']),
+            'openrouter' => !empty($this->config['openrouter_api_key']),
+            'xai' => !empty($this->config['xai_api_key']),
+            'together' => !empty($this->config['together_api_key']),
+            default => false,
+        };
+    }
+
     /* ------------------------------------------------------------------ */
     /*  Image Generation                                                  */
     /* ------------------------------------------------------------------ */

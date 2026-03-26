@@ -2,7 +2,7 @@
  * Landing Pages page module.
  */
 import { api, getBasePath } from '../core/api.js';
-import { $, formatDate } from '../core/utils.js';
+import { $, escapeHtml, formatDate } from '../core/utils.js';
 import { toast } from '../core/toast.js';
 
 export function init() {
@@ -72,8 +72,8 @@ async function loadPages() {
       const url = `${base}/p/${p.slug}`;
       const rate = p.views > 0 ? ((p.conversions / p.views) * 100).toFixed(1) : '0.0';
       return `<div class="card">
-        <div class="flex-between"><h3>${esc(p.title)}</h3><span class="badge badge-${p.status === 'published' ? 'success' : 'muted'}">${p.status}</span></div>
-        <p class="text-muted text-small mt-1">${esc(p.template)} template${p.campaign_name ? ' &middot; ' + esc(p.campaign_name) : ''}</p>
+        <div class="flex-between"><h3>${escapeHtml(p.title)}</h3><span class="badge badge-${p.status === 'published' ? 'success' : 'muted'}">${p.status}</span></div>
+        <p class="text-muted text-small mt-1">${escapeHtml(p.template)} template${p.campaign_name ? ' &middot; ' + escapeHtml(p.campaign_name) : ''}</p>
         <div class="row3 mt-1">
           <div><strong>${p.views}</strong><br><span class="text-muted text-small">Views</span></div>
           <div><strong>${p.conversions}</strong><br><span class="text-muted text-small">Conversions</span></div>
@@ -87,7 +87,9 @@ async function loadPages() {
         </div>
       </div>`;
     }).join('') || '<p class="text-muted">No landing pages yet</p>';
-  } catch {}
+  } catch (err) {
+    toast('Failed to load landing pages: ' + err.message, 'error');
+  }
 }
 
 async function loadFormOptions() {
@@ -95,8 +97,10 @@ async function loadFormOptions() {
     const forms = await api('/api/forms');
     const sel = $('lpFormSelect');
     if (!sel) return;
-    sel.innerHTML = '<option value="">None</option>' + forms.map(f => `<option value="${f.id}">${esc(f.name)}</option>`).join('');
-  } catch {}
+    sel.innerHTML = '<option value="">None</option>' + forms.map(f => `<option value="${f.id}">${escapeHtml(f.name)}</option>`).join('');
+  } catch (err) {
+    toast('Failed to load form options: ' + err.message, 'error');
+  }
 }
 
 async function loadCampaignOptions() {
@@ -105,8 +109,10 @@ async function loadCampaignOptions() {
     const camps = resp.items || resp;
     const sel = $('lpCampaignSelect');
     if (!sel) return;
-    sel.innerHTML = '<option value="">None</option>' + camps.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
-  } catch {}
+    sel.innerHTML = '<option value="">None</option>' + camps.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+  } catch (err) {
+    toast('Failed to load campaign options: ' + err.message, 'error');
+  }
 }
 
 async function handleCreate(e) {
@@ -140,4 +146,3 @@ window._copyText = window._copyText || ((text) => {
   navigator.clipboard.writeText(text).then(() => toast('Copied', 'info'));
 });
 
-function esc(s) { return (s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;'); }

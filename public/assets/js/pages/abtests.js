@@ -2,7 +2,7 @@
  * A/B Testing page module.
  */
 import { api } from '../core/api.js';
-import { $, formatDate } from '../core/utils.js';
+import { $, escapeHtml, formatDate } from '../core/utils.js';
 import { toast } from '../core/toast.js';
 
 export function init() {
@@ -64,18 +64,18 @@ async function loadTests() {
       const maxConv = Math.max(...variants.map(v => v.conversion_rate || 0), 1);
       return `<div class="card">
         <div class="flex-between">
-          <h3>${esc(t.name)}</h3>
+          <h3>${escapeHtml(t.name)}</h3>
           <span class="badge badge-${t.status === 'running' ? 'success' : t.status === 'completed' ? 'info' : 'muted'}">${t.status}</span>
         </div>
-        <p class="text-muted text-small">${esc(t.test_type)} test &middot; Metric: ${esc(t.metric)} &middot; Started ${formatDate(t.started_at)}${t.winner_variant ? ' &middot; Winner: ' + esc(t.winner_variant) : ''}</p>
-        ${t.notes ? `<p class="text-small mt-1">${esc(t.notes)}</p>` : ''}
+        <p class="text-muted text-small">${escapeHtml(t.test_type)} test &middot; Metric: ${escapeHtml(t.metric)} &middot; Started ${formatDate(t.started_at)}${t.winner_variant ? ' &middot; Winner: ' + escapeHtml(t.winner_variant) : ''}</p>
+        ${t.notes ? `<p class="text-small mt-1">${escapeHtml(t.notes)}</p>` : ''}
         <div class="mt-1">
           ${variants.map(v => {
             const pct = maxConv > 0 ? Math.round((v.conversion_rate / maxConv) * 100) : 0;
             return `<div class="mb-1">
-              <div class="flex-between"><span><strong>${esc(v.variant_name)}</strong></span><span>${v.conversions}/${v.impressions} (${v.conversion_rate}%)</span></div>
+              <div class="flex-between"><span><strong>${escapeHtml(v.variant_name)}</strong></span><span>${v.conversions}/${v.impressions} (${v.conversion_rate}%)</span></div>
               <div style="background:var(--bg-tertiary);border-radius:4px;height:8px;margin-top:4px"><div style="background:var(--accent);height:100%;border-radius:4px;width:${pct}%;transition:width .3s"></div></div>
-              ${v.content ? `<p class="text-small text-muted mt-1" style="max-height:60px;overflow:hidden">${esc(v.content)}</p>` : ''}
+              ${v.content ? `<p class="text-small text-muted mt-1" style="max-height:60px;overflow:hidden">${escapeHtml(v.content)}</p>` : ''}
               <div class="btn-group mt-1">
                 <button class="btn btn-sm btn-outline" onclick="window._abImpression(${v.id})">+Impression</button>
                 <button class="btn btn-sm btn-success" onclick="window._abConversion(${v.id})">+Conversion</button>
@@ -90,7 +90,9 @@ async function loadTests() {
         </div>
       </div>`;
     }).join('') || '<p class="text-muted">No A/B tests yet</p>';
-  } catch {}
+  } catch (err) {
+    toast('Failed to load A/B tests: ' + err.message, 'error');
+  }
 }
 
 async function handleCreate(e) {
@@ -116,11 +118,22 @@ async function handleCreate(e) {
 }
 
 window._abImpression = async (variantId) => {
-  try { await api(`/api/ab-tests/variants/${variantId}/impression`, { method: 'POST' }); refresh(); } catch {}
+  try {
+    await api(`/api/ab-tests/variants/${variantId}/impression`, { method: 'POST' });
+    refresh();
+  } catch (err) {
+    toast('Failed to record impression: ' + err.message, 'error');
+  }
 };
 
 window._abConversion = async (variantId) => {
-  try { await api(`/api/ab-tests/variants/${variantId}/conversion`, { method: 'POST' }); toast('Conversion recorded', 'success'); refresh(); } catch {}
+  try {
+    await api(`/api/ab-tests/variants/${variantId}/conversion`, { method: 'POST' });
+    toast('Conversion recorded', 'success');
+    refresh();
+  } catch (err) {
+    toast('Failed to record conversion: ' + err.message, 'error');
+  }
 };
 
 window._completeTest = async (id) => {
@@ -148,4 +161,3 @@ window._aiAnalyzeTest = async (id) => {
 
 // AI Analyze button - wired in init() via event delegation
 
-function esc(s) { return (s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }

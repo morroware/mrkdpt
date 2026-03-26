@@ -2,7 +2,7 @@
  * Automations page module.
  */
 import { api } from '../core/api.js';
-import { $, formatDate } from '../core/utils.js';
+import { $, escapeHtml, formatDate } from '../core/utils.js';
 import { toast } from '../core/toast.js';
 
 export function init() {
@@ -19,9 +19,9 @@ async function loadAutomations() {
     const tb = $('automationTable');
     if (!tb) return;
     tb.innerHTML = data.map(a => `<tr>
-      <td><strong>${esc(a.name)}</strong></td>
-      <td><span class="badge badge-info">${esc(a.trigger_event)}</span></td>
-      <td><span class="badge">${esc(a.action_type)}</span></td>
+      <td><strong>${escapeHtml(a.name)}</strong></td>
+      <td><span class="badge badge-info">${escapeHtml(a.trigger_event)}</span></td>
+      <td><span class="badge">${escapeHtml(a.action_type)}</span></td>
       <td>${a.run_count}</td>
       <td class="text-muted text-small">${a.last_run ? formatDate(a.last_run) : 'Never'}</td>
       <td>
@@ -31,7 +31,9 @@ async function loadAutomations() {
       </td>
       <td><button class="btn btn-sm btn-danger" onclick="window._deleteAutomation(${a.id})">Del</button></td>
     </tr>`).join('') || '<tr><td colspan="7" class="text-muted">No automation rules yet</td></tr>';
-  } catch {}
+  } catch (err) {
+    toast('Failed to load automations: ' + err.message, 'error');
+  }
 }
 
 async function handleCreate(e) {
@@ -73,4 +75,3 @@ window._deleteAutomation = async (id) => {
   try { await api(`/api/automations/${id}`, { method: 'DELETE' }); toast('Deleted', 'success'); refresh(); } catch (e) { toast(e.message, 'error'); }
 };
 
-function esc(s) { return (s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }

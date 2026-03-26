@@ -145,7 +145,8 @@ async function refreshEmailTemplates() {
           const modal = $('emailTplModal');
           const body = $('emailTplModalBody');
           if (modal && body) {
-            body.innerHTML = `<iframe srcdoc="${(tpl.html_template || '<p>No HTML content</p>').replace(/"/g, '&quot;')}" style="width:100%;min-height:400px;border:none;border-radius:8px;background:#fff" sandbox="allow-same-origin"></iframe>`;
+            const previewHtml = escapeHtml(tpl.html_template || '<p>No HTML content</p>');
+            body.innerHTML = `<iframe srcdoc="${previewHtml}" style="width:100%;min-height:400px;border:none;border-radius:8px;background:#fff" sandbox=""></iframe>`;
             modal.classList.add('visible');
           }
         } catch (e) { error(e.message); }

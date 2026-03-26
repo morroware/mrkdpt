@@ -321,9 +321,70 @@
         <div class="card ai-assets-card mb-2" id="aiAssetsCard" style="display:none">
           <div class="flex-between">
             <h3><span class="btn-ai-icon">&#9733;</span> AI Generated Assets — Review</h3>
-            <span class="badge" id="assetCount">0</span>
+            <div class="flex gap-1">
+              <button class="btn btn-sm btn-outline" id="approveAllAssets">Approve All</button>
+              <button class="btn btn-sm btn-ghost" id="rejectAllAssets">Dismiss All</button>
+              <span class="badge" id="assetCount">0</span>
+            </div>
           </div>
           <div id="aiAssetsList" class="ai-assets-list"></div>
+        </div>
+
+        <div class="card mb-2">
+          <div class="flex-between">
+            <h3><span class="btn-ai-icon">&#9733;</span> Autonomous Campaign Builder</h3>
+            <button class="btn btn-sm btn-ai" id="autopilotWeeklyRun"><span class="btn-ai-icon">&#9733;</span> Build Weekly Plan</button>
+          </div>
+          <p class="text-small text-muted">Generate a campaign strategy, calendar, draft content, and campaign record with minimal input.</p>
+          <form id="autopilotCampaignForm" class="stack">
+            <div class="row3">
+              <div>
+                <label>Objective</label>
+                <input class="input" name="objective" placeholder="e.g. lead generation" required />
+              </div>
+              <div>
+                <label>Audience</label>
+                <input class="input" name="audience" placeholder="e.g. SaaS founders" />
+              </div>
+              <div>
+                <label>Primary Channel</label>
+                <select class="input" name="channel">
+                  <option value="multi-channel">multi-channel</option>
+                  <option>linkedin</option>
+                  <option>instagram</option>
+                  <option>facebook</option>
+                  <option>twitter</option>
+                  <option>email</option>
+                </select>
+              </div>
+            </div>
+            <div class="row2">
+              <div>
+                <label>Core Topic</label>
+                <input class="input" name="topic" placeholder="e.g. AI marketing automation" />
+              </div>
+              <div>
+                <label>Duration (days)</label>
+                <input class="input" name="duration_days" type="number" min="7" max="90" value="14" />
+              </div>
+            </div>
+            <div class="row2">
+              <div>
+                <label>Collaborating AI providers</label>
+                <input class="input" name="collab_providers" placeholder="openai, anthropic, gemini" />
+              </div>
+              <div class="flex-end">
+                <button class="btn btn-outline" type="button" id="generateCollaborativePlan">Generate Multi-Model Plan</button>
+              </div>
+            </div>
+            <div id="collabPlanWrap" class="hidden">
+              <label>Collaborative plan draft (shared across providers)</label>
+              <textarea id="collabPlanOutput" class="input" rows="9" placeholder="Collaborative plan output will appear here"></textarea>
+            </div>
+            <div class="flex-end">
+              <button class="btn btn-ai" type="submit" id="launchCampaignAutopilot"><span class="btn-ai-icon">&#9733;</span> Launch Campaign Autopilot</button>
+            </div>
+          </form>
         </div>
 
         <!-- AI Quick Actions -->

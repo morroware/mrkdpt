@@ -91,36 +91,48 @@ export async function refresh() {
 
 async function loadAutopilotSummary() {
   try {
-    const { task } = await api('/api/autopilot/status?type=onboarding');
+    const [onboardingRes, campaignRes] = await Promise.all([
+      api('/api/autopilot/status?type=onboarding'),
+      api('/api/autopilot/status?type=campaign_autopilot'),
+    ]);
+    const onboardingTask = onboardingRes?.task || null;
+    const campaignTask = campaignRes?.task || null;
+    const task = pickLatestTask(onboardingTask, campaignTask);
     const card = $('autopilotSummary');
     const content = $('autopilotSummaryContent');
     if (!card || !content || !task) return;
 
-    if (task.status === 'completed') {
-      const results = task.results || {};
-      const steps = task.steps_config || [];
-      const labels = task.step_labels || [];
-      const errors = (task.error || '').trim();
+    const results = task.results || {};
+    const steps = task.steps_config || [];
+    const labels = task.step_labels || [];
+    const errors = (task.error || '').trim();
+    const completeCount = steps.filter((key) => !!(results[key] && results[key].length > 0)).length;
+    const stepCurrent = Number.parseInt(task.step_current || '0', 10);
+    const progress = Math.min(100, Math.round((stepCurrent / Math.max(steps.length, 1)) * 100));
+    const taskLabel = task.task_type === 'campaign_autopilot' ? 'Campaign Autopilot' : 'Onboarding Autopilot';
 
-      let html = '<div class="autopilot-results">';
-      html += `<p class="text-small text-muted">Completed ${steps.length} steps</p>`;
-      html += '<div class="autopilot-steps-summary">';
-      for (let i = 0; i < steps.length; i++) {
-        const key = steps[i];
-        const hasResult = results[key] && results[key].length > 0;
-        const icon = hasResult ? '&#10003;' : '&#10007;';
-        const cls = hasResult ? 'step-ok' : 'step-warn';
-        html += `<span class="autopilot-step-badge ${cls}" title="${escapeHtml(labels[i] || key)}">${icon} ${escapeHtml(labels[i] || key)}</span>`;
-      }
-      html += '</div>';
-      if (errors) {
-        html += `<details class="mt-1"><summary class="text-small text-muted">Some steps had issues</summary><pre class="text-small">${escapeHtml(errors)}</pre></details>`;
-      }
-      html += '</div>';
-
-      content.innerHTML = html;
-      card.style.display = '';
+    let html = '<div class="autopilot-results">';
+    html += `<p class="text-small text-muted"><strong>${escapeHtml(taskLabel)}</strong> · Status: <span class="badge">${escapeHtml(task.status || 'unknown')}</span></p>`;
+    html += `<p class="text-small text-muted">${completeCount}/${steps.length} steps completed</p>`;
+    if ((task.status || '').toLowerCase() === 'running') {
+      html += `<div class="progress"><div class="progress-bar" style="width:${progress}%"></div></div>`;
     }
+    html += '<div class="autopilot-steps-summary">';
+    for (let i = 0; i < steps.length; i++) {
+      const key = steps[i];
+      const hasResult = results[key] && results[key].length > 0;
+      const icon = hasResult ? '&#10003;' : '&#10007;';
+      const cls = hasResult ? 'step-ok' : 'step-warn';
+      html += `<span class="autopilot-step-badge ${cls}" title="${escapeHtml(labels[i] || key)}">${icon} ${escapeHtml(labels[i] || key)}</span>`;
+    }
+    html += '</div>';
+    if (errors) {
+      html += `<details class="mt-1"><summary class="text-small text-muted">Some steps had issues</summary><pre class="text-small">${escapeHtml(errors)}</pre></details>`;
+    }
+    html += '</div>';
+
+    content.innerHTML = html;
+    card.style.display = '';
   } catch (_) {
     // No autopilot data yet — that's fine
   }
@@ -198,6 +210,15 @@ async function loadAssets() {
   } catch (_) {
     // No assets yet
   }
+}
+
+function pickLatestTask(a, b) {
+  if (!a && !b) return null;
+  if (a && !b) return a;
+  if (!a && b) return b;
+  const aTime = Date.parse(a.updated_at || a.created_at || 0);
+  const bTime = Date.parse(b.updated_at || b.created_at || 0);
+  return aTime >= bTime ? a : b;
 }
 
 function updateAssetCount(delta) {
@@ -318,4 +339,140 @@ export function init() {
       if (card) card.style.display = 'none';
     });
   }
+
+  const campaignForm = $('autopilotCampaignForm');
+  if (campaignForm) {
+    $('generateCollaborativePlan')?.addEventListener('click', async () => {
+      const btn = $('generateCollaborativePlan');
+      const outputWrap = $('collabPlanWrap');
+      const output = $('collabPlanOutput');
+      if (!btn || !output) return;
+
+      const payload = Object.fromEntries(new FormData(campaignForm).entries());
+      const providers = String(payload.collab_providers || '')
+        .split(',')
+        .map((p) => p.trim())
+        .filter(Boolean);
+      const goal = payload.objective || '';
+      if (!goal) {
+        error('Enter an objective first.');
+        return;
+      }
+
+      btn.classList.add('loading');
+      btn.setAttribute('disabled', 'disabled');
+      try {
+        const context = buildCampaignContext(payload);
+        const { item } = await api('/api/ai/collaborate', {
+          method: 'POST',
+          body: JSON.stringify({ goal, context, providers }),
+        });
+        output.value = item?.final_plan || '';
+        outputWrap?.classList.remove('hidden');
+        success('Multi-model plan generated.');
+      } catch (err) {
+        error('Collaborative planning failed: ' + err.message);
+      } finally {
+        btn.classList.remove('loading');
+        btn.removeAttribute('disabled');
+      }
+    });
+
+    campaignForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const submitBtn = $('launchCampaignAutopilot');
+      const payload = Object.fromEntries(new FormData(campaignForm).entries());
+      payload.duration_days = Number.parseInt(payload.duration_days || '14', 10);
+
+      if (submitBtn) {
+        submitBtn.classList.add('loading');
+        submitBtn.disabled = true;
+      }
+
+      try {
+        const { item } = await api('/api/autopilot/campaign', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+        success('Campaign autopilot launched successfully.');
+        await pollAutopilotTask(item?.task_id);
+        refresh();
+      } catch (err) {
+        error('Failed to launch campaign autopilot: ' + err.message);
+      } finally {
+        if (submitBtn) {
+          submitBtn.classList.remove('loading');
+          submitBtn.disabled = false;
+        }
+      }
+    });
+  }
+
+  const weeklyBtn = $('autopilotWeeklyRun');
+  if (weeklyBtn) {
+    weeklyBtn.addEventListener('click', async () => {
+      weeklyBtn.classList.add('loading');
+      weeklyBtn.disabled = true;
+      try {
+        await api('/api/autopilot/weekly', { method: 'POST', body: '{}' });
+        success('Weekly AI plan generated.');
+        refresh();
+      } catch (err) {
+        error('Failed to build weekly plan: ' + err.message);
+      } finally {
+        weeklyBtn.classList.remove('loading');
+        weeklyBtn.disabled = false;
+      }
+    });
+  }
+
+  $('approveAllAssets')?.addEventListener('click', async () => {
+    try {
+      const { approved } = await api('/api/autopilot/assets/approve-all', { method: 'POST', body: '{}' });
+      success(`Approved ${approved || 0} assets`);
+      loadAssets();
+    } catch (err) {
+      error('Bulk approval failed: ' + err.message);
+    }
+  });
+
+  $('rejectAllAssets')?.addEventListener('click', async () => {
+    try {
+      const { rejected } = await api('/api/autopilot/assets/reject-all', { method: 'POST', body: '{}' });
+      success(`Dismissed ${rejected || 0} assets`);
+      loadAssets();
+    } catch (err) {
+      error('Bulk dismiss failed: ' + err.message);
+    }
+  });
+}
+
+async function pollAutopilotTask(taskId) {
+  if (!taskId) return;
+  const timeoutMs = 120000;
+  const start = Date.now();
+
+  while (Date.now() - start < timeoutMs) {
+    await new Promise((resolve) => setTimeout(resolve, 2500));
+    try {
+      const { task } = await api(`/api/autopilot/status?id=${taskId}`);
+      if (!task) return;
+      if ((task.status || '').toLowerCase() === 'completed') {
+        success('Autopilot run completed.');
+        return;
+      }
+    } catch {
+      return;
+    }
+  }
+  success('Autopilot is still running in the background. Progress will update automatically.');
+}
+
+function buildCampaignContext(payload) {
+  return [
+    `Audience: ${payload.audience || 'general audience'}`,
+    `Primary channel: ${payload.channel || 'multi-channel'}`,
+    `Topic focus: ${payload.topic || 'general marketing growth'}`,
+    `Duration days: ${payload.duration_days || '14'}`,
+  ].join('\n');
 }

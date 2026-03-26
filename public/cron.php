@@ -4,7 +4,7 @@
  * Cron endpoint for automated task execution.
  *
  * Call via cPanel cron or system crontab:
- *   */5 * * * * curl -s "https://yourdomain.com/cron.php?key=YOUR_CRON_KEY"
+ *   Every 5 minutes: curl -s "https://yourdomain.com/cron.php?key=YOUR_CRON_KEY"
  *
  * Or via CLI:
  *   php /path/to/public/cron.php

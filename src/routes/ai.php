@@ -522,6 +522,16 @@ function register_ai_routes(
         json_response(['item' => ['results' => $results]]);
     });
 
+    $router->post('/api/ai/collaborate', function () use ($ai) {
+        $data = request_json();
+        $goal = trim((string)($data['goal'] ?? ''));
+        if ($goal === '') { json_response(['error' => 'Missing: goal'], 422); return; }
+        $providers = is_array($data['providers'] ?? null) ? $data['providers'] : [];
+        $context = (string)($data['context'] ?? '');
+        $item = $ai->collaboratePlan($goal, $providers, $context);
+        json_response(['item' => $item]);
+    });
+
     $router->get('/api/ai/providers', function () use ($ai) {
         json_response($ai->providerStatus());
     });

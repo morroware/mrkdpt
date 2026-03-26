@@ -2,7 +2,7 @@
  * Form Builder page module.
  */
 import { api, getBasePath } from '../core/api.js';
-import { $, formatDate } from '../core/utils.js';
+import { $, escapeHtml, formatDate } from '../core/utils.js';
 import { toast } from '../core/toast.js';
 
 export function init() {
@@ -24,8 +24,8 @@ async function loadForms() {
       const embedUrl = `${base}/f/${f.slug}`;
       const fieldCount = (JSON.parse(f.fields || '[]')).length;
       return `<div class="card">
-        <div class="flex-between"><h3>${esc(f.name)}</h3><span class="badge badge-${f.status === 'active' ? 'success' : 'muted'}">${f.status}</span></div>
-        <p class="text-muted text-small mt-1">${fieldCount} fields &middot; ${f.submissions} submissions &middot; ${getBasePath()}/f/${esc(f.slug)}</p>
+        <div class="flex-between"><h3>${escapeHtml(f.name)}</h3><span class="badge badge-${f.status === 'active' ? 'success' : 'muted'}">${f.status}</span></div>
+        <p class="text-muted text-small mt-1">${fieldCount} fields &middot; ${f.submissions} submissions &middot; ${getBasePath()}/f/${escapeHtml(f.slug)}</p>
         <div class="btn-group mt-1">
           <a href="${embedUrl}" target="_blank" class="btn btn-sm btn-outline">Preview</a>
           <button class="btn btn-sm btn-outline" onclick="window._copyFormEmbed(${f.id})">Embed Code</button>
@@ -33,7 +33,9 @@ async function loadForms() {
         </div>
       </div>`;
     }).join('') || '<p class="text-muted">No forms yet</p>';
-  } catch {}
+  } catch (err) {
+    toast('Failed to load forms: ' + err.message, 'error');
+  }
 }
 
 async function loadListOptions() {
@@ -42,8 +44,10 @@ async function loadListOptions() {
     const lists = resp.items || resp;
     const sel = $('formListSelect');
     if (!sel) return;
-    sel.innerHTML = '<option value="">None</option>' + lists.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
-  } catch {}
+    sel.innerHTML = '<option value="">None</option>' + lists.map(l => `<option value="${l.id}">${escapeHtml(l.name)}</option>`).join('');
+  } catch (err) {
+    toast('Failed to load email lists: ' + err.message, 'error');
+  }
 }
 
 async function loadSubmissionFormOptions() {
@@ -51,8 +55,10 @@ async function loadSubmissionFormOptions() {
     const forms = await api('/api/forms');
     const sel = $('submissionFormSelect');
     if (!sel) return;
-    sel.innerHTML = forms.map(f => `<option value="${f.id}">${esc(f.name)} (${f.submissions})</option>`).join('');
-  } catch {}
+    sel.innerHTML = forms.map(f => `<option value="${f.id}">${escapeHtml(f.name)} (${f.submissions})</option>`).join('');
+  } catch (err) {
+    toast('Failed to load form options: ' + err.message, 'error');
+  }
 }
 
 async function handleCreate(e) {
@@ -85,12 +91,12 @@ async function loadSubmissions() {
     if (!tb) return;
     tb.innerHTML = data.map(s => {
       const d = JSON.parse(s.data_json || '{}');
-      const fields = Object.entries(d).map(([k, v]) => `<strong>${esc(k)}:</strong> ${esc(String(v))}`).join(', ');
+      const fields = Object.entries(d).map(([k, v]) => `<strong>${escapeHtml(k)}:</strong> ${escapeHtml(String(v))}`).join(', ');
       return `<tr>
         <td class="text-small">${formatDate(s.submitted_at)}</td>
-        <td>${s.contact_email ? esc(s.contact_email) : '-'}</td>
+        <td>${s.contact_email ? escapeHtml(s.contact_email) : '-'}</td>
         <td class="text-small">${fields}</td>
-        <td class="text-small text-muted">${esc(s.page_url)}</td>
+        <td class="text-small text-muted">${escapeHtml(s.page_url)}</td>
       </tr>`;
     }).join('') || '<tr><td colspan="4" class="text-muted">No submissions</td></tr>';
   } catch (err) {
@@ -113,4 +119,3 @@ window._deleteForm = async (id) => {
   try { await api(`/api/forms/${id}`, { method: 'DELETE' }); toast('Deleted', 'success'); refresh(); } catch (e) { toast(e.message, 'error'); }
 };
 
-function esc(s) { return (s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }

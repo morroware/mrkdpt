@@ -2,7 +2,7 @@
  * Contacts / Mini CRM page module.
  */
 import { api } from '../core/api.js';
-import { $, formatDate } from '../core/utils.js';
+import { $, escapeHtml, formatDate } from '../core/utils.js';
 import { toast } from '../core/toast.js';
 
 export function init() {
@@ -21,6 +21,23 @@ export function init() {
 
   $('contactStageFilter')?.addEventListener('change', refresh);
   $('contactSearch')?.addEventListener('input', debounce(refresh, 300));
+
+  $('contactTable')?.addEventListener('click', async (event) => {
+    const actionBtn = event.target.closest('[data-contact-action]');
+    if (!actionBtn) return;
+
+    const id = Number.parseInt(actionBtn.dataset.contactId || '', 10);
+    if (!id) return;
+
+    if (actionBtn.dataset.contactAction === 'view') {
+      await viewContact(id);
+      return;
+    }
+
+    if (actionBtn.dataset.contactAction === 'delete') {
+      await deleteContact(id);
+    }
+  });
 }
 
 export async function refresh() {
@@ -41,7 +58,9 @@ async function loadMetrics() {
       metric('Customers', m.customers || 0),
       metric('Avg Score', Math.round(m.avg_score || 0)),
     ].join('');
-  } catch {}
+  } catch (err) {
+    toast('Failed to load contact metrics: ' + err.message, 'error');
+  }
 }
 
 async function loadContacts() {
@@ -55,16 +74,21 @@ async function loadContacts() {
     const tb = $('contactTable');
     if (!tb) return;
     tb.innerHTML = data.map(c => `<tr>
-      <td>${esc(c.email)}</td>
-      <td>${esc(c.first_name)} ${esc(c.last_name)}</td>
-      <td>${esc(c.company)}</td>
-      <td><span class="badge badge-${stageBadge(c.stage)}">${esc(c.stage)}</span></td>
+      <td>${escapeHtml(c.email)}</td>
+      <td>${escapeHtml(c.first_name)} ${escapeHtml(c.last_name)}</td>
+      <td>${escapeHtml(c.company)}</td>
+      <td><span class="badge badge-${stageBadge(c.stage)}">${escapeHtml(c.stage)}</span></td>
       <td>${c.score}</td>
-      <td>${esc(c.source)}</td>
+      <td>${escapeHtml(c.source)}</td>
       <td class="text-muted text-small">${c.last_activity ? formatDate(c.last_activity) : '-'}</td>
-      <td><button class="btn btn-sm btn-outline" onclick="window._viewContact(${c.id})">View</button> <button class="btn btn-sm btn-danger" onclick="window._deleteContact(${c.id})">Del</button></td>
+      <td>
+        <button class="btn btn-sm btn-outline" data-contact-action="view" data-contact-id="${c.id}">View</button>
+        <button class="btn btn-sm btn-danger" data-contact-action="delete" data-contact-id="${c.id}">Del</button>
+      </td>
     </tr>`).join('');
-  } catch {}
+  } catch (err) {
+    toast('Failed to load contacts: ' + err.message, 'error');
+  }
 }
 
 async function handleCreate(e) {
@@ -82,26 +106,26 @@ async function handleCreate(e) {
   }
 }
 
-window._viewContact = async (id) => {
+async function viewContact(id) {
   try {
     const c = await api(`/api/contacts/${id}`);
     $('contactModalTitle').textContent = `${c.first_name || ''} ${c.last_name || ''} - ${c.email}`;
     const body = $('contactModalBody');
     body.innerHTML = `
-      <div class="row2 mb-2"><div><strong>Company:</strong> ${esc(c.company)}</div><div><strong>Phone:</strong> ${esc(c.phone)}</div></div>
-      <div class="row3 mb-2"><div><strong>Stage:</strong> <span class="badge badge-${stageBadge(c.stage)}">${esc(c.stage)}</span></div><div><strong>Score:</strong> ${c.score}</div><div><strong>Source:</strong> ${esc(c.source)}</div></div>
-      <div class="mb-2"><strong>Tags:</strong> ${esc(c.tags)}</div>
-      <div class="mb-2"><strong>Notes:</strong> ${esc(c.notes)}</div>
+      <div class="row2 mb-2"><div><strong>Company:</strong> ${escapeHtml(c.company)}</div><div><strong>Phone:</strong> ${escapeHtml(c.phone)}</div></div>
+      <div class="row3 mb-2"><div><strong>Stage:</strong> <span class="badge badge-${stageBadge(c.stage)}">${escapeHtml(c.stage)}</span></div><div><strong>Score:</strong> ${c.score}</div><div><strong>Source:</strong> ${escapeHtml(c.source)}</div></div>
+      <div class="mb-2"><strong>Tags:</strong> ${escapeHtml(c.tags)}</div>
+      <div class="mb-2"><strong>Notes:</strong> ${escapeHtml(c.notes)}</div>
       <h4>Activity Log</h4>
-      <div class="mt-1">${(c.activities || []).map(a => `<div class="list-item"><span class="badge badge-info">${esc(a.activity_type)}</span> ${esc(a.description)} <span class="text-muted text-small">${formatDate(a.created_at)}</span></div>`).join('') || '<p class="text-muted">No activity yet</p>'}</div>
+      <div class="mt-1">${(c.activities || []).map(a => `<div class="list-item"><span class="badge badge-info">${escapeHtml(a.activity_type)}</span> ${escapeHtml(a.description)} <span class="text-muted text-small">${formatDate(a.created_at)}</span></div>`).join('') || '<p class="text-muted">No activity yet</p>'}</div>
     `;
     $('contactModal')?.classList.add('open');
   } catch (err) {
     toast(err.message, 'error');
   }
-};
+}
 
-window._deleteContact = async (id) => {
+async function deleteContact(id) {
   if (!confirm('Delete this contact?')) return;
   try {
     await api(`/api/contacts/${id}`, { method: 'DELETE' });
@@ -110,7 +134,7 @@ window._deleteContact = async (id) => {
   } catch (err) {
     toast(err.message, 'error');
   }
-};
+}
 
 function metric(label, value) {
   return `<div class="metric-card"><div class="metric-value">${value}</div><div class="metric-label">${label}</div></div>`;
@@ -120,8 +144,6 @@ function stageBadge(stage) {
   const map = { lead: 'muted', mql: 'info', sql: 'warning', opportunity: 'success', customer: 'success' };
   return map[stage] || 'muted';
 }
-
-function esc(s) { return (s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
 function debounce(fn, ms) {
   let t;

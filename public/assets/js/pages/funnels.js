@@ -2,7 +2,7 @@
  * Funnels / Pipeline page module.
  */
 import { api } from '../core/api.js';
-import { $, formatDate } from '../core/utils.js';
+import { $, escapeHtml, formatDate } from '../core/utils.js';
 import { toast } from '../core/toast.js';
 
 export function init() {
@@ -19,8 +19,10 @@ async function loadCampaignOptions() {
     const camps = resp.items || resp;
     const sel = $('funnelCampaignSelect');
     if (!sel) return;
-    sel.innerHTML = '<option value="">None</option>' + camps.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
-  } catch {}
+    sel.innerHTML = '<option value="">None</option>' + camps.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+  } catch (err) {
+    toast('Failed to load campaigns: ' + err.message, 'error');
+  }
 }
 
 async function loadFunnels() {
@@ -32,14 +34,14 @@ async function loadFunnels() {
       const stages = f.stages || [];
       const maxVal = Math.max(...stages.map(s => Math.max(s.target_count, s.actual_count)), 1);
       return `<div class="card">
-        <div class="flex-between"><h3>${esc(f.name)}</h3>${f.campaign_name ? `<span class="badge">${esc(f.campaign_name)}</span>` : ''}</div>
-        ${f.description ? `<p class="text-muted text-small mt-1">${esc(f.description)}</p>` : ''}
+        <div class="flex-between"><h3>${escapeHtml(f.name)}</h3>${f.campaign_name ? `<span class="badge">${escapeHtml(f.campaign_name)}</span>` : ''}</div>
+        ${f.description ? `<p class="text-muted text-small mt-1">${escapeHtml(f.description)}</p>` : ''}
         <div class="funnel-viz mt-1">
           ${stages.map((s, i) => {
             const widthPct = maxVal > 0 ? Math.max(20, Math.round((s.actual_count / maxVal) * 100)) : 100 - i * 15;
             const rate = s.target_count > 0 ? ((s.actual_count / s.target_count) * 100).toFixed(1) : '0.0';
             return `<div class="funnel-stage" style="margin-bottom:4px">
-              <div class="flex-between text-small"><span><strong>${esc(s.name)}</strong></span><span>${s.actual_count} / ${s.target_count} (${rate}%)</span></div>
+              <div class="flex-between text-small"><span><strong>${escapeHtml(s.name)}</strong></span><span>${s.actual_count} / ${s.target_count} (${rate}%)</span></div>
               <div style="background:var(--bg-tertiary);border-radius:6px;height:28px;margin-top:3px;overflow:hidden;position:relative">
                 <div style="background:${s.color || 'var(--accent)'};height:100%;border-radius:6px;width:${widthPct}%;transition:width .4s;display:flex;align-items:center;justify-content:center;min-width:40px">
                   <span style="color:#fff;font-size:11px;font-weight:600">${s.actual_count}</span>
@@ -55,7 +57,9 @@ async function loadFunnels() {
         </div>
       </div>`;
     }).join('') || '<p class="text-muted">No funnels yet. Create one to visualize your marketing pipeline.</p>';
-  } catch {}
+  } catch (err) {
+    toast('Failed to load funnels: ' + err.message, 'error');
+  }
 }
 
 async function handleCreate(e) {
@@ -128,4 +132,3 @@ window._aiFunnelAdvisor = async (id) => {
   }
 };
 
-function esc(s) { return (s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }

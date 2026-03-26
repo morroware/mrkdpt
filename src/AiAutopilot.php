@@ -211,6 +211,13 @@ final class AiAutopilot
             $campaignId = $campaign['id'] ?? 0;
             $context['campaign_id'] = $campaignId;
             $this->saveResult($taskId, 'campaign', "Campaign '{$campaignName}' created (ID: {$campaignId})");
+            // Link autopilot posts to this campaign
+            if ($campaignId) {
+                $this->pdo->prepare("UPDATE posts SET campaign_id = :cid WHERE tags LIKE '%autopilot%' AND campaign_id IS NULL AND created_at >= :since")->execute([
+                    ':cid' => $campaignId,
+                    ':since' => date('Y-m-d\T00:00:00', strtotime('-1 day')),
+                ]);
+            }
         } catch (\Throwable $e) {
             $this->recordStepError($taskId, 'campaign', $e->getMessage());
         }
@@ -313,6 +320,13 @@ final class AiAutopilot
                 'end_date' => date('Y-m-d', strtotime("+{$duration} days")),
             ]);
             $this->saveResult($taskId, 'campaign', "Campaign created (ID: " . ($campaign['id'] ?? 0) . ")");
+            // Link autopilot posts to this campaign
+            if (!empty($campaign['id'])) {
+                $this->pdo->prepare("UPDATE posts SET campaign_id = :cid WHERE tags LIKE '%autopilot%' AND campaign_id IS NULL AND created_at >= :since")->execute([
+                    ':cid' => (int)$campaign['id'],
+                    ':since' => date('Y-m-d\T00:00:00', strtotime('-1 day')),
+                ]);
+            }
         } catch (\Throwable $e) {
             $this->recordStepError($taskId, 'campaign', $e->getMessage());
         }
@@ -580,7 +594,7 @@ final class AiAutopilot
         return (int)$this->pdo->lastInsertId();
     }
 
-    private function createDraftPostsFromWorkflow(string $workflow, array $platforms, int $taskId): void
+    private function createDraftPostsFromWorkflow(string $workflow, array $platforms, int $taskId, ?int $campaignId = null): void
     {
         // Create draft posts for each day/platform combination
         // Parse the workflow text and create structured posts
@@ -600,6 +614,7 @@ final class AiAutopilot
                 }
 
                 $this->posts->create([
+                    'campaign_id'  => $campaignId,
                     'platform'     => $platform,
                     'content_type' => 'social_post',
                     'title'        => "Day {$day} — " . ucfirst($platform) . " Post",
@@ -607,7 +622,7 @@ final class AiAutopilot
                     'cta'          => '',
                     'tags'         => 'autopilot,ai-generated',
                     'scheduled_for' => $scheduleDate . 'T09:00:00Z',
-                    'status'       => 'draft',
+                    'status'       => 'scheduled',
                     'ai_score'     => 0,
                 ]);
                 $postsCreated++;

@@ -8,7 +8,8 @@ function register_email_routes(
     SubscriberRepository $subscribers,
     EmailCampaignRepository $emailCampaigns,
     ?EmailService $emailService,
-    Webhooks $webhooks
+    Webhooks $webhooks,
+    ?AutomationRepository $automations = null
 ): void {
     /* ---- Email Lists ---- */
     $router->get('/api/email-lists', fn() => json_response(['items' => $emailLists->all()]));
@@ -30,7 +31,7 @@ function register_email_routes(
         json_response(['items' => $subscribers->all($listId)]);
     });
 
-    $router->post('/api/subscribers', function () use ($subscribers, $webhooks) {
+    $router->post('/api/subscribers', function () use ($subscribers, $webhooks, $automations) {
         $p = request_json();
         if (empty($p['email']) || empty($p['list_id'])) {
             json_response(['error' => 'Missing: email, list_id'], 422);
@@ -41,6 +42,13 @@ function register_email_routes(
             json_response(['error' => $result], 409);
         } else {
             $webhooks->dispatch('subscriber.added', $result);
+            if ($automations) {
+                $automations->fire('subscriber.added', [
+                    'email' => $result['email'] ?? '',
+                    'list_id' => $result['list_id'] ?? null,
+                    'subscriber_id' => $result['id'] ?? null,
+                ]);
+            }
             json_response(['item' => $result], 201);
         }
     });
@@ -80,7 +88,7 @@ function register_email_routes(
         json_response(['ok' => true]);
     });
 
-    $router->post('/api/email-campaigns/{id}/send', function ($p) use ($emailService, $emailCampaigns, $webhooks) {
+    $router->post('/api/email-campaigns/{id}/send', function ($p) use ($emailService, $emailCampaigns, $webhooks, $automations) {
         if (!$emailService) { json_response(['error' => 'Email service not configured'], 500); return; }
         $campaign = $emailCampaigns->find((int)$p['id']);
         if (!$campaign) { json_response(['error' => 'Campaign not found'], 404); return; }
@@ -91,6 +99,14 @@ function register_email_routes(
             'sent_at' => gmdate(DATE_ATOM),
         ]);
         $webhooks->dispatch('email.sent', array_merge($result, ['campaign_id' => (int)$p['id']]));
+        if ($automations) {
+            $automations->fire('email.sent', [
+                'campaign_id' => (int)$p['id'],
+                'campaign_name' => $campaign['name'] ?? '',
+                'list_id' => $campaign['list_id'] ?? null,
+                'sent_count' => $result['sent'] ?? 0,
+            ]);
+        }
         json_response($result);
     });
 

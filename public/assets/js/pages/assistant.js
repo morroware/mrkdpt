@@ -121,6 +121,21 @@ function updateContext() {
   }
 }
 
+function detectPlatform() {
+  // Detect platform from current page context
+  const activePage = document.querySelector('.page.active');
+  if (!activePage) return 'general';
+  const pageId = activePage.id || '';
+  if (pageId.includes('email')) return 'email';
+  if (pageId.includes('content') || pageId.includes('post')) {
+    const platformSelect = activePage.querySelector('[name="platform"]');
+    if (platformSelect?.value) return platformSelect.value;
+  }
+  if (pageId.includes('landing')) return 'landing_page';
+  if (pageId.includes('seo') || pageId.includes('blog')) return 'blog';
+  return 'general';
+}
+
 function getContent() {
   if (activeTextarea && activeTextarea.value.trim()) {
     return activeTextarea.value.trim();
@@ -213,7 +228,7 @@ async function runScoreContent() {
   try {
     const { item } = await api('/api/ai/score', {
       method: 'POST',
-      body: JSON.stringify({ content, platform: 'general' }),
+      body: JSON.stringify({ content, platform: detectPlatform() }),
     });
     if (item?.score) {
       showOutput(item.score, `Content Score | Provider: ${item.provider || 'default'}`);
@@ -238,7 +253,7 @@ async function runHeadlines() {
   try {
     const { item } = await api('/api/ai/headlines', {
       method: 'POST',
-      body: JSON.stringify({ headline, platform: 'general' }),
+      body: JSON.stringify({ headline, platform: detectPlatform() }),
     });
     if (item?.headlines) {
       showOutput(item.headlines, `Headlines | Provider: ${item.provider || 'default'}`);

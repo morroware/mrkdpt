@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-function register_post_routes(Router $router, PostRepository $posts, Analytics $analytics, Webhooks $webhooks, ?PDO $pdo = null): void
+function register_post_routes(Router $router, PostRepository $posts, Analytics $analytics, Webhooks $webhooks, ?PDO $pdo = null, ?AutomationRepository $automations = null): void
 {
     $router->get('/api/posts', function () use ($posts) {
         $status = $_GET['status'] ?? null;
@@ -26,13 +26,30 @@ function register_post_routes(Router $router, PostRepository $posts, Analytics $
         $item ? json_response(['item' => $item]) : json_response(['error' => 'Not found'], 404);
     });
 
-    $router->patch('/api/posts/{id}', function ($p) use ($posts, $analytics, $webhooks) {
+    $router->patch('/api/posts/{id}', function ($p) use ($posts, $analytics, $webhooks, $automations) {
         $data = request_json();
         if (!empty($data['status'])) {
             $item = $posts->updateStatus((int)$p['id'], $data['status']);
             if ($data['status'] === 'published') {
                 $analytics->track('post.published', 'post', (int)$p['id'], ['platform' => $item['platform'] ?? '']);
                 $webhooks->dispatch('post.published', $item);
+                if ($automations) {
+                    $automations->fire('post.published', [
+                        'post_id' => (int)$p['id'],
+                        'platform' => $item['platform'] ?? '',
+                        'campaign_id' => $item['campaign_id'] ?? null,
+                        'title' => $item['title'] ?? '',
+                    ]);
+                }
+            } elseif ($data['status'] === 'scheduled') {
+                $analytics->track('post.scheduled', 'post', (int)$p['id'], ['platform' => $item['platform'] ?? '']);
+                if ($automations) {
+                    $automations->fire('post.scheduled', [
+                        'post_id' => (int)$p['id'],
+                        'platform' => $item['platform'] ?? '',
+                        'campaign_id' => $item['campaign_id'] ?? null,
+                    ]);
+                }
             }
         } else {
             $item = $posts->update((int)$p['id'], $data);

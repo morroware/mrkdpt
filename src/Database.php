@@ -592,6 +592,13 @@ final class Database
         )');
         $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_ai_shared_memory_updated ON ai_shared_memory(updated_at DESC)');
 
+        /* ---- Phase 9: App Settings (DB-backed overrides for .env) ---- */
+        $this->pdo->exec('CREATE TABLE IF NOT EXISTS app_settings (
+            setting_key TEXT PRIMARY KEY,
+            setting_value TEXT NOT NULL DEFAULT "",
+            updated_at TEXT NOT NULL
+        )');
+
         /* ---- safe column additions for upgrades ---- */
 
         $this->applySafeAlter('campaigns', 'start_date', 'TEXT');

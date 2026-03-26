@@ -27,37 +27,49 @@ function register_ai_routes(
         json_response(['item' => $result]);
     });
 
-    $router->post('/api/ai/blog-post', function () use ($contentTools) {
+    $router->post('/api/ai/blog-post', function () use ($contentTools, $analytics) {
         $p = request_json();
-        json_response(['item' => $contentTools->blogPostGenerator($p['title'] ?? '', $p['keywords'] ?? '', $p['outline'] ?? null, $p['provider'] ?? null, $p['model'] ?? null)]);
+        $result = $contentTools->blogPostGenerator($p['title'] ?? '', $p['keywords'] ?? '', $p['outline'] ?? null, $p['provider'] ?? null, $p['model'] ?? null);
+        $analytics->track('ai.blog_post', 'ai', 0, ['provider' => $result['provider'] ?? '']);
+        json_response(['item' => $result]);
     });
 
-    $router->post('/api/ai/video-script', function () use ($contentTools) {
+    $router->post('/api/ai/video-script', function () use ($contentTools, $analytics) {
         $p = request_json();
-        json_response(['item' => $contentTools->videoScript($p['topic'] ?? '', $p['platform'] ?? 'tiktok', (int)($p['duration'] ?? 60))]);
+        $result = $contentTools->videoScript($p['topic'] ?? '', $p['platform'] ?? 'tiktok', (int)($p['duration'] ?? 60));
+        $analytics->track('ai.video_script', 'ai', 0, ['platform' => $p['platform'] ?? 'tiktok']);
+        json_response(['item' => $result]);
     });
 
-    $router->post('/api/ai/caption-batch', function () use ($contentTools) {
+    $router->post('/api/ai/caption-batch', function () use ($contentTools, $analytics) {
         $p = request_json();
         $platforms = $p['platforms'] ?? ['instagram', 'twitter', 'linkedin'];
-        json_response(['item' => $contentTools->socialCaptionBatch($p['topic'] ?? '', $platforms, (int)($p['count'] ?? 3))]);
+        $result = $contentTools->socialCaptionBatch($p['topic'] ?? '', $platforms, (int)($p['count'] ?? 3));
+        $analytics->track('ai.caption_batch', 'ai', 0, ['count' => (int)($p['count'] ?? 3)]);
+        json_response(['item' => $result]);
     });
 
-    $router->post('/api/ai/repurpose', function () use ($contentTools) {
+    $router->post('/api/ai/repurpose', function () use ($contentTools, $analytics) {
         $p = request_json();
         if (empty($p['content'])) { json_response(['error' => 'Missing: content'], 422); return; }
         $formats = $p['formats'] ?? ['tweet', 'linkedin_post', 'email', 'instagram_caption'];
-        json_response(['item' => $contentTools->repurposeContent($p['content'], $formats)]);
+        $result = $contentTools->repurposeContent($p['content'], $formats);
+        $analytics->track('ai.repurpose', 'ai', 0, []);
+        json_response(['item' => $result]);
     });
 
-    $router->post('/api/ai/ad-variations', function () use ($contentTools) {
+    $router->post('/api/ai/ad-variations', function () use ($contentTools, $analytics) {
         $p = request_json();
-        json_response(['item' => $contentTools->adVariations($p['base_ad'] ?? '', (int)($p['count'] ?? 5))]);
+        $result = $contentTools->adVariations($p['base_ad'] ?? '', (int)($p['count'] ?? 5));
+        $analytics->track('ai.ad_variations', 'ai', 0, ['count' => (int)($p['count'] ?? 5)]);
+        json_response(['item' => $result]);
     });
 
-    $router->post('/api/ai/subject-lines', function () use ($contentTools) {
+    $router->post('/api/ai/subject-lines', function () use ($contentTools, $analytics) {
         $p = request_json();
-        json_response(['item' => $contentTools->emailSubjectLines($p['topic'] ?? '', (int)($p['count'] ?? 10))]);
+        $result = $contentTools->emailSubjectLines($p['topic'] ?? '', (int)($p['count'] ?? 10));
+        $analytics->track('ai.subject_lines', 'ai', 0, []);
+        json_response(['item' => $result]);
     });
 
     $router->post('/api/ai/brief', function () use ($contentTools, $analytics) {
@@ -67,10 +79,12 @@ function register_ai_routes(
         json_response(['item' => $result]);
     });
 
-    $router->post('/api/ai/headlines', function () use ($contentTools) {
+    $router->post('/api/ai/headlines', function () use ($contentTools, $analytics) {
         $p = request_json();
         if (empty($p['headline'])) { json_response(['error' => 'Missing: headline'], 422); return; }
-        json_response(['item' => $contentTools->headlineOptimizer($p['headline'], $p['platform'] ?? 'general')]);
+        $result = $contentTools->headlineOptimizer($p['headline'], $p['platform'] ?? 'general');
+        $analytics->track('ai.headlines', 'ai', 0, ['platform' => $p['platform'] ?? 'general']);
+        json_response(['item' => $result]);
     });
 
     $router->post('/api/ai/refine', function () use ($contentTools, $analytics) {
@@ -105,45 +119,57 @@ function register_ai_routes(
         json_response(['item' => $result]);
     });
 
-    $router->post('/api/ai/persona', function () use ($strategyTools) {
+    $router->post('/api/ai/persona', function () use ($strategyTools, $analytics) {
         $p = request_json();
-        json_response(['item' => $strategyTools->audiencePersona($p['demographics'] ?? '', $p['behaviors'] ?? '')]);
+        $result = $strategyTools->audiencePersona($p['demographics'] ?? '', $p['behaviors'] ?? '');
+        $analytics->track('ai.persona', 'ai', 0, []);
+        json_response(['item' => $result]);
     });
 
-    $router->post('/api/ai/competitor-analysis', function () use ($strategyTools) {
+    $router->post('/api/ai/competitor-analysis', function () use ($strategyTools, $analytics) {
         $p = request_json();
-        json_response(['item' => $strategyTools->competitorAnalysis($p['name'] ?? '', $p['notes'] ?? '')]);
+        $result = $strategyTools->competitorAnalysis($p['name'] ?? '', $p['notes'] ?? '');
+        $analytics->track('ai.competitor_analysis', 'ai', 0, []);
+        json_response(['item' => $result]);
     });
 
-    $router->post('/api/ai/social-strategy', function () use ($strategyTools) {
+    $router->post('/api/ai/social-strategy', function () use ($strategyTools, $analytics) {
         $p = request_json();
-        json_response(['item' => $strategyTools->socialStrategy($p['goals'] ?? '', $p['current_state'] ?? '')]);
+        $result = $strategyTools->socialStrategy($p['goals'] ?? '', $p['current_state'] ?? '');
+        $analytics->track('ai.social_strategy', 'ai', 0, []);
+        json_response(['item' => $result]);
     });
 
-    $router->post('/api/ai/calendar', function () use ($strategyTools) {
+    $router->post('/api/ai/calendar', function () use ($strategyTools, $analytics) {
         $p = request_json();
-        json_response(['item' => $strategyTools->scheduleSuggestion($p['objective'] ?? 'increase qualified leads')]);
+        $result = $strategyTools->scheduleSuggestion($p['objective'] ?? 'increase qualified leads');
+        $analytics->track('ai.calendar', 'ai', 0, []);
+        json_response(['item' => $result]);
     });
 
-    $router->post('/api/ai/calendar-month', function () use ($strategyTools) {
+    $router->post('/api/ai/calendar-month', function () use ($strategyTools, $analytics) {
         $p = request_json();
-        json_response(['item' => $strategyTools->contentCalendarMonth(
+        $result = $strategyTools->contentCalendarMonth(
             $p['month'] ?? date('F Y'),
             $p['goals'] ?? 'grow audience and engagement',
             $p['channels'] ?? 'instagram, twitter, linkedin, email'
-        )]);
+        );
+        $analytics->track('ai.calendar_month', 'ai', 0, []);
+        json_response(['item' => $result]);
     });
 
-    $router->post('/api/ai/smart-times', function () use ($strategyTools) {
+    $router->post('/api/ai/smart-times', function () use ($strategyTools, $analytics) {
         $p = request_json();
-        json_response(['item' => $strategyTools->smartPostingTime(
+        $result = $strategyTools->smartPostingTime(
             $p['platform'] ?? 'instagram',
             $p['audience'] ?? 'general business audience',
             $p['content_type'] ?? 'social_post'
-        )]);
+        );
+        $analytics->track('ai.smart_times', 'ai', 0, ['platform' => $p['platform'] ?? 'instagram']);
+        json_response(['item' => $result]);
     });
 
-    $router->post('/api/ai/campaign-optimizer', function () use ($strategyTools, $campaigns) {
+    $router->post('/api/ai/campaign-optimizer', function () use ($strategyTools, $campaigns, $analytics) {
         $p = request_json();
         $campaignData = $p['campaign_data'] ?? '';
         if (!empty($p['campaign_id'])) {
@@ -152,7 +178,9 @@ function register_ai_routes(
                 $campaignData = "Name: {$c['name']}\nChannel: {$c['channel']}\nObjective: {$c['objective']}\nBudget: \${$c['budget']}\nSpent: \${$c['spend_to_date']}\nRevenue: \${$c['revenue']}\nStart: {$c['start_date']}\nEnd: {$c['end_date']}\nStatus: {$c['status']}\nNotes: {$c['notes']}";
             }
         }
-        json_response(['item' => $strategyTools->campaignOptimizer($campaignData, $p['goals'] ?? 'maximize ROI')]);
+        $result = $strategyTools->campaignOptimizer($campaignData, $p['goals'] ?? 'maximize ROI');
+        $analytics->track('ai.campaign_optimizer', 'ai', 0, []);
+        json_response(['item' => $result]);
     });
 
     $router->post('/api/ai/report', function () use ($strategyTools, $posts, $campaigns, $analytics) {
@@ -200,24 +228,32 @@ function register_ai_routes(
         json_response(['item' => $result]);
     });
 
-    $router->post('/api/ai/score', function () use ($analysisTools) {
+    $router->post('/api/ai/score', function () use ($analysisTools, $analytics) {
         $p = request_json();
-        json_response(['item' => $analysisTools->contentScore($p['content'] ?? '', $p['platform'] ?? 'instagram')]);
+        $result = $analysisTools->contentScore($p['content'] ?? '', $p['platform'] ?? 'instagram');
+        $analytics->track('ai.score', 'ai', 0, ['platform' => $p['platform'] ?? 'instagram']);
+        json_response(['item' => $result]);
     });
 
-    $router->post('/api/ai/seo-keywords', function () use ($analysisTools) {
+    $router->post('/api/ai/seo-keywords', function () use ($analysisTools, $analytics) {
         $p = request_json();
-        json_response(['item' => $analysisTools->seoKeywordResearch($p['topic'] ?? '', $p['niche'] ?? '')]);
+        $result = $analysisTools->seoKeywordResearch($p['topic'] ?? '', $p['niche'] ?? '');
+        $analytics->track('ai.seo_keywords', 'ai', 0, []);
+        json_response(['item' => $result]);
     });
 
-    $router->post('/api/ai/hashtags', function () use ($analysisTools) {
+    $router->post('/api/ai/hashtags', function () use ($analysisTools, $analytics) {
         $p = request_json();
-        json_response(['item' => $analysisTools->hashtagResearch($p['topic'] ?? '', $p['platform'] ?? 'instagram')]);
+        $result = $analysisTools->hashtagResearch($p['topic'] ?? '', $p['platform'] ?? 'instagram');
+        $analytics->track('ai.hashtags', 'ai', 0, ['platform' => $p['platform'] ?? 'instagram']);
+        json_response(['item' => $result]);
     });
 
-    $router->post('/api/ai/seo-audit', function () use ($analysisTools) {
+    $router->post('/api/ai/seo-audit', function () use ($analysisTools, $analytics) {
         $p = request_json();
-        json_response(['item' => $analysisTools->seoAudit($p['url'] ?? '', $p['description'] ?? '')]);
+        $result = $analysisTools->seoAudit($p['url'] ?? '', $p['description'] ?? '');
+        $analytics->track('ai.seo_audit', 'ai', 0, []);
+        json_response(['item' => $result]);
     });
 
     /* ================================================================== */
@@ -377,7 +413,7 @@ function register_ai_routes(
         json_response(['item' => $result]);
     });
 
-    $router->post('/api/ai/ab-analyze', function () use ($analysisTools, $pdo) {
+    $router->post('/api/ai/ab-analyze', function () use ($analysisTools, $pdo, $analytics) {
         $p = request_json();
         $testId = (int)($p['test_id'] ?? 0);
         if (!$testId) { json_response(['error' => 'Missing: test_id'], 422); return; }
@@ -385,7 +421,9 @@ function register_ai_routes(
         $stmt->execute([':id' => $testId]);
         $variants = $stmt->fetchAll(PDO::FETCH_ASSOC);
         if (empty($variants)) { json_response(['error' => 'No variants found'], 404); return; }
-        json_response(['item' => $analysisTools->analyzeAbResults($variants)]);
+        $result = $analysisTools->analyzeAbResults($variants);
+        $analytics->track('ai.ab_analyze', 'ai', 0, ['test_id' => $testId]);
+        json_response(['item' => $result]);
     });
 
     // Smart UTM & Attribution AI
@@ -488,6 +526,20 @@ function register_ai_routes(
         $msgs->execute([':id' => $id]);
 
         json_response(['item' => $conversation, 'messages' => $msgs->fetchAll(PDO::FETCH_ASSOC)]);
+    });
+
+    // Rename conversation
+    $router->put('/api/ai/conversations/{id}', function (array $params) use ($pdo) {
+        $id = (int)($params['id'] ?? 0);
+        $data = request_json();
+        $title = trim($data['title'] ?? '');
+        if ($title === '') { json_response(['error' => 'Title required'], 422); return; }
+        $pdo->prepare("UPDATE ai_chat_conversations SET title = :t, updated_at = :u WHERE id = :id")->execute([
+            ':t' => mb_substr($title, 0, 200),
+            ':u' => gmdate(DATE_ATOM),
+            ':id' => $id,
+        ]);
+        json_response(['ok' => true, 'title' => $title]);
     });
 
     // Delete conversation

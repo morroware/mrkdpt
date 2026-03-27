@@ -603,6 +603,7 @@ label {
 .text-small { font-size: 0.82rem; }
 .text-success { color: var(--success); }
 .text-danger { color: var(--danger); }
+.mt-0 { margin-top: 0; }
 .mt-1 { margin-top: 0.5rem; }
 .mb-1 { margin-bottom: 0.5rem; }
 .mb-2 { margin-bottom: 1rem; }

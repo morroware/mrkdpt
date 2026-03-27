@@ -1193,10 +1193,10 @@ Tip: Use the provider selector above to compare results from different AI models
             <select id="contactStageFilter"><option value="">All Stages</option><option>lead</option><option>mql</option><option>sql</option><option>opportunity</option><option>customer</option></select>
             <input id="contactSearch" placeholder="Search contacts..." style="min-width:200px" />
           </div>
-          <div class="btn-group">
+          <div class="btn-group" id="contactToolbar">
             <button class="btn" id="showContactForm">+ Add Contact</button>
-            <button class="btn btn-outline" onclick="window._importContactsCsv()">Import CSV</button>
-            <button class="btn btn-outline" onclick="window._exportContactsCsv()">Export CSV</button>
+            <button class="btn btn-outline" data-contact-action="import-csv">Import CSV</button>
+            <button class="btn btn-outline" data-contact-action="export-csv">Export CSV</button>
           </div>
         </div>
         <div id="contactFormWrap" class="card hidden">

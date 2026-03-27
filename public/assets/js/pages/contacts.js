@@ -21,6 +21,7 @@ export function init() {
 
   $('contactStageFilter')?.addEventListener('change', refresh);
   $('contactSearch')?.addEventListener('input', debounce(refresh, 300));
+  $('contactToolbar')?.addEventListener('click', handleToolbarAction);
 
   $('contactTable')?.addEventListener('click', async (event) => {
     const actionBtn = event.target.closest('[data-contact-action]');
@@ -152,8 +153,21 @@ function debounce(fn, ms) {
   return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
 }
 
+async function handleToolbarAction(event) {
+  const button = event.target.closest('[data-contact-action]');
+  if (!button) return;
+
+  if (button.dataset.contactAction === 'import-csv') {
+    await importContactsCsv();
+  }
+
+  if (button.dataset.contactAction === 'export-csv') {
+    await exportContactsCsv();
+  }
+}
+
 // CSV Import handler
-window._importContactsCsv = async () => {
+async function importContactsCsv() {
   const csv = prompt('Paste CSV data (email,first_name,last_name,company,phone,stage,tags):');
   if (!csv) return;
   try {
@@ -166,10 +180,10 @@ window._importContactsCsv = async () => {
   } catch (err) {
     toast(err.message, 'error');
   }
-};
+}
 
 // CSV Export handler
-window._exportContactsCsv = async () => {
+async function exportContactsCsv() {
   try {
     const response = await api('/api/contacts/export');
     const text = await response.text();
@@ -184,4 +198,4 @@ window._exportContactsCsv = async () => {
   } catch (err) {
     toast(err.message, 'error');
   }
-};
+}

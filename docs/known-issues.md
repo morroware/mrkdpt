@@ -292,7 +292,9 @@ A catalog of identified issues, limitations, and improvement recommendations org
 
 **Description:** Several modules expose internal functions on `window` for use in inline `onclick` handlers. This pollutes the global namespace and could cause naming conflicts.
 
-**Recommendation:** Use event delegation instead of inline onclick handlers with global functions.
+**Status (March 27, 2026):** Partially resolved. Contacts CSV import/export actions now use event delegation and `data-contact-action` attributes instead of `window._importContactsCsv` / `window._exportContactsCsv`.
+
+**Remaining recommendation:** Continue migrating other inline handlers (`navigate`, `exportCsv`, and any module-specific globals) to delegated listeners to eliminate global function exposure.
 
 ---
 

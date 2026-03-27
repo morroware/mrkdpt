@@ -117,7 +117,9 @@ export function init() {
       tone: $('aiTone')?.value || 'professional',
       platform: $('aiContentPlatform')?.value || 'facebook',
       topic: $('aiContentTopic')?.value || '',
+      audience: $('aiContentAudience')?.value || '',
       goal: $('aiContentGoal')?.value || '',
+      quality_mode: $('aiContentQualityMode')?.value || 'enhanced',
     }, 'content', 'runContent', 'Content Writer');
   });
 
@@ -363,6 +365,66 @@ export function init() {
       error(err.message);
     } finally {
       setButtonLoading('runGenerateImage', false);
+    }
+  });
+
+  // ---- NEW: Multi-Source Copy + Visual Pipeline ----
+  onClick('runMultiSourceContent', async () => {
+    const topic = $('aiMultiSourceTopic')?.value?.trim() || '';
+    if (!topic) { error('Enter a topic first'); return; }
+    setButtonLoading('runMultiSourceContent', true);
+    loading('Multi-Source Creative Pipeline');
+    try {
+      const { item } = await api('/api/ai/multi-source-content', {
+        method: 'POST',
+        body: JSON.stringify({
+          topic,
+          content_type: $('aiMultiSourceType')?.value || 'social_post',
+          platform: $('aiMultiSourcePlatform')?.value || 'instagram',
+          tone: $('aiMultiSourceTone')?.value || 'professional',
+          goal: $('aiMultiSourceGoal')?.value || 'drive engagement',
+          audience: $('aiMultiSourceAudience')?.value || '',
+          copy_provider: $('aiCopyProviderSelect')?.value || '',
+          image_prompt_provider: $('aiImagePromptProviderSelect')?.value || '',
+          image_provider: $('aiMultiSourceImageProvider')?.value || 'auto',
+          image_size: $('aiMultiSourceImageSize')?.value || '1024x1024',
+        }),
+      });
+
+      output(JSON.stringify({
+        copy: item?.copy || '',
+        image_prompt: item?.image_prompt || '',
+        providers: item?.providers || {},
+      }, null, 2), (item?.providers?.copy || '') + ' + ' + (item?.providers?.image || ''), 'Multi-Source Creative Pipeline');
+
+      const preview = $('aiMultiSourceImagePreview');
+      if (preview) {
+        preview.classList.add('hidden');
+        preview.textContent = '';
+        const image = item?.image || {};
+        if (image.image_base64) {
+          const img = document.createElement('img');
+          img.src = `data:image/png;base64,${image.image_base64}`;
+          img.alt = 'Multi-source AI generated visual';
+          img.style.cssText = 'max-width:100%;border-radius:8px';
+          preview.appendChild(img);
+          preview.classList.remove('hidden');
+        } else if (image.url) {
+          const link = document.createElement('a');
+          link.href = image.url;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          link.textContent = `Open generated image (${image.provider || 'provider'})`;
+          preview.appendChild(link);
+          preview.classList.remove('hidden');
+        }
+      }
+      success('Copy + visual generated.');
+    } catch (err) {
+      output('Error: ' + err.message, '', 'Multi-Source Creative Pipeline');
+      error(err.message);
+    } finally {
+      setButtonLoading('runMultiSourceContent', false);
     }
   });
 

@@ -23,7 +23,11 @@ function register_ai_routes(
     $router->post('/api/ai/content', function () use ($contentTools, $analytics) {
         $p = request_json();
         $result = $contentTools->generateContent($p);
-        $analytics->track('ai.content', 'ai', 0, ['type' => $p['content_type'] ?? 'social_post']);
+        $analytics->track('ai.content', 'ai', 0, [
+            'type' => $p['content_type'] ?? 'social_post',
+            'quality_mode' => $p['quality_mode'] ?? 'enhanced',
+            'reviewer_provider' => $result['reviewer_provider'] ?? '',
+        ]);
         json_response(['item' => $result]);
     });
 
@@ -385,6 +389,22 @@ function register_ai_routes(
         json_response(['item' => $result]);
     });
 
+    // Multi-source content pipeline (copy + image prompt + image generation)
+    $router->post('/api/ai/multi-source-content', function () use ($contentTools, $analytics) {
+        $p = request_json();
+        if (empty($p['topic'])) { json_response(['error' => 'Missing: topic'], 422); return; }
+        $result = $contentTools->multiSourceContentSuite($p);
+        if (!empty($result['error'])) {
+            json_response(['error' => $result['error']], 422);
+            return;
+        }
+        $analytics->track('ai.multi_source_content', 'ai', 0, [
+            'content_type' => $p['content_type'] ?? 'social_post',
+            'platform' => $p['platform'] ?? 'instagram',
+        ]);
+        json_response(['item' => $result]);
+    });
+
     // Funnel Advisor
     $router->post('/api/ai/funnel-advisor', function () use ($strategyTools, $pdo, $analytics) {
         $p = request_json();
@@ -486,7 +506,8 @@ function register_ai_routes(
         }
 
         // Get reply
-        $result = $chatService->chat($message, $history, $p['provider'] ?? null, $p['model'] ?? null);
+        $contentBrief = is_array($p['content_brief'] ?? null) ? $p['content_brief'] : null;
+        $result = $chatService->chat($message, $history, $p['provider'] ?? null, $p['model'] ?? null, $contentBrief);
 
         // Save messages
         $now = gmdate(DATE_ATOM);

@@ -25,10 +25,11 @@ final class AiChatService
      * @param string|null $model    Override model
      * @return array {reply, context_used, provider}
      */
-    public function chat(string $userMessage, array $history = [], ?string $provider = null, ?string $model = null): array
+    public function chat(string $userMessage, array $history = [], ?string $provider = null, ?string $model = null, ?array $contentBrief = null): array
     {
         // Gather context from the database
         $context = $this->gatherContext($userMessage);
+        $contentDirective = $this->buildContentDirective($contentBrief, $userMessage);
 
         $system = $this->ai->buildSystemPrompt(
             "You are an AI marketing assistant for {$this->ai->getBusinessName()} ({$this->ai->getIndustry()}).
@@ -46,7 +47,10 @@ RULES:
 - If asked about data you don't have, say so honestly
 - For content creation requests, produce ready-to-use output
 - Keep responses focused and actionable
-- You can suggest follow-up actions"
+- You can suggest follow-up actions
+
+CONTENT OUTPUT MODE:
+{$contentDirective}"
         );
 
         $p = $provider ?? $this->ai->getProvider();
@@ -80,6 +84,42 @@ RULES:
             'context_used' => $this->summarizeContext(),
             'provider'     => $p,
         ];
+    }
+
+    private function buildContentDirective(?array $contentBrief, string $userMessage): string
+    {
+        $contentType = strtolower(trim((string)($contentBrief['content_type'] ?? '')));
+        $platform = trim((string)($contentBrief['platform'] ?? ''));
+        $tone = trim((string)($contentBrief['tone'] ?? ''));
+        $audience = trim((string)($contentBrief['audience'] ?? ''));
+        $goal = trim((string)($contentBrief['goal'] ?? ''));
+        $isContentRequest = (bool)preg_match('/\b(write|draft|create|generate|caption|post|email|ad|script|content)\b/i', $userMessage);
+
+        if ($contentType === '' && $platform === '' && $tone === '' && $audience === '' && $goal === '' && !$isContentRequest) {
+            return 'If the user asks for analysis, prioritize concise data-backed insights and recommendations.';
+        }
+
+        $parts = [];
+        $parts[] = '- Treat this request as content production and return final, publishable output first.';
+        if ($contentType !== '') {
+            $parts[] = '- Content type: ' . $contentType . '.';
+        }
+        if ($platform !== '') {
+            $parts[] = '- Platform/channel: ' . $platform . '.';
+        }
+        if ($tone !== '') {
+            $parts[] = '- Requested tone: ' . $tone . '.';
+        }
+        if ($audience !== '') {
+            $parts[] = '- Audience focus: ' . $audience . '.';
+        }
+        if ($goal !== '') {
+            $parts[] = '- Primary goal: ' . $goal . '.';
+        }
+        $parts[] = '- Include a short rationale and 2 optimization suggestions after the final draft.';
+        $parts[] = '- Keep formatting structured with headings, bullets, and clear CTA where relevant.';
+
+        return implode("\n", $parts);
     }
 
     /**

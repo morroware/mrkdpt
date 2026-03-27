@@ -4,6 +4,9 @@
 
 The `.env` file is created by the web installer (`/install.php`) or can be created manually in the project root.
 
+> **Important:** most runtime settings (including AI provider, models, keys, and base URLs) can now be edited directly in **Settings** inside the app.  
+> `.env` values remain defaults/fallbacks, while UI-saved values are persisted in `app_settings`.
+
 ### Business Settings
 
 | Variable | Required | Default | Description |
@@ -47,6 +50,7 @@ Valid values: `openai`, `anthropic`, `gemini`, `deepseek`, `groq`, `mistral`, `o
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `DEEPSEEK_API_KEY` | — | API key |
+| `DEEPSEEK_BASE_URL` | `https://api.deepseek.com/v1` | Override base URL |
 | `DEEPSEEK_MODEL` | `deepseek-chat` | Model identifier |
 
 #### Groq
@@ -54,6 +58,7 @@ Valid values: `openai`, `anthropic`, `gemini`, `deepseek`, `groq`, `mistral`, `o
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `GROQ_API_KEY` | — | API key from console.groq.com |
+| `GROQ_BASE_URL` | `https://api.groq.com/openai/v1` | Override base URL |
 | `GROQ_MODEL` | `llama-3.3-70b-versatile` | Model identifier |
 
 #### Mistral
@@ -61,6 +66,7 @@ Valid values: `openai`, `anthropic`, `gemini`, `deepseek`, `groq`, `mistral`, `o
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `MISTRAL_API_KEY` | — | API key |
+| `MISTRAL_BASE_URL` | `https://api.mistral.ai/v1` | Override base URL |
 | `MISTRAL_MODEL` | `mistral-large-latest` | Model identifier |
 
 #### OpenRouter
@@ -68,6 +74,7 @@ Valid values: `openai`, `anthropic`, `gemini`, `deepseek`, `groq`, `mistral`, `o
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `OPENROUTER_API_KEY` | — | API key from openrouter.ai |
+| `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | Override base URL |
 | `OPENROUTER_MODEL` | `anthropic/claude-sonnet-4` | Model identifier |
 
 #### xAI (Grok)
@@ -75,6 +82,7 @@ Valid values: `openai`, `anthropic`, `gemini`, `deepseek`, `groq`, `mistral`, `o
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `XAI_API_KEY` | — | API key |
+| `XAI_BASE_URL` | `https://api.x.ai/v1` | Override base URL |
 | `XAI_MODEL` | `grok-3-fast` | Model identifier |
 
 #### Together AI
@@ -82,6 +90,7 @@ Valid values: `openai`, `anthropic`, `gemini`, `deepseek`, `groq`, `mistral`, `o
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `TOGETHER_API_KEY` | — | API key from api.together.xyz |
+| `TOGETHER_BASE_URL` | `https://api.together.xyz/v1` | Override base URL |
 | `TOGETHER_MODEL` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | Model identifier |
 
 #### Image Generation (Banana/NanoBanana)
@@ -130,6 +139,21 @@ The installer:
 - Initializes the SQLite database
 - Creates the admin user account
 - Generates a random cron key
+
+## Runtime Settings in UI
+
+After installation, go to **Settings** to manage:
+
+- Primary AI provider and per-provider model
+- API keys for all supported providers
+- Per-provider base URLs
+- Banana/NanoBanana API key, base URL, model ID
+- Custom AI system prompt
+
+Behavior:
+
+- Blank sensitive key fields are ignored (existing keys are preserved)
+- Updated values are stored in `app_settings` and applied at runtime
 
 ## Deployment Options
 

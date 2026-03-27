@@ -273,18 +273,19 @@ final class AiService
         int     $maxTokens = 4096,
         float   $temperature = 0.7,
     ): string {
-        $p = $provider ?? $this->provider;
-        return match ($p) {
-            'anthropic'  => $this->callAnthropicAdv($system, $prompt, $model, $maxTokens, $temperature),
-            'gemini'     => $this->callGeminiAdv($system, $prompt, $model, $maxTokens, $temperature),
-            'deepseek'   => $this->callOpenAiCompatible('deepseek', $system, $prompt, $model, $maxTokens, $temperature),
-            'groq'       => $this->callOpenAiCompatible('groq', $system, $prompt, $model, $maxTokens, $temperature),
-            'mistral'    => $this->callOpenAiCompatible('mistral', $system, $prompt, $model, $maxTokens, $temperature),
-            'openrouter' => $this->callOpenAiCompatible('openrouter', $system, $prompt, $model, $maxTokens, $temperature),
-            'xai'        => $this->callOpenAiCompatible('xai', $system, $prompt, $model, $maxTokens, $temperature),
-            'together'   => $this->callOpenAiCompatible('together', $system, $prompt, $model, $maxTokens, $temperature),
-            default      => $this->callOpenAiAdv($system, $prompt, $model, $maxTokens, $temperature),
-        };
+        $preferred = strtolower(trim((string)($provider ?? $this->provider)));
+        $providersToTry = $this->buildProviderFailoverOrder($preferred);
+        $errors = [];
+
+        foreach ($providersToTry as $candidate) {
+            $output = $this->generateWithProvider($candidate, $system, $prompt, $model, $maxTokens, $temperature);
+            if (!$this->isFallbackResponse($output)) {
+                return $output;
+            }
+            $errors[] = $this->extractFallbackReason($output) ?: "{$candidate} returned fallback output";
+        }
+
+        return $this->fallback($prompt, 'All configured AI providers failed. ' . implode(' | ', array_slice($errors, 0, 4)));
     }
 
     /**
@@ -388,6 +389,68 @@ final class AiService
             'together' => !empty($this->config['together_api_key']),
             default => false,
         };
+    }
+
+    private function buildProviderFailoverOrder(string $preferred): array
+    {
+        $all = ['openai', 'anthropic', 'gemini', 'deepseek', 'groq', 'mistral', 'openrouter', 'xai', 'together'];
+        $ordered = [];
+
+        if ($preferred !== '') {
+            $ordered[] = $preferred;
+        }
+        foreach ($all as $provider) {
+            if (!in_array($provider, $ordered, true)) {
+                $ordered[] = $provider;
+            }
+        }
+
+        $available = [];
+        foreach ($ordered as $provider) {
+            if ($this->providerHasKey($provider)) {
+                $available[] = $provider;
+            }
+        }
+
+        if (empty($available)) {
+            return [$preferred !== '' ? $preferred : 'openai'];
+        }
+
+        return $available;
+    }
+
+    private function generateWithProvider(
+        string $provider,
+        string $system,
+        string $prompt,
+        ?string $model,
+        int $maxTokens,
+        float $temperature,
+    ): string {
+        return match ($provider) {
+            'anthropic'  => $this->callAnthropicAdv($system, $prompt, $model, $maxTokens, $temperature),
+            'gemini'     => $this->callGeminiAdv($system, $prompt, $model, $maxTokens, $temperature),
+            'deepseek'   => $this->callOpenAiCompatible('deepseek', $system, $prompt, $model, $maxTokens, $temperature),
+            'groq'       => $this->callOpenAiCompatible('groq', $system, $prompt, $model, $maxTokens, $temperature),
+            'mistral'    => $this->callOpenAiCompatible('mistral', $system, $prompt, $model, $maxTokens, $temperature),
+            'openrouter' => $this->callOpenAiCompatible('openrouter', $system, $prompt, $model, $maxTokens, $temperature),
+            'xai'        => $this->callOpenAiCompatible('xai', $system, $prompt, $model, $maxTokens, $temperature),
+            'together'   => $this->callOpenAiCompatible('together', $system, $prompt, $model, $maxTokens, $temperature),
+            default      => $this->callOpenAiAdv($system, $prompt, $model, $maxTokens, $temperature),
+        };
+    }
+
+    private function isFallbackResponse(string $content): bool
+    {
+        return str_starts_with($content, '[AI Error:') || str_starts_with($content, '[Fallback mode:');
+    }
+
+    private function extractFallbackReason(string $content): string
+    {
+        if (!preg_match('/^\[(AI Error|Fallback mode):\s*([^\]]+)\]/', $content, $m)) {
+            return '';
+        }
+        return trim($m[2]);
     }
 
     /* ------------------------------------------------------------------ */
@@ -815,7 +878,7 @@ final class AiService
     /*  HTTP transport                                                    */
     /* ------------------------------------------------------------------ */
 
-    public function postJson(string $url, array $headers, array $payload, int $timeout = 60): array
+    public function postJson(string $url, array $headers, array $payload, int $timeout = 120): array
     {
         $ch = curl_init($url);
         curl_setopt_array($ch, [

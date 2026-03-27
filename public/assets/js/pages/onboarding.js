@@ -61,6 +61,11 @@ export function init() {
     launchBtn.addEventListener('click', launchAutopilot);
   }
 
+  const autoResearchBtn = $('obAutoResearch');
+  if (autoResearchBtn) {
+    autoResearchBtn.addEventListener('click', autoResearchWebsite);
+  }
+
   // Skip onboarding
   const skipBtn = $('skipOnboarding');
   if (skipBtn) {
@@ -161,12 +166,12 @@ async function launchAutopilot() {
       body: JSON.stringify(data),
     });
 
-    btn.textContent = 'Launching AI Autopilot...';
+    btn.textContent = 'Starting AI Autopilot...';
 
-    // Launch autopilot pipeline
-    const result = await api('/api/autopilot/launch', { method: 'POST', body: '{}' });
+    // Queue autopilot pipeline to run in background and continue immediately.
+    await api('/api/autopilot/launch', { method: 'POST', body: '{}' });
 
-    success('AI Autopilot complete! Your marketing foundation is ready.');
+    success('AI Autopilot started! We are generating your marketing foundation in the background.');
     navigate('dashboard');
   } catch (err) {
     error('Autopilot error: ' + err.message);
@@ -175,4 +180,62 @@ async function launchAutopilot() {
     btn.classList.remove('loading');
     btn.disabled = false;
   }
+}
+
+async function autoResearchWebsite() {
+  const website = $('obWebsite')?.value?.trim() || '';
+  if (!website) {
+    error('Add a website URL first.');
+    return;
+  }
+
+  const btn = $('obAutoResearch');
+  if (btn) {
+    btn.disabled = true;
+    btn.classList.add('loading');
+  }
+
+  try {
+    const { item } = await api('/api/onboarding/discover', {
+      method: 'POST',
+      body: JSON.stringify({ website_url: website }),
+      timeout: 120000,
+    });
+    const profile = item?.profile || {};
+    if ($('obBusinessDesc') && profile.business_description) $('obBusinessDesc').value = profile.business_description;
+    if ($('obProducts') && profile.products_services) $('obProducts').value = profile.products_services;
+    if ($('obUSPs') && profile.unique_selling_points) $('obUSPs').value = profile.unique_selling_points;
+    if ($('obAudience') && profile.target_audience) $('obAudience').value = profile.target_audience;
+    if ($('obExamples') && profile.content_examples) $('obExamples').value = profile.content_examples;
+
+    if (profile.competitors) {
+      const values = String(profile.competitors).split(',').map((v) => v.trim()).filter(Boolean);
+      const fields = document.querySelectorAll('.competitor-input');
+      values.slice(0, fields.length).forEach((value, idx) => {
+        fields[idx].value = value;
+      });
+    }
+
+    applyChecklistValues('.goal-checkbox', profile.marketing_goals);
+    applyChecklistValues('.platform-checkbox', profile.active_platforms);
+
+    success(`Website analyzed successfully${item?.provider ? ` via ${item.provider}` : ''}. Review and edit before launch.`);
+  } catch (err) {
+    error('Auto-research failed: ' + err.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.classList.remove('loading');
+    }
+  }
+}
+
+function applyChecklistValues(selector, csv) {
+  if (!csv) return;
+  const values = String(csv).split(',').map((v) => v.trim().toLowerCase()).filter(Boolean);
+  if (!values.length) return;
+  document.querySelectorAll(selector).forEach((box) => {
+    const val = String(box.value || '').toLowerCase();
+    box.checked = values.some((v) => val.includes(v) || v.includes(val));
+  });
 }

@@ -52,7 +52,7 @@ Multiple providers can be configured simultaneously. The primary provider handle
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/ai/content` | `generateContent()` | Main content writer for any platform/format |
+| `/api/ai/content` | `generateContent()` | Main content writer (supports `audience` and `quality_mode=standard|enhanced`) |
 | `/api/ai/blog-post` | `blogPostGenerator()` | 1200-1800 word SEO blog posts with meta tags and FAQ |
 | `/api/ai/video-script` | `videoScript()` | Scene-by-scene scripts with hooks and overlays |
 | `/api/ai/caption-batch` | `socialCaptionBatch()` | Multi-platform captions in one request |
@@ -65,6 +65,7 @@ Multiple providers can be configured simultaneously. The primary provider handle
 | `/api/ai/workflow` | — | Multi-day content workflow planning |
 | `/api/ai/drip-sequence` | — | Email drip sequence generation |
 | `/api/ai/image-prompts` | — | AI image prompt generation |
+| `/api/ai/multi-source-content` | `multiSourceContentSuite()` | Orchestrated copy + visual pipeline (different providers per stage) |
 | `/api/ai/localize` | — | Content localization for different languages |
 | `/api/ai/rss-to-post` | — | Convert RSS article to social post |
 | `/api/ai/build-brand-voice` | — | Extract brand voice from example content |
@@ -144,6 +145,32 @@ All AI tools (chat, content generation, strategy, and analysis) now consume a sh
 | `DELETE /api/ai/shared-memory/{id}` | Remove a shared memory entry |
 
 The chat system gathers real database context (posts, campaigns, metrics) to provide informed marketing advice.
+
+### Chat Content Brief Mode
+
+`POST /api/ai/chat` supports optional `content_brief`:
+
+```json
+{
+  "content_brief": {
+    "content_type": "social_post",
+    "platform": "instagram",
+    "tone": "friendly",
+    "audience": "startup founders",
+    "goal": "book demos"
+  }
+}
+```
+
+This activates a structured content directive so outputs are closer to publish-ready drafts.
+
+## Onboarding AI Bootstrap
+
+In addition to manual onboarding fields, the platform now supports website-driven bootstrap:
+
+- `POST /api/onboarding/discover` with `website_url`
+- Extracts title/meta/headings/content snapshot
+- AI infers a structured onboarding profile for review before saving/launching autopilot
 
 ## Brand Voice
 

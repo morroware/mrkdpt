@@ -27,6 +27,44 @@ final class AiStrategyTools
         return ['brief' => $this->ai->generate($prompt), 'generated_at' => gmdate(DATE_ATOM), 'provider' => $this->ai->getProvider()];
     }
 
+    public function discoverBusinessFromWebsite(string $url, string $websiteSnapshot): array
+    {
+        $prompt = "You are a senior marketing strategist. Analyze this website snapshot and infer an onboarding profile.
+
+Website URL: {$url}
+
+Website Snapshot:
+{$websiteSnapshot}
+
+Return ONLY valid JSON with these keys:
+{
+  \"business_description\": \"...\",
+  \"products_services\": \"...\",
+  \"target_audience\": \"...\",
+  \"competitors\": \"comma separated competitor names or categories\",
+  \"marketing_goals\": \"comma separated goals\",
+  \"active_platforms\": \"comma separated channels/platforms\",
+  \"unique_selling_points\": \"...\",
+  \"content_examples\": \"2-3 short brand voice sample lines\"
+}
+
+Rules:
+- infer from available evidence only
+- if unknown, provide a practical best-guess and keep it short
+- be specific, actionable, and concise.";
+
+        $raw = $this->ai->generateAdvanced($this->ai->buildSystemPrompt(), $prompt, null, null, 2048);
+        $cleaned = preg_replace('/```(?:json)?\s*/i', '', $raw);
+        if (preg_match('/\{[\s\S]*\}/', $cleaned, $m)) {
+            $parsed = json_decode($m[0], true);
+            if (is_array($parsed)) {
+                return ['profile' => $parsed, 'raw' => $raw, 'provider' => $this->ai->getProvider()];
+            }
+        }
+
+        return ['profile' => null, 'raw' => $raw, 'provider' => $this->ai->getProvider()];
+    }
+
     public function contentIdeas(string $topic, string $platform): array
     {
         $biz = $this->ai->getBusinessName();

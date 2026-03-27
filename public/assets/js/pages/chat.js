@@ -9,6 +9,14 @@ import { success, error } from '../core/toast.js';
 let currentConversationId = 0;
 let providerModels = {}; // Fetched from API, not hardcoded
 
+function scrollChatToBottom() {
+  const el = $('chatMessages');
+  if (!el) return;
+  requestAnimationFrame(() => {
+    el.scrollTop = el.scrollHeight;
+  });
+}
+
 function appendMessage(role, content) {
   const el = $('chatMessages');
   if (!el) return;
@@ -20,7 +28,7 @@ function appendMessage(role, content) {
   div.className = `chat-msg chat-msg-${role}`;
   div.innerHTML = `<div class="chat-bubble">${escapeHtml(content)}</div>`;
   el.appendChild(div);
-  el.scrollTop = el.scrollHeight;
+  scrollChatToBottom();
 }
 
 function showTyping() {
@@ -31,7 +39,7 @@ function showTyping() {
   typing.id = 'chatTyping';
   typing.innerHTML = '<div class="chat-typing"><span></span><span></span><span></span></div>';
   el.appendChild(typing);
-  el.scrollTop = el.scrollHeight;
+  scrollChatToBottom();
 }
 
 function hideTyping() {
@@ -56,8 +64,16 @@ async function sendMessage() {
     const payload = { message, conversation_id: currentConversationId || undefined };
     const provider = $('chatProviderSelect')?.value || undefined;
     const model = $('chatModelSelect')?.value || undefined;
+    const contentType = $('chatContentType')?.value || '';
+    const platform = $('chatContentPlatform')?.value || '';
+    const tone = $('chatContentTone')?.value || '';
+    const audience = $('chatContentAudience')?.value?.trim() || '';
+    const goal = $('chatContentGoal')?.value?.trim() || '';
     if (provider) payload.provider = provider;
     if (model) payload.model = model;
+    if (contentType || platform || tone || audience || goal) {
+      payload.content_brief = { content_type: contentType, platform, tone, audience, goal };
+    }
 
     const { item } = await api('/api/ai/chat', {
       method: 'POST',
@@ -86,6 +102,7 @@ async function loadConversation(id) {
     if (el) {
       el.innerHTML = '';
       (messages || []).forEach((m) => appendMessage(m.role, m.content));
+      scrollChatToBottom();
     }
 
     // Mark active

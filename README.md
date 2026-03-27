@@ -14,6 +14,8 @@ php -S localhost:8080 -t public
 
 Open `http://localhost:8080/install.php` to run the setup wizard.
 
+Then follow the full onboarding + AI setup checklist in **[docs/quick-start.md](docs/quick-start.md)**.
+
 ### Production
 
 **Nginx:** Copy `nginx.example.conf` and adjust paths. Point root to `public/`.
@@ -103,6 +105,7 @@ Handles: scheduled post publishing, recurring post creation, RSS feed fetching.
 
 | Document | Description |
 |----------|-------------|
+| [Quick Start](docs/quick-start.md) | End-to-end startup guide (installer, AI settings, onboarding, autopilot) |
 | [Architecture](docs/architecture.md) | System architecture, directory structure, tech stack |
 | [Configuration](docs/configuration.md) | Environment variables, provider setup, deployment options |
 | [API Reference](docs/api-reference.md) | Complete REST API documentation (80+ endpoints) |

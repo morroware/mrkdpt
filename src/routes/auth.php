@@ -6,11 +6,13 @@ function register_auth_routes(Router $router, Auth $auth): void
 {
     $router->post('/api/login', function () use ($auth) {
         $data = request_json();
-        if (!$auth->rateLimit('login', 10, 300)) {
+        $username = strtolower(trim((string)($data['username'] ?? '')));
+        $rateLimitKey = $username !== '' ? 'login:' . $username : 'login:anonymous';
+        if (!$auth->rateLimit($rateLimitKey, 10, 300)) {
             json_response(['error' => 'Too many login attempts. Try again later.'], 429);
             return;
         }
-        $user = $auth->login($data['username'] ?? '', $data['password'] ?? '');
+        $user = $auth->login($username, (string)($data['password'] ?? ''));
         if (!$user) {
             json_response(['error' => 'Invalid credentials'], 401);
             return;

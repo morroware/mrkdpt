@@ -33,6 +33,8 @@
 
 - IP-based rate limiting via `rate_limits` database table
 - Default: 30 requests per 60-second window
+- Login rate limiting uses both client IP and username keying (e.g., `login:alice`)
+- Optional proxy-aware IP detection via `TRUST_PROXY_HEADERS=true` (reads validated `X-Forwarded-For`)
 - Applied to sensitive endpoints (login, form submissions)
 - Old entries cleaned on each check
 
@@ -40,7 +42,7 @@
 
 - Passwords hashed with bcrypt (`password_hash()`)
 - Verified with `password_verify()`
-- Minimum 8 characters enforced at installation
+- Minimum 10 characters with uppercase, lowercase, number, and symbol
 - Stored as `password_hash` column in `users` table
 
 ## SQL Injection Prevention

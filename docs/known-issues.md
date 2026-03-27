@@ -45,11 +45,12 @@ A catalog of identified issues, limitations, and improvement recommendations org
 **Location:** `src/Auth.php`
 
 **Description:**
-- Login endpoint rate limiting uses `$_SERVER['REMOTE_ADDR']` which can be spoofed behind proxies
-- Not all public endpoints have rate limiting (e.g., short link redirects)
-- No per-user rate limiting (only per-IP)
+- Some public endpoints still do not have rate limiting (e.g., short link redirects)
+- No full account lockout flow yet (only rate limiting)
 
-**Recommendation:** Use `X-Forwarded-For` with validation when behind a reverse proxy. Add rate limiting to all public endpoints.
+**Status (March 26, 2026):** Partially resolved. Login rate limiting now supports optional validated `X-Forwarded-For` (`TRUST_PROXY_HEADERS=true`) and uses username-specific keys to reduce cross-user throttling.
+
+**Remaining recommendation:** Add rate limiting to all public endpoints and implement account lockout/cooldown persistence.
 
 ---
 
@@ -219,9 +220,9 @@ A catalog of identified issues, limitations, and improvement recommendations org
 
 **Location:** `src/SocialPublisher.php`
 
-**Description:** Some platforms have hard character limits (e.g., Twitter/X: 280 chars) that are not enforced before publishing. Posts exceeding limits will fail at the API level.
+**Status (March 26, 2026):** Partially resolved. Preflight character-limit checks now run before publish attempts for Twitter/X, Threads, Bluesky, Mastodon, LinkedIn, Telegram, and Reddit.
 
-**Recommendation:** Validate content length against platform limits before attempting to publish.
+**Remaining recommendation:** Expand validation to media constraints and platform-specific weighted length rules (e.g., URLs, CJK weighting) where applicable.
 
 ---
 

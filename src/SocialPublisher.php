@@ -19,6 +19,17 @@ declare(strict_types=1);
  */
 final class SocialPublisher
 {
+    /** @var array<string,int> Platform post length limits (characters). */
+    private const PLATFORM_CHAR_LIMITS = [
+        'twitter' => 280,
+        'threads' => 500,
+        'bluesky' => 300,
+        'mastodon' => 500,
+        'linkedin' => 3000,
+        'telegram' => 4096,
+        'reddit' => 40000,
+    ];
+
     /** cURL timeout in seconds for normal API calls. */
     private const TIMEOUT = 30;
 
@@ -50,6 +61,19 @@ final class SocialPublisher
         // Ensure meta_json is decoded.
         $account = $this->decodeMeta($account);
 
+        $lengthValidation = $this->validateContentLength($platform, $text);
+        if ($lengthValidation !== null) {
+            $this->logPublish(
+                (int)($post['id'] ?? 0),
+                $platform,
+                (int)($account['id'] ?? 0),
+                null,
+                'failed',
+                $lengthValidation,
+            );
+            return ['success' => false, 'external_id' => null, 'error' => $lengthValidation];
+        }
+
         $result = match ($platform) {
             'twitter'   => $this->publishToTwitter($account, $text, $mediaPath),
             'bluesky'   => $this->publishToBluesky($account, $text, $mediaPath),
@@ -80,6 +104,26 @@ final class SocialPublisher
         );
 
         return $result;
+    }
+
+    private function validateContentLength(string $platform, string $text): ?string
+    {
+        $limit = self::PLATFORM_CHAR_LIMITS[$platform] ?? null;
+        if ($limit === null) {
+            return null;
+        }
+
+        $length = mb_strlen($text);
+        if ($length <= $limit) {
+            return null;
+        }
+
+        return sprintf(
+            '%s content exceeds %d character limit (%d).',
+            ucfirst($platform),
+            $limit,
+            $length,
+        );
     }
 
     // =========================================================================

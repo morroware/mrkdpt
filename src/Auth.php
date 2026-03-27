@@ -197,7 +197,7 @@ final class Auth
 
     public function rateLimit(string $key, int $maxAttempts = 30, int $windowSeconds = 60): bool
     {
-        $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+        $ip = $this->clientIp();
         $identifier = $ip . ':' . $key;
         $now = time();
         $windowStart = $now - $windowSeconds;
@@ -224,5 +224,29 @@ final class Auth
         ]);
 
         return true;
+    }
+
+    private function clientIp(): string
+    {
+        $trustProxy = in_array(
+            strtolower((string)app_config('TRUST_PROXY_HEADERS', 'false')),
+            ['1', 'true', 'yes', 'on'],
+            true
+        );
+
+        if ($trustProxy) {
+            $xff = (string)($_SERVER['HTTP_X_FORWARDED_FOR'] ?? '');
+            if ($xff !== '') {
+                $candidates = array_map('trim', explode(',', $xff));
+                foreach ($candidates as $candidate) {
+                    if (filter_var($candidate, FILTER_VALIDATE_IP) !== false) {
+                        return $candidate;
+                    }
+                }
+            }
+        }
+
+        $remoteAddr = (string)($_SERVER['REMOTE_ADDR'] ?? '127.0.0.1');
+        return filter_var($remoteAddr, FILTER_VALIDATE_IP) !== false ? $remoteAddr : '127.0.0.1';
     }
 }

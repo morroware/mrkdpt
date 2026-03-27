@@ -98,6 +98,7 @@ Valid values: `openai`, `anthropic`, `gemini`, `deepseek`, `groq`, `mistral`, `o
 |----------|----------|---------|-------------|
 | `APP_URL` | Yes | — | Public URL (e.g., `https://marketing.example.com`) |
 | `APP_FORCE_HTTPS` | No | `false` | Force HTTP requests to redirect to HTTPS in production |
+| `TRUST_PROXY_HEADERS` | No | `false` | Trust `X-Forwarded-For` for rate limiting/client IP when behind a reverse proxy |
 | `MAX_UPLOAD_MB` | No | `10` | Maximum upload file size (1-100 MB) |
 | `CRON_KEY` | Yes | — | Secret key for cron endpoint authentication |
 

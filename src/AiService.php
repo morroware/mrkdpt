@@ -30,11 +30,14 @@ final class AiService
             'gpt-4o'          => 'GPT-4o',
             'gpt-4o-mini'     => 'GPT-4o Mini',
             'o3-mini'         => 'o3-mini (Reasoning)',
+            'o4-mini'         => 'o4-mini (Latest Reasoning)',
         ],
         'anthropic' => [
-            'claude-sonnet-4-20250514'   => 'Claude Sonnet 4 (Balanced)',
+            'claude-sonnet-4-6-20250627' => 'Claude Sonnet 4.6 (Latest)',
+            'claude-sonnet-4-20250514'   => 'Claude Sonnet 4',
             'claude-haiku-4-5-20251001'  => 'Claude Haiku 4.5 (Fast)',
-            'claude-opus-4-20250514'     => 'Claude Opus 4 (Best quality)',
+            'claude-opus-4-6-20250627'   => 'Claude Opus 4.6 (Latest, Best)',
+            'claude-opus-4-20250514'     => 'Claude Opus 4',
         ],
         'gemini' => [
             'gemini-2.5-pro'   => 'Gemini 2.5 Pro (Best quality)',
@@ -428,12 +431,13 @@ final class AiService
     private function callOpenAiAdv(string $system, string $prompt, ?string $model = null, int $maxTokens = 4096, float $temperature = 0.7): string
     {
         if (empty($this->config['openai_api_key'])) {
-            return $this->fallback($prompt);
+            return $this->fallback($prompt, 'OpenAI API key not configured. Add OPENAI_API_KEY in .env or install wizard.');
         }
 
         $url = rtrim((string)$this->config['openai_base_url'], '/') . '/chat/completions';
+        $usedModel = $model ?? $this->config['openai_model'] ?? 'gpt-4.1-mini';
         $payload = [
-            'model'       => $model ?? $this->config['openai_model'] ?? 'gpt-4.1-mini',
+            'model'       => $usedModel,
             'messages'    => [
                 ['role' => 'system', 'content' => $system],
                 ['role' => 'user',   'content' => $prompt],
@@ -446,8 +450,12 @@ final class AiService
             'Authorization: Bearer ' . $this->config['openai_api_key'],
         ], $payload);
 
+        if (isset($data['error'])) {
+            return $this->fallback($prompt, "OpenAI ({$usedModel}): " . (is_string($data['error']) ? $data['error'] : ($data['error']['message'] ?? json_encode($data['error']))));
+        }
+
         $content = $data['choices'][0]['message']['content'] ?? null;
-        return is_string($content) && $content !== '' ? $content : $this->fallback($prompt);
+        return is_string($content) && $content !== '' ? $content : $this->fallback($prompt, "OpenAI ({$usedModel}) returned empty response.");
     }
 
     /**
@@ -510,8 +518,9 @@ final class AiService
         float $temperature = 0.7,
     ): string {
         $apiKey = $this->config["{$providerName}_api_key"] ?? '';
+        $label = ucfirst($providerName);
         if (empty($apiKey)) {
-            return $this->fallback($prompt);
+            return $this->fallback($prompt, "{$label} API key not configured. Add " . strtoupper($providerName) . "_API_KEY in .env or install wizard.");
         }
 
         $baseUrl = rtrim(
@@ -520,8 +529,9 @@ final class AiService
         );
         $url = $baseUrl . '/chat/completions';
 
+        $usedModel = $model ?? $this->config["{$providerName}_model"] ?? self::COMPAT_DEFAULTS[$providerName] ?? '';
         $payload = [
-            'model'       => $model ?? $this->config["{$providerName}_model"] ?? self::COMPAT_DEFAULTS[$providerName] ?? '',
+            'model'       => $usedModel,
             'messages'    => [
                 ['role' => 'system', 'content' => $system],
                 ['role' => 'user',   'content' => $prompt],
@@ -540,8 +550,12 @@ final class AiService
 
         $data = $this->postJson($url, $headers, $payload);
 
+        if (isset($data['error'])) {
+            return $this->fallback($prompt, "{$label} ({$usedModel}): " . (is_string($data['error']) ? $data['error'] : ($data['error']['message'] ?? json_encode($data['error']))));
+        }
+
         $content = $data['choices'][0]['message']['content'] ?? null;
-        return is_string($content) && $content !== '' ? $content : $this->fallback($prompt);
+        return is_string($content) && $content !== '' ? $content : $this->fallback($prompt, "{$label} ({$usedModel}) returned empty response.");
     }
 
     /**
@@ -582,11 +596,12 @@ final class AiService
     private function callAnthropicAdv(string $system, string $prompt, ?string $model = null, int $maxTokens = 4096, float $temperature = 0.7): string
     {
         if (empty($this->config['anthropic_api_key'])) {
-            return $this->fallback($prompt);
+            return $this->fallback($prompt, 'Anthropic API key not configured. Add ANTHROPIC_API_KEY in .env or install wizard.');
         }
 
+        $usedModel = $model ?? $this->config['anthropic_model'] ?? 'claude-sonnet-4-20250514';
         $payload = [
-            'model'      => $model ?? $this->config['anthropic_model'] ?? 'claude-sonnet-4-20250514',
+            'model'      => $usedModel,
             'max_tokens' => $maxTokens,
             'system'     => $system,
             'messages'   => [['role' => 'user', 'content' => $prompt]],
@@ -597,8 +612,12 @@ final class AiService
             'anthropic-version: 2023-06-01',
         ], $payload);
 
+        if (isset($data['error'])) {
+            return $this->fallback($prompt, "Anthropic ({$usedModel}): " . (is_string($data['error']) ? $data['error'] : ($data['error']['message'] ?? json_encode($data['error']))));
+        }
+
         $content = $data['content'][0]['text'] ?? null;
-        return is_string($content) && $content !== '' ? $content : $this->fallback($prompt);
+        return is_string($content) && $content !== '' ? $content : $this->fallback($prompt, "Anthropic ({$usedModel}) returned empty response.");
     }
 
     /**
@@ -632,7 +651,7 @@ final class AiService
     private function callGeminiAdv(string $system, string $prompt, ?string $model = null, int $maxTokens = 4096, float $temperature = 0.7): string
     {
         if (empty($this->config['gemini_api_key'])) {
-            return $this->fallback($prompt);
+            return $this->fallback($prompt, 'Gemini API key not configured. Add GEMINI_API_KEY in .env or install wizard.');
         }
 
         $m = $model ?? $this->config['gemini_model'] ?? 'gemini-2.5-flash';
@@ -655,8 +674,13 @@ final class AiService
         ];
 
         $data = $this->postJson($url, [], $payload);
+
+        if (isset($data['error'])) {
+            return $this->fallback($prompt, "Gemini ({$m}): " . (is_string($data['error']) ? $data['error'] : ($data['error']['message'] ?? json_encode($data['error']))));
+        }
+
         $content = $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
-        return is_string($content) && $content !== '' ? $content : $this->fallback($prompt);
+        return is_string($content) && $content !== '' ? $content : $this->fallback($prompt, "Gemini ({$m}) returned empty response.");
     }
 
     /**
@@ -841,9 +865,13 @@ final class AiService
     /*  Helpers                                                           */
     /* ------------------------------------------------------------------ */
 
-    public function fallback(string $prompt): string
+    public function fallback(string $prompt, string $reason = ''): string
     {
-        return "[Fallback mode: configure AI provider keys in .env]\n\n"
+        $header = $reason !== ''
+            ? "[AI Error: {$reason}]"
+            : "[Fallback mode: configure AI provider keys in .env]";
+
+        return "{$header}\n\n"
             . "- Core strategy: 40% educational, 30% social proof, 20% offer, 10% behind-the-scenes.\n"
             . "- Recommended cadence: 5 posts/week + 2 stories/day + 1 email/week.\n"
             . "- Highest-conversion windows: Tue 11:30 AM, Wed 6:30 PM, Thu 12:15 PM ({$this->timezone}).\n"

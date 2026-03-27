@@ -11,12 +11,14 @@ function register_settings_routes(Router $router, AiService $ai, Scheduler $sche
             $dbSettings = $pdo->query('SELECT setting_key, setting_value FROM app_settings')->fetchAll(PDO::FETCH_KEY_PAIR);
         } catch (\Throwable) {}
 
+        $aiStatus = $ai->providerStatus();
         json_response([
             'business_name' => app_config('BUSINESS_NAME', 'My Small Business'),
             'business_industry' => app_config('BUSINESS_INDUSTRY', 'Local services'),
             'timezone' => app_config('TIMEZONE', 'America/New_York'),
-            'ai' => $ai->providerStatus(),
+            'ai' => $aiStatus,
             'ai_provider' => app_config('AI_PROVIDER', 'openai'),
+            'ai_models' => $aiStatus['current_models'] ?? [],
             'ai_system_prompt' => $dbSettings['AI_SYSTEM_PROMPT'] ?? '',
             'smtp_configured' => env_value('SMTP_HOST', '') !== '',
             'cron_key' => env_value('CRON_KEY', ''),
@@ -29,6 +31,9 @@ function register_settings_routes(Router $router, AiService $ai, Scheduler $sche
         $allowedKeys = [
             'BUSINESS_NAME', 'BUSINESS_INDUSTRY', 'TIMEZONE',
             'AI_PROVIDER', 'AI_SYSTEM_PROMPT', 'APP_URL',
+            'OPENAI_MODEL', 'ANTHROPIC_MODEL', 'GEMINI_MODEL',
+            'DEEPSEEK_MODEL', 'GROQ_MODEL', 'MISTRAL_MODEL',
+            'OPENROUTER_MODEL', 'XAI_MODEL', 'TOGETHER_MODEL',
         ];
         $updated = [];
         foreach ($allowedKeys as $key) {

@@ -31,10 +31,16 @@ async function refreshSettingsInfo() {
           <div class="form-group">
             <label for="set_ai_provider">AI Provider</label>
             <select id="set_ai_provider" name="AI_PROVIDER" class="input">
-              ${['openai','anthropic','gemini','deepseek','groq','mistral','openrouter','xai','together'].map(p =>
-                `<option value="${p}" ${(data.ai_provider || 'openai') === p ? 'selected' : ''}>${p.charAt(0).toUpperCase() + p.slice(1)}</option>`
-              ).join('')}
+              ${['openai','anthropic','gemini','deepseek','groq','mistral','openrouter','xai','together'].map(p => {
+                const hasKey = data.ai?.providers?.[p]?.configured;
+                const label = p.charAt(0).toUpperCase() + p.slice(1) + (hasKey ? '' : ' (no key)');
+                return `<option value="${p}" ${(data.ai_provider || 'openai') === p ? 'selected' : ''}>${label}</option>`;
+              }).join('')}
             </select>
+          </div>
+          <div class="form-group" id="modelSelectGroup">
+            <label for="set_ai_model">Model</label>
+            <select id="set_ai_model" class="input"></select>
           </div>
           <div class="form-group" style="grid-column: 1 / -1;">
             <label for="set_ai_system_prompt">Custom AI System Prompt <span class="text-muted text-small">(leave blank for default)</span></label>
@@ -49,9 +55,37 @@ async function refreshSettingsInfo() {
           </div>
         </form>
         <div class="mt-1">
+          <p class="text-muted text-small"><strong>AI Provider Status:</strong>
+            ${['openai','anthropic','gemini','deepseek','groq','mistral','openrouter','xai','together'].map(p => {
+              const ok = data.ai?.providers?.[p]?.configured;
+              return `<span class="${ok ? 'text-success' : 'text-muted'}" style="margin-right:0.5em;">${p.charAt(0).toUpperCase() + p.slice(1)}: ${ok ? 'Ready' : 'No key'}</span>`;
+            }).join(' ')}
+          </p>
           <p class="text-muted text-small"><strong>SMTP:</strong> ${data.smtp_configured ? 'Configured' : 'Not configured (set in .env)'}</p>
         </div>
       `;
+
+      // Wire up model dropdown based on provider selection
+      const providerSelect = document.getElementById('set_ai_provider');
+      const modelSelect = document.getElementById('set_ai_model');
+      const aiModels = data.ai?.models || {};
+      const currentModels = data.ai_models || data.ai?.current_models || {};
+
+      function updateModelDropdown() {
+        if (!modelSelect || !providerSelect) return;
+        const provider = providerSelect.value;
+        const models = aiModels[provider] || {};
+        const currentModel = currentModels[provider] || '';
+        const modelKey = provider.toUpperCase() + '_MODEL';
+        modelSelect.name = modelKey;
+        modelSelect.innerHTML = Object.entries(models).map(([id, label]) =>
+          `<option value="${id}" ${id === currentModel ? 'selected' : ''}>${escapeHtml(label)}</option>`
+        ).join('');
+      }
+      updateModelDropdown();
+      if (providerSelect) {
+        providerSelect.addEventListener('change', updateModelDropdown);
+      }
 
       const form = document.getElementById('settingsForm');
       if (form) {

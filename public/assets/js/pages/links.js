@@ -55,9 +55,10 @@ export async function refresh() {
 async function loadUtmLinks() {
   try {
     const data = await api('/api/utm');
+    const items = data.items || data;
     const tb = $('utmTable');
     if (!tb) return;
-    tb.innerHTML = data.map(l => `<tr>
+    tb.innerHTML = items.map(l => `<tr>
       <td>${escapeHtml(l.campaign_name)}</td>
       <td>${escapeHtml(l.utm_source)}</td>
       <td>${escapeHtml(l.utm_medium)}</td>
@@ -76,10 +77,11 @@ async function loadUtmLinks() {
 async function loadShortLinks() {
   try {
     const data = await api('/api/links');
+    const items = data.items || data;
     const tb = $('shortLinkTable');
     if (!tb) return;
     const base = window.location.origin + getBasePath();
-    tb.innerHTML = data.map(l => {
+    tb.innerHTML = items.map(l => {
       const shortUrl = `${base}/s/${l.code}`;
       return `<tr>
         <td><a href="${shortUrl}" target="_blank">${getBasePath()}/s/${escapeHtml(l.code)}</a></td>
@@ -104,7 +106,8 @@ async function handleUtmCreate(e) {
   const data = Object.fromEntries(fd.entries());
   data.create_short_link = fd.has('create_short_link');
   try {
-    const result = await api('/api/utm', { method: 'POST', body: JSON.stringify(data) });
+    const resp = await api('/api/utm', { method: 'POST', body: JSON.stringify(data) });
+    const result = resp.item || resp;
     toast('UTM link created', 'success');
 
     $('utmResult')?.classList.remove('hidden');

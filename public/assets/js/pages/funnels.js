@@ -28,9 +28,10 @@ async function loadCampaignOptions() {
 async function loadFunnels() {
   try {
     const data = await api('/api/funnels');
+    const items = data.items || data;
     const el = $('funnelList');
     if (!el) return;
-    el.innerHTML = data.map(f => {
+    el.innerHTML = items.map(f => {
       const stages = f.stages || [];
       const maxVal = Math.max(...stages.map(s => Math.max(s.target_count, s.actual_count)), 1);
       return `<div class="card">
@@ -96,7 +97,8 @@ async function handleCreate(e) {
 
 window._editFunnelStages = async (id) => {
   try {
-    const funnel = await api(`/api/funnels/${id}`);
+    const resp = await api(`/api/funnels/${id}`);
+    const funnel = resp.item || resp;
     const stages = funnel.stages || [];
     for (const stage of stages) {
       const newActual = prompt(`${stage.name} - current: ${stage.actual_count}, new actual count:`, String(stage.actual_count));

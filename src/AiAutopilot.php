@@ -41,7 +41,18 @@ final class AiAutopilot
     {
         $steps = ['research', 'persona', 'competitors', 'brand_voice', 'strategy', 'calendar', 'content', 'campaign', 'ideas'];
         $taskId = $this->createTask('onboarding', $steps);
+        return $this->runOnboardingTask($taskId, $profile);
+    }
 
+    public function launchOnboardingAsync(array $profile): array
+    {
+        $steps = ['research', 'persona', 'competitors', 'brand_voice', 'strategy', 'calendar', 'content', 'campaign', 'ideas'];
+        $taskId = $this->createTask('onboarding', $steps);
+        return ['task_id' => $taskId, 'status' => 'running'];
+    }
+
+    public function runOnboardingTask(int $taskId, array $profile): array
+    {
         $context = [];
 
         // Step 1: Market Research
@@ -468,6 +479,29 @@ final class AiAutopilot
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
+    public function discoverFromWebsite(string $url): array
+    {
+        $url = trim($url);
+        if ($url === '' || !filter_var($url, FILTER_VALIDATE_URL)) {
+            return ['error' => 'Please provide a valid website URL.'];
+        }
+
+        $snapshot = $this->fetchWebsiteSnapshot($url);
+        if ($snapshot === '') {
+            return ['error' => 'Could not fetch website content for analysis.'];
+        }
+
+        $result = $this->strategyTools->discoverBusinessFromWebsite($url, $snapshot);
+        if (empty($result['profile']) || !is_array($result['profile'])) {
+            return ['error' => 'AI could not infer a profile from this website yet. Try adding more details manually.'];
+        }
+
+        return [
+            'profile' => $result['profile'],
+            'provider' => $result['provider'] ?? null,
+        ];
+    }
+
     public function saveBusinessProfile(array $data): int
     {
         $existing = $this->getBusinessProfile();
@@ -656,5 +690,62 @@ final class AiAutopilot
     {
         if (strlen($text) <= $maxLen) return $text;
         return mb_substr($text, 0, $maxLen - 3) . '...';
+    }
+
+    private function fetchWebsiteSnapshot(string $url): string
+    {
+        $context = stream_context_create([
+            'http' => [
+                'timeout' => 20,
+                'user_agent' => 'MarketingSuiteBot/1.0 (+https://local.marketing-suite)',
+            ],
+        ]);
+        $html = @file_get_contents($url, false, $context);
+        if (!is_string($html) || trim($html) === '') {
+            return '';
+        }
+
+        $html = mb_substr($html, 0, 250000);
+        libxml_use_internal_errors(true);
+        $dom = new DOMDocument();
+        @$dom->loadHTML($html);
+        libxml_clear_errors();
+
+        $extract = [];
+        $titleNodes = $dom->getElementsByTagName('title');
+        if ($titleNodes->length > 0) {
+            $extract[] = 'Title: ' . trim((string)$titleNodes->item(0)->textContent);
+        }
+
+        foreach (['description', 'og:description'] as $metaName) {
+            foreach ($dom->getElementsByTagName('meta') as $meta) {
+                $name = strtolower((string)$meta->getAttribute('name'));
+                $prop = strtolower((string)$meta->getAttribute('property'));
+                if ($name === $metaName || $prop === $metaName) {
+                    $content = trim((string)$meta->getAttribute('content'));
+                    if ($content !== '') {
+                        $extract[] = 'Meta Description: ' . $content;
+                    }
+                    break;
+                }
+            }
+        }
+
+        foreach (['h1', 'h2', 'p'] as $tag) {
+            $count = 0;
+            foreach ($dom->getElementsByTagName($tag) as $node) {
+                $text = trim((string)preg_replace('/\s+/', ' ', (string)$node->textContent));
+                if ($text === '') {
+                    continue;
+                }
+                $extract[] = strtoupper($tag) . ': ' . $text;
+                $count++;
+                if (($tag === 'p' && $count >= 8) || ($tag !== 'p' && $count >= 6)) {
+                    break;
+                }
+            }
+        }
+
+        return mb_substr(implode("\n", $extract), 0, 12000);
     }
 }

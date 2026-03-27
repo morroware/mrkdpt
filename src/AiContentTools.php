@@ -25,12 +25,66 @@ final class AiContentTools
         $topic    = $input['topic'] ?? 'seasonal promotion';
         $goal     = $input['goal'] ?? 'drive qualified leads';
         $length   = $input['length'] ?? 'medium';
+        $audience = $input['audience'] ?? 'our target audience';
+        $qualityMode = strtolower(trim((string)($input['quality_mode'] ?? 'enhanced')));
 
-        $prompt = "Write a {$contentType} for {$platform} for {$this->ai->getBusinessName()}. Topic: {$topic}. Tone: {$tone}. Goal: {$goal}. Length: {$length}. Include strong CTA, hashtags, and a short A/B variant.";
+        $prompt = "Write a {$contentType} for {$platform} for {$this->ai->getBusinessName()}.
+Topic: {$topic}
+Tone: {$tone}
+Audience: {$audience}
+Goal: {$goal}
+Length: {$length}
+
+Include strong CTA, relevant hashtags, and a short A/B variant.";
 
         $provider = $input['provider'] ?? null;
         $model    = $input['model'] ?? null;
-        return ['content' => $this->ai->generate($prompt, $provider, $model), 'provider' => $provider ?? $this->ai->getProvider()];
+        $system = $this->ai->buildSystemPrompt($this->contentRoleDirective($contentType, $platform, $tone, $goal, $audience));
+        $draft = $this->ai->generateAdvanced($system, $prompt, $provider, $model);
+
+        if ($qualityMode !== 'enhanced') {
+            return [
+                'content' => $draft,
+                'provider' => $provider ?? $this->ai->getProvider(),
+                'quality_mode' => 'standard',
+            ];
+        }
+
+        $primaryProvider = $provider ?? $this->ai->getProvider();
+        $reviewer = $this->pickReviewerProvider($primaryProvider);
+        if ($reviewer === null) {
+            return [
+                'content' => $draft,
+                'provider' => $primaryProvider,
+                'quality_mode' => 'enhanced',
+                'reviewer_provider' => null,
+            ];
+        }
+
+        $reviewSystem = $this->ai->buildSystemPrompt(
+            "You are a senior conversion editor. Improve copy quality while preserving brand voice and factual correctness."
+        );
+        $reviewPrompt = "Improve this draft for clarity, persuasion, and platform fit.
+Content type: {$contentType}
+Platform: {$platform}
+Tone: {$tone}
+Audience: {$audience}
+Goal: {$goal}
+
+Original draft:
+{$draft}
+
+Return:
+1) Final improved version
+2) 3 short bullet edits explaining what improved.";
+        $improved = $this->ai->generateAdvanced($reviewSystem, $reviewPrompt, $reviewer, null, 4096);
+
+        return [
+            'content' => $improved,
+            'provider' => $primaryProvider,
+            'quality_mode' => 'enhanced',
+            'reviewer_provider' => $reviewer,
+        ];
     }
 
     public function blogPostGenerator(string $title, string $keywords, ?string $outline = null, ?string $provider = null, ?string $model = null): array
@@ -41,6 +95,75 @@ final class AiContentTools
         $prompt = "Write a full SEO-optimized blog post (1200-1800 words) for {$biz} ({$ind}).\n\nTitle: {$title}\nTarget keywords: {$keywords}{$outlineSection}\n\nInclude:\n- Meta title (under 60 characters)\n- Meta description (under 155 characters)\n- H1 heading\n- At least 4 H2 subheadings\n- Internal linking suggestions\n- A clear call-to-action\n- A FAQ section with at least 3 questions\n\nWrite naturally. Integrate keywords without stuffing.";
 
         return ['post' => $this->ai->generateAdvanced($this->ai->buildSystemPrompt(), $prompt, $provider, $model), 'provider' => $provider ?? $this->ai->getProvider()];
+    }
+
+    public function multiSourceContentSuite(array $input): array
+    {
+        $topic = trim((string)($input['topic'] ?? ''));
+        if ($topic === '') {
+            return ['error' => 'Missing topic'];
+        }
+
+        $contentType = trim((string)($input['content_type'] ?? 'social_post'));
+        $platform = trim((string)($input['platform'] ?? 'instagram'));
+        $tone = trim((string)($input['tone'] ?? 'professional'));
+        $goal = trim((string)($input['goal'] ?? 'drive engagement'));
+        $audience = trim((string)($input['audience'] ?? 'target audience'));
+        $size = trim((string)($input['image_size'] ?? '1024x1024'));
+
+        $copyProvider = $input['copy_provider'] ?? null;
+        $copyModel = $input['copy_model'] ?? null;
+        $imagePromptProvider = $input['image_prompt_provider'] ?? null;
+        $imagePromptModel = $input['image_prompt_model'] ?? null;
+        $imageProvider = trim((string)($input['image_provider'] ?? 'auto'));
+
+        $copySystem = $this->ai->buildSystemPrompt($this->contentRoleDirective($contentType, $platform, $tone, $goal, $audience));
+        $copyPrompt = "Create publish-ready {$contentType} content for {$platform}.
+Topic: {$topic}
+Tone: {$tone}
+Audience: {$audience}
+Goal: {$goal}
+
+Return:
+1) Final copy
+2) A/B variant
+3) CTA options
+4) Hashtag set (if relevant).";
+
+        $copy = $this->ai->generateAdvanced($copySystem, $copyPrompt, $copyProvider, $copyModel, 4096);
+
+        $imagePromptSystem = $this->ai->buildSystemPrompt(
+            "You are a senior visual director. Create production-grade prompts for image generation models."
+        );
+        $imagePromptTask = "Build one high-quality image prompt to match this content.
+Platform: {$platform}
+Style direction: {$tone}
+Goal: {$goal}
+Topic: {$topic}
+
+Content to visualize:
+{$copy}
+
+Return only:
+- prompt: <single detailed prompt, 90-140 words>
+- negative_prompt: <short list>
+- size: <best size for platform>";
+
+        $imagePromptText = $this->ai->generateAdvanced($imagePromptSystem, $imagePromptTask, $imagePromptProvider, $imagePromptModel, 1024);
+        $imagePrompt = $this->extractImagePrompt($imagePromptText);
+        $imageResult = $this->ai->generateImage($imagePrompt, $imageProvider === '' ? 'auto' : $imageProvider, $size);
+
+        return [
+            'copy' => $copy,
+            'image_prompt' => $imagePrompt,
+            'image_prompt_raw' => $imagePromptText,
+            'image' => $imageResult,
+            'providers' => [
+                'copy' => $copyProvider ?? $this->ai->getProvider(),
+                'image_prompt' => $imagePromptProvider ?? $this->ai->getProvider(),
+                'image' => $imageResult['provider'] ?? $imageProvider,
+            ],
+        ];
     }
 
     public function videoScript(string $topic, string $platform, int $durationSeconds = 60): array
@@ -429,5 +552,46 @@ Also provide:
     public function generateImage(string $prompt, string $imageProvider = 'auto', string $size = '1024x1024'): array
     {
         return $this->ai->generateImage($prompt, $imageProvider, $size);
+    }
+
+    private function contentRoleDirective(string $contentType, string $platform, string $tone, string $goal, string $audience): string
+    {
+        $role = match ($contentType) {
+            'ad_copy' => 'You are a direct-response copywriter focused on conversions.',
+            'email' => 'You are an email lifecycle marketer focused on opens, clicks, and clarity.',
+            'blog_post' => 'You are an SEO content strategist and editorial writer.',
+            'video_script' => 'You are a short-form video creative director and script writer.',
+            default => 'You are a social media strategist and conversion copywriter.',
+        };
+
+        return "{$role}
+- Primary channel: {$platform}
+- Desired tone: {$tone}
+- Business objective: {$goal}
+- Target audience: {$audience}
+- Always produce polished, publish-ready output with a clear structure and CTA.";
+    }
+
+    private function extractImagePrompt(string $text): string
+    {
+        if (preg_match('/prompt:\s*(.+)/i', $text, $m)) {
+            return trim($m[1]);
+        }
+        return trim($text);
+    }
+
+    private function pickReviewerProvider(string $primary): ?string
+    {
+        $status = $this->ai->providerStatus();
+        $providers = $status['providers'] ?? [];
+        foreach ($providers as $name => $info) {
+            if ($name === $primary) {
+                continue;
+            }
+            if (!empty($info['configured'])) {
+                return (string)$name;
+            }
+        }
+        return null;
     }
 }

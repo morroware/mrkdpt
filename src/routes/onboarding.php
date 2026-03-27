@@ -24,4 +24,19 @@ function register_onboarding_routes(Router $router, AiAutopilot $autopilot): voi
         $id = $autopilot->saveBusinessProfile($data);
         json_response(['id' => $id, 'saved' => true]);
     });
+
+    $router->post('/api/onboarding/discover', function () use ($autopilot) {
+        $data = request_json();
+        $url = trim((string)($data['website_url'] ?? ''));
+        if ($url === '') {
+            json_response(['error' => 'Missing: website_url'], 422);
+            return;
+        }
+        $result = $autopilot->discoverFromWebsite($url);
+        if (!empty($result['error'])) {
+            json_response(['error' => $result['error']], 422);
+            return;
+        }
+        json_response(['item' => $result]);
+    });
 }

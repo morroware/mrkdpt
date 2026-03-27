@@ -50,6 +50,29 @@ async function refreshSettingsInfo() {
             <label for="set_app_url">App URL</label>
             <input type="text" id="set_app_url" name="APP_URL" class="input" value="${escapeHtml(data.app_url || '')}" placeholder="https://yourdomain.com" />
           </div>
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <h4 style="margin:0.5rem 0 0.25rem;">AI Provider API Keys & Endpoints</h4>
+            <p class="text-muted text-small" style="margin:0;">Leave key fields blank to keep existing values. Enter a new key to replace.</p>
+          </div>
+          <div class="form-group"><label for="set_openai_key">OpenAI API Key</label><input type="password" id="set_openai_key" name="OPENAI_API_KEY" class="input" placeholder="${data.ai_config?.key_flags?.openai_api_key ? 'Saved (enter to replace)' : 'sk-...'}" autocomplete="off" /></div>
+          <div class="form-group"><label for="set_openai_base">OpenAI Base URL</label><input type="text" id="set_openai_base" name="OPENAI_BASE_URL" class="input" value="${escapeHtml(data.ai_config?.openai_base_url || '')}" /></div>
+          <div class="form-group"><label for="set_anthropic_key">Anthropic API Key</label><input type="password" id="set_anthropic_key" name="ANTHROPIC_API_KEY" class="input" placeholder="${data.ai_config?.key_flags?.anthropic_api_key ? 'Saved (enter to replace)' : 'sk-ant-...'}" autocomplete="off" /></div>
+          <div class="form-group"><label for="set_gemini_key">Gemini API Key</label><input type="password" id="set_gemini_key" name="GEMINI_API_KEY" class="input" placeholder="${data.ai_config?.key_flags?.gemini_api_key ? 'Saved (enter to replace)' : 'AIza...'}" autocomplete="off" /></div>
+          <div class="form-group"><label for="set_deepseek_key">DeepSeek API Key</label><input type="password" id="set_deepseek_key" name="DEEPSEEK_API_KEY" class="input" placeholder="${data.ai_config?.key_flags?.deepseek_api_key ? 'Saved (enter to replace)' : 'DeepSeek key'}" autocomplete="off" /></div>
+          <div class="form-group"><label for="set_deepseek_base">DeepSeek Base URL</label><input type="text" id="set_deepseek_base" name="DEEPSEEK_BASE_URL" class="input" value="${escapeHtml(data.ai_config?.deepseek_base_url || '')}" /></div>
+          <div class="form-group"><label for="set_groq_key">Groq API Key</label><input type="password" id="set_groq_key" name="GROQ_API_KEY" class="input" placeholder="${data.ai_config?.key_flags?.groq_api_key ? 'Saved (enter to replace)' : 'gsk_...'}" autocomplete="off" /></div>
+          <div class="form-group"><label for="set_groq_base">Groq Base URL</label><input type="text" id="set_groq_base" name="GROQ_BASE_URL" class="input" value="${escapeHtml(data.ai_config?.groq_base_url || '')}" /></div>
+          <div class="form-group"><label for="set_mistral_key">Mistral API Key</label><input type="password" id="set_mistral_key" name="MISTRAL_API_KEY" class="input" placeholder="${data.ai_config?.key_flags?.mistral_api_key ? 'Saved (enter to replace)' : 'Mistral key'}" autocomplete="off" /></div>
+          <div class="form-group"><label for="set_mistral_base">Mistral Base URL</label><input type="text" id="set_mistral_base" name="MISTRAL_BASE_URL" class="input" value="${escapeHtml(data.ai_config?.mistral_base_url || '')}" /></div>
+          <div class="form-group"><label for="set_openrouter_key">OpenRouter API Key</label><input type="password" id="set_openrouter_key" name="OPENROUTER_API_KEY" class="input" placeholder="${data.ai_config?.key_flags?.openrouter_api_key ? 'Saved (enter to replace)' : 'sk-or-...'}" autocomplete="off" /></div>
+          <div class="form-group"><label for="set_openrouter_base">OpenRouter Base URL</label><input type="text" id="set_openrouter_base" name="OPENROUTER_BASE_URL" class="input" value="${escapeHtml(data.ai_config?.openrouter_base_url || '')}" /></div>
+          <div class="form-group"><label for="set_xai_key">xAI API Key</label><input type="password" id="set_xai_key" name="XAI_API_KEY" class="input" placeholder="${data.ai_config?.key_flags?.xai_api_key ? 'Saved (enter to replace)' : 'xAI key'}" autocomplete="off" /></div>
+          <div class="form-group"><label for="set_xai_base">xAI Base URL</label><input type="text" id="set_xai_base" name="XAI_BASE_URL" class="input" value="${escapeHtml(data.ai_config?.xai_base_url || '')}" /></div>
+          <div class="form-group"><label for="set_together_key">Together API Key</label><input type="password" id="set_together_key" name="TOGETHER_API_KEY" class="input" placeholder="${data.ai_config?.key_flags?.together_api_key ? 'Saved (enter to replace)' : 'Together key'}" autocomplete="off" /></div>
+          <div class="form-group"><label for="set_together_base">Together Base URL</label><input type="text" id="set_together_base" name="TOGETHER_BASE_URL" class="input" value="${escapeHtml(data.ai_config?.together_base_url || '')}" /></div>
+          <div class="form-group"><label for="set_banana_key">NanoBanana API Key</label><input type="password" id="set_banana_key" name="BANANA_API_KEY" class="input" placeholder="${data.ai_config?.key_flags?.banana_api_key ? 'Saved (enter to replace)' : 'Banana key'}" autocomplete="off" /></div>
+          <div class="form-group"><label for="set_banana_base">NanoBanana Base URL</label><input type="text" id="set_banana_base" name="BANANA_BASE_URL" class="input" value="${escapeHtml(data.ai_config?.banana_base_url || '')}" /></div>
+          <div class="form-group"><label for="set_banana_model">NanoBanana Model ID</label><input type="text" id="set_banana_model" name="BANANA_MODEL_ID" class="input" value="${escapeHtml(data.ai_config?.banana_model_id || '')}" placeholder="Required for Banana image generation" /></div>
           <div class="form-group flex" style="align-items: flex-end;">
             <button type="submit" class="btn btn-ai">Save Settings</button>
           </div>
@@ -100,6 +123,12 @@ async function refreshSettingsInfo() {
             for (const [k, v] of fd.entries()) {
               payload[k] = v;
             }
+            const sensitive = ['OPENAI_API_KEY','ANTHROPIC_API_KEY','GEMINI_API_KEY','DEEPSEEK_API_KEY','GROQ_API_KEY','MISTRAL_API_KEY','OPENROUTER_API_KEY','XAI_API_KEY','TOGETHER_API_KEY','BANANA_API_KEY'];
+            sensitive.forEach((key) => {
+              if ((payload[key] || '').trim() === '') {
+                delete payload[key];
+              }
+            });
             await api('/api/settings', { method: 'PUT', body: JSON.stringify(payload) });
             success('Settings saved');
           } catch (err) {

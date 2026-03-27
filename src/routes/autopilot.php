@@ -11,8 +11,15 @@ function register_autopilot_routes(Router $router, AiAutopilot $autopilot): void
             json_response(['error' => 'Business profile not found. Complete onboarding first.'], 422);
             return;
         }
-        $result = $autopilot->launchOnboarding($profile);
-        json_response(['item' => $result]);
+        $result = $autopilot->launchOnboardingAsync($profile);
+        json_response(['item' => $result], 202);
+
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        }
+        ignore_user_abort(true);
+        @set_time_limit(0);
+        $autopilot->runOnboardingTask((int)($result['task_id'] ?? 0), $profile);
     });
 
     // Launch campaign-specific autopilot

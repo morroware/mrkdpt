@@ -191,6 +191,10 @@
                 <div><label>Website URL</label><input id="obWebsite" class="input" type="url" placeholder="https://yourbusiness.com"></div>
                 <div><label>What makes you different? (USPs)</label><input id="obUSPs" class="input" placeholder="e.g. 100% organic, cruelty-free, female-founded"></div>
               </div>
+              <div class="flex gap-1" style="align-items:center;">
+                <button type="button" class="btn btn-sm btn-outline" id="obAutoResearch"><span class="btn-ai-icon">&#9733;</span> Auto-Research from Website</button>
+                <span class="text-small text-muted">Uses your website content to draft your business profile, audience, goals, and competitor angles.</span>
+              </div>
               <div class="flex-between mt-1">
                 <button type="button" class="btn btn-ghost" id="skipOnboarding">Skip for now</button>
                 <button type="button" class="btn btn-ai onboard-next"><span class="btn-ai-icon">&#9733;</span> Next: Your Audience</button>
@@ -552,7 +556,9 @@
                 <div class="row2"><select id="aiContentType"><option value="social_post">Social Post</option><option value="caption">Caption</option><option value="ad_copy">Ad Copy</option><option value="video_script">Video Script</option><option value="email">Email</option></select><select id="aiTone"><option value="professional">Professional</option><option value="friendly">Friendly</option><option value="direct-response">Direct Response</option><option value="educational">Educational</option><option value="humorous">Humorous</option><option value="inspirational">Inspirational</option></select></div>
                 <select id="aiContentPlatform"><option value="facebook">Facebook</option><option value="instagram">Instagram</option><option value="twitter">Twitter/X</option><option value="linkedin">LinkedIn</option><option value="tiktok">TikTok</option><option value="youtube">YouTube</option><option value="bluesky">Bluesky</option><option value="mastodon">Mastodon</option></select>
                 <input id="aiContentTopic" placeholder="What's the topic?" />
+                <input id="aiContentAudience" placeholder="Who is this for? (audience segment)" />
                 <input id="aiContentGoal" placeholder="What's the goal? (e.g. drive signups)" />
+                <select id="aiContentQualityMode"><option value="enhanced">Enhanced Quality (multi-model review)</option><option value="standard">Fast Draft (single pass)</option></select>
                 <button class="btn btn-ai w-full" id="runContent"><span class="btn-ai-icon">&#9733;</span> Generate Content</button>
               </div>
             </div>
@@ -883,6 +889,33 @@
               </div>
             </div>
 
+            <div class="ai-tool-card" data-ai-cat="creation">
+              <div class="ai-tool-header"><span class="ai-tool-icon">&#129302;</span><h3>Multi-Source Creative Pipeline</h3></div>
+              <p class="ai-tool-desc">Use one AI for copy and another for image prompting/generation in a single run.</p>
+              <div class="stack">
+                <input id="aiMultiSourceTopic" placeholder="Topic or campaign angle" />
+                <div class="row2">
+                  <select id="aiMultiSourceType"><option value="social_post">social_post</option><option value="email">email</option><option value="ad_copy">ad_copy</option><option value="blog_post">blog_post</option><option value="video_script">video_script</option></select>
+                  <select id="aiMultiSourcePlatform"><option>instagram</option><option>twitter</option><option>linkedin</option><option>facebook</option><option>tiktok</option><option>email</option><option>blog</option></select>
+                </div>
+                <div class="row2">
+                  <input id="aiMultiSourceTone" placeholder="Tone (e.g. bold, professional)" />
+                  <input id="aiMultiSourceGoal" placeholder="Goal (e.g. drive demo bookings)" />
+                </div>
+                <input id="aiMultiSourceAudience" placeholder="Audience (optional)" />
+                <div class="row2">
+                  <select id="aiCopyProviderSelect"><option value="">Copy: default/failover</option><option value="openai">Copy via OpenAI</option><option value="anthropic">Copy via Anthropic</option><option value="gemini">Copy via Gemini</option><option value="deepseek">Copy via DeepSeek</option><option value="groq">Copy via Groq</option><option value="mistral">Copy via Mistral</option><option value="openrouter">Copy via OpenRouter</option><option value="xai">Copy via xAI</option><option value="together">Copy via Together</option></select>
+                  <select id="aiImagePromptProviderSelect"><option value="">Image prompt: default/failover</option><option value="openai">Prompt via OpenAI</option><option value="anthropic">Prompt via Anthropic</option><option value="gemini">Prompt via Gemini</option><option value="deepseek">Prompt via DeepSeek</option><option value="groq">Prompt via Groq</option><option value="mistral">Prompt via Mistral</option><option value="openrouter">Prompt via OpenRouter</option><option value="xai">Prompt via xAI</option><option value="together">Prompt via Together</option></select>
+                </div>
+                <div class="row2">
+                  <select id="aiMultiSourceImageProvider"><option value="auto">Image provider: Auto</option><option value="banana">Image via NanoBanana</option><option value="openai">Image via DALL-E 3</option></select>
+                  <select id="aiMultiSourceImageSize"><option value="1024x1024">1024x1024</option><option value="1024x1792">1024x1792</option><option value="1792x1024">1792x1024</option></select>
+                </div>
+                <button class="btn btn-ai w-full" id="runMultiSourceContent"><span class="btn-ai-icon">&#9733;</span> Generate Copy + Visual</button>
+                <div id="aiMultiSourceImagePreview" class="hidden" style="text-align:center;margin-top:8px"></div>
+              </div>
+            </div>
+
             <!-- TIER 1: Pre-Flight Check -->
             <div class="ai-tool-card" data-ai-cat="optimization">
               <div class="ai-tool-header"><span class="ai-tool-icon">&#9989;</span><h3>Pre-Flight Check</h3></div>
@@ -974,8 +1007,42 @@ Tip: Use the provider selector above to compare results from different AI models
               </div>
             </div>
             <div class="chat-input-area">
-              <textarea id="chatInput" rows="2" placeholder="Ask about your marketing data, or request content creation..." autofocus></textarea>
-              <button class="btn btn-ai" id="chatSendBtn"><span class="btn-ai-icon">&#9733;</span> Send</button>
+              <div class="chat-compose-options">
+                <select id="chatContentType">
+                  <option value="">Auto-detect content type</option>
+                  <option value="social_post">Social post</option>
+                  <option value="caption_batch">Caption batch</option>
+                  <option value="email">Marketing email</option>
+                  <option value="blog_post">Blog post</option>
+                  <option value="ad_copy">Ad copy</option>
+                  <option value="video_script">Video script</option>
+                  <option value="strategy">Strategy memo</option>
+                </select>
+                <select id="chatContentPlatform">
+                  <option value="">Any platform</option>
+                  <option value="instagram">Instagram</option>
+                  <option value="twitter">Twitter / X</option>
+                  <option value="linkedin">LinkedIn</option>
+                  <option value="facebook">Facebook</option>
+                  <option value="tiktok">TikTok</option>
+                  <option value="email">Email</option>
+                  <option value="blog">Blog</option>
+                </select>
+                <select id="chatContentTone">
+                  <option value="">Brand-default tone</option>
+                  <option value="professional">Professional</option>
+                  <option value="conversational">Conversational</option>
+                  <option value="bold">Bold</option>
+                  <option value="educational">Educational</option>
+                  <option value="friendly">Friendly</option>
+                </select>
+                <input id="chatContentAudience" type="text" placeholder="Audience (optional)" />
+                <input id="chatContentGoal" type="text" placeholder="Goal (optional)" />
+              </div>
+              <div class="chat-compose-row">
+                <textarea id="chatInput" rows="2" placeholder="Ask about your marketing data, or request content creation..." autofocus></textarea>
+                <button class="btn btn-ai" id="chatSendBtn"><span class="btn-ai-icon">&#9733;</span> Send</button>
+              </div>
             </div>
           </div>
         </div>

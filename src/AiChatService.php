@@ -346,6 +346,6 @@ RULES:
             array_unshift($contents, ['role' => 'user', 'parts' => [['text' => 'Continue.']]]);
         }
 
-        return $this->ai->chatGemini($contents, $model);
+        return $this->ai->chatGemini($contents, $model, $system);
     }
 }

@@ -21,7 +21,9 @@ export function refresh() {
 
 export function init() {
   onClick('seoRunKeywords', async () => {
+    const btn = $('seoRunKeywords');
     loading();
+    if (btn) { btn.classList.add('loading'); btn.disabled = true; }
     try {
       const { item } = await api('/api/ai/seo-keywords', {
         method: 'POST',
@@ -35,11 +37,15 @@ export function init() {
     } catch (err) {
       output('Error: ' + err.message);
       error(err.message);
+    } finally {
+      if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
     }
   });
 
   onClick('seoRunBlog', async () => {
+    const btn = $('seoRunBlog');
     loading();
+    if (btn) { btn.classList.add('loading'); btn.disabled = true; }
     try {
       const { item } = await api('/api/ai/blog-post', {
         method: 'POST',
@@ -54,6 +60,8 @@ export function init() {
     } catch (err) {
       output('Error: ' + err.message);
       error(err.message);
+    } finally {
+      if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
     }
   });
 }

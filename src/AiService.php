@@ -662,7 +662,7 @@ final class AiService
     /**
      * Gemini chat with full message history.
      */
-    public function chatGemini(array $contents, ?string $model = null): string
+    public function chatGemini(array $contents, ?string $model = null, ?string $system = null): string
     {
         if (empty($this->config['gemini_api_key'])) {
             return '';
@@ -675,7 +675,12 @@ final class AiService
             urlencode((string)$this->config['gemini_api_key']),
         );
 
-        $data = $this->postJson($url, [], ['contents' => $contents]);
+        $payload = ['contents' => $contents];
+        if ($system !== null && $system !== '') {
+            $payload['systemInstruction'] = ['parts' => [['text' => $system]]];
+        }
+
+        $data = $this->postJson($url, [], $payload);
         return $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
     }
 

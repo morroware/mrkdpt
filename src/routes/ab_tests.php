@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 function register_ab_test_routes(Router $router, AbTestRepository $abTests): void
 {
-    $router->get('/api/ab-tests', fn() => json_response($abTests->all()));
+    $router->get('/api/ab-tests', fn() => json_response(['items' => $abTests->all()]));
 
     $router->post('/api/ab-tests', function () use ($abTests) {
         $data = request_json();
@@ -12,7 +12,7 @@ function register_ab_test_routes(Router $router, AbTestRepository $abTests): voi
             json_response(['error' => 'name is required'], 400);
             return;
         }
-        json_response($abTests->create($data), 201);
+        json_response(['item' => $abTests->create($data)], 201);
     });
 
     $router->get('/api/ab-tests/{id}', function (array $params) use ($abTests) {

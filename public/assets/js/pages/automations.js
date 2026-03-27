@@ -19,9 +19,10 @@ export async function refresh() {
 async function loadAutomations() {
   try {
     const data = await api('/api/automations');
+    const items = data.items || data;
     const tb = $('automationTable');
     if (!tb) return;
-    tb.innerHTML = data.map(a => `<tr>
+    tb.innerHTML = items.map(a => `<tr>
       <td><strong>${escapeHtml(a.name)}</strong></td>
       <td><span class="badge badge-info">${escapeHtml(a.trigger_event)}</span></td>
       <td><span class="badge">${escapeHtml(a.action_type)}</span></td>

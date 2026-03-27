@@ -316,9 +316,14 @@ SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM
 - The `formData(e)` utility converts FormData to a plain object
 - `statusBadge(status)` returns colored badge HTML
 - Toast notifications via `success()`, `error()` from `toast.js`
-- When adding new AI tools: add method to `AiService.php`, register route in `routes/ai.php`, add card in `app.html`, wire button in `pages/ai.js`
+- When adding new AI tools: add method to the appropriate tool class (`AiContentTools.php`, `AiAnalysisTools.php`, or `AiStrategyTools.php`), register route in `routes/ai.php`, add card in `app.html`, wire button in `pages/ai.js`
 - When adding new pages: create page module in `pages/`, register in `app.js`, add HTML section in `app.html`, add nav link in sidebar
 - All SQL queries use prepared statements with parameter binding (no raw concatenation)
 - Landing page custom CSS is sanitized via `LandingPages::sanitizeCss()` to prevent style tag injection
 - Short link codes are generated iteratively (max 20 attempts, auto-lengthens on collision)
 - Scheduler uses `flock()` with `LOCK_EX | LOCK_NB` for atomic cron lock + stale lock recovery
+- Webhook dispatch validates URLs against SSRF (blocks private/reserved IP ranges)
+- AI Studio provider select sends `provider` param to API for per-request provider override
+- All API list endpoints return `{ items: [...] }` and single-item endpoints return `{ item: {...} }`; frontend uses defensive `data.items || data` unwrapping
+- `install.php` requires minimum 10-character passwords (matches server-side validation in Auth)
+- `login.js` guards against duplicate `initRouter()` calls on re-authentication

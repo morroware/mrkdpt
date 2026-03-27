@@ -7,7 +7,7 @@ function register_contact_routes(Router $router, ContactRepository $contacts, Au
     $router->get('/api/contacts', function () use ($contacts) {
         $stage = $_GET['stage'] ?? null;
         $search = $_GET['search'] ?? null;
-        json_response($contacts->all($stage, $search));
+        json_response(['items' => $contacts->all($stage, $search)]);
     });
 
     $router->get('/api/contacts/metrics', fn() => json_response($contacts->metrics()));
@@ -22,7 +22,7 @@ function register_contact_routes(Router $router, ContactRepository $contacts, Au
         }
         $contact = $contacts->create($data);
         $automations->fire('contact.created', ['contact_id' => $contact['id'], 'email' => $contact['email'], 'source' => $data['source'] ?? 'manual']);
-        json_response($contact, 201);
+        json_response(['item' => $contact], 201);
     });
 
     $router->get('/api/contacts/{id}', function (array $params) use ($contacts) {
@@ -32,7 +32,7 @@ function register_contact_routes(Router $router, ContactRepository $contacts, Au
             return;
         }
         $contact['activities'] = $contacts->activities((int)$params['id']);
-        json_response($contact);
+        json_response(['item' => $contact]);
     });
 
     $router->patch('/api/contacts/{id}', function (array $params) use ($contacts, $automations) {
@@ -43,7 +43,7 @@ function register_contact_routes(Router $router, ContactRepository $contacts, Au
             $contacts->logActivity((int)$params['id'], 'stage_changed', "Stage changed from {$old['stage']} to {$data['stage']}");
             $automations->fire('contact.stage_changed', ['contact_id' => $contact['id'], 'old_stage' => $old['stage'], 'new_stage' => $data['stage']]);
         }
-        $contact ? json_response($contact) : json_response(['error' => 'Not found'], 404);
+        $contact ? json_response(['item' => $contact]) : json_response(['error' => 'Not found'], 404);
     });
 
     $router->delete('/api/contacts/{id}', function (array $params) use ($contacts) {

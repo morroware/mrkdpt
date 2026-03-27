@@ -23,7 +23,7 @@ function register_segment_routes(Router $router, SegmentRepository $segments): v
             json_response(['error' => 'Not found'], 404);
             return;
         }
-        json_response($seg);
+        json_response(['item' => $seg]);
     });
 
     $router->get('/api/segments/{id}/contacts', function (array $params) use ($segments) {

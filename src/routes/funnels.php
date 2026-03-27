@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 function register_funnel_routes(Router $router, FunnelRepository $funnels): void
 {
-    $router->get('/api/funnels', fn() => json_response($funnels->all()));
+    $router->get('/api/funnels', fn() => json_response(['items' => $funnels->all()]));
 
     $router->post('/api/funnels', function () use ($funnels) {
         $data = request_json();
@@ -12,7 +12,7 @@ function register_funnel_routes(Router $router, FunnelRepository $funnels): void
             json_response(['error' => 'name is required'], 400);
             return;
         }
-        json_response($funnels->create($data), 201);
+        json_response(['item' => $funnels->create($data)], 201);
     });
 
     $router->get('/api/funnels/{id}', function (array $params) use ($funnels) {

@@ -100,8 +100,73 @@ final class Webhooks
 
     /* ---- internal ---- */
 
+    /**
+     * Validate that a webhook URL does not target a private/internal network address (SSRF protection).
+     *
+     * @throws \InvalidArgumentException if the URL resolves to a private/internal IP.
+     */
+    private function validateUrlNotInternal(string $url): void
+    {
+        $host = parse_url($url, PHP_URL_HOST);
+        if ($host === null || $host === false || $host === '') {
+            throw new \InvalidArgumentException('Webhook URL has no valid host.');
+        }
+
+        // Resolve hostname to IP addresses
+        $ips = gethostbynamel($host);
+        if ($ips === false) {
+            // Also check if the host itself is a literal IP
+            if (filter_var($host, FILTER_VALIDATE_IP)) {
+                $ips = [$host];
+            } else {
+                throw new \InvalidArgumentException('Webhook URL host could not be resolved.');
+            }
+        }
+
+        foreach ($ips as $ip) {
+            if ($this->isPrivateIp($ip)) {
+                throw new \InvalidArgumentException('Webhook URL must not target private/internal network addresses.');
+            }
+        }
+    }
+
+    /**
+     * Check whether an IP address belongs to a private/internal/reserved range.
+     */
+    private function isPrivateIp(string $ip): bool
+    {
+        // IPv6 loopback
+        if ($ip === '::1' || $ip === '0:0:0:0:0:0:0:1') {
+            return true;
+        }
+
+        // Use PHP's built-in filter to reject private and reserved ranges:
+        // 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16,
+        // 0.0.0.0/8, 100.64.0.0/10, 192.0.0.0/24, 198.18.0.0/15, fc00::/7, fe80::/10, etc.
+        $flags = FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE;
+        if (filter_var($ip, FILTER_VALIDATE_IP, $flags) === false) {
+            return true;
+        }
+
+        return false;
+    }
+
     private function send(array $hook, string $event, array $payload): array
     {
+        // SSRF protection: reject private/internal network targets
+        try {
+            $this->validateUrlNotInternal($hook['url']);
+        } catch (\InvalidArgumentException $e) {
+            return [
+                'webhook_id' => $hook['id'],
+                'url' => $hook['url'],
+                'event' => $event,
+                'success' => false,
+                'http_code' => 0,
+                'error' => $e->getMessage(),
+            ];
+        }
+
         $body = json_encode([
             'event' => $event,
             'timestamp' => gmdate(DATE_ATOM),

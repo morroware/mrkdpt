@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 function register_automation_routes(Router $router, AutomationRepository $automations): void
 {
-    $router->get('/api/automations', fn() => json_response($automations->all()));
+    $router->get('/api/automations', fn() => json_response(['items' => $automations->all()]));
 
     $router->get('/api/automations/options', fn() => json_response([
         'trigger_events' => AutomationRepository::triggerEvents(),
@@ -17,7 +17,7 @@ function register_automation_routes(Router $router, AutomationRepository $automa
             json_response(['error' => 'name, trigger_event, action_type are required'], 400);
             return;
         }
-        json_response($automations->create($data), 201);
+        json_response(['item' => $automations->create($data)], 201);
     });
 
     $router->get('/api/automations/{id}', function (array $params) use ($automations) {

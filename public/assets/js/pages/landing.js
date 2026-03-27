@@ -65,10 +65,11 @@ export async function refresh() {
 async function loadPages() {
   try {
     const data = await api('/api/landing-pages');
+    const items = data.items || data;
     const el = $('landingPageList');
     if (!el) return;
     const base = window.location.origin + getBasePath();
-    el.innerHTML = data.map(p => {
+    el.innerHTML = items.map(p => {
       const url = `${base}/p/${p.slug}`;
       const rate = p.views > 0 ? ((p.conversions / p.views) * 100).toFixed(1) : '0.0';
       return `<div class="card">
@@ -94,7 +95,8 @@ async function loadPages() {
 
 async function loadFormOptions() {
   try {
-    const forms = await api('/api/forms');
+    const resp = await api('/api/forms');
+    const forms = resp.items || resp;
     const sel = $('lpFormSelect');
     if (!sel) return;
     sel.innerHTML = '<option value="">None</option>' + forms.map(f => `<option value="${f.id}">${escapeHtml(f.name)}</option>`).join('');

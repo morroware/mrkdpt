@@ -57,9 +57,10 @@ export async function refresh() {
 async function loadTests() {
   try {
     const data = await api('/api/ab-tests');
+    const items = data.items || data;
     const el = $('abTestList');
     if (!el) return;
-    el.innerHTML = data.map(t => {
+    el.innerHTML = items.map(t => {
       const variants = t.variants || [];
       const maxConv = Math.max(...variants.map(v => v.conversion_rate || 0), 1);
       return `<div class="card">

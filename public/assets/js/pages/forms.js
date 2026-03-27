@@ -17,10 +17,11 @@ export async function refresh() {
 async function loadForms() {
   try {
     const data = await api('/api/forms');
+    const items = data.items || data;
     const el = $('formList');
     if (!el) return;
     const base = window.location.origin + getBasePath();
-    el.innerHTML = data.map(f => {
+    el.innerHTML = items.map(f => {
       const embedUrl = `${base}/f/${f.slug}`;
       let fieldCount = 0;
       try { fieldCount = (JSON.parse(f.fields || '[]')).length; } catch { /* invalid JSON */ }
@@ -53,7 +54,8 @@ async function loadListOptions() {
 
 async function loadSubmissionFormOptions() {
   try {
-    const forms = await api('/api/forms');
+    const resp = await api('/api/forms');
+    const forms = resp.items || resp;
     const sel = $('submissionFormSelect');
     if (!sel) return;
     sel.innerHTML = forms.map(f => `<option value="${f.id}">${escapeHtml(f.name)} (${f.submissions})</option>`).join('');
@@ -88,9 +90,10 @@ async function loadSubmissions() {
   if (!formId) return;
   try {
     const data = await api(`/api/forms/${formId}/submissions`);
+    const items = data.items || data;
     const tb = $('submissionTable');
     if (!tb) return;
-    tb.innerHTML = data.map(s => {
+    tb.innerHTML = items.map(s => {
       let d = {};
       try { d = JSON.parse(s.data_json || '{}'); } catch (_) { /* invalid JSON */ }
       const fields = Object.entries(d).map(([k, v]) => `<strong>${escapeHtml(k)}:</strong> ${escapeHtml(String(v))}`).join(', ');
@@ -108,7 +111,8 @@ async function loadSubmissions() {
 
 window._copyFormEmbed = async (id) => {
   try {
-    const data = await api(`/api/forms/${id}/embed`);
+    const resp = await api(`/api/forms/${id}/embed`);
+    const data = resp.item || resp;
     navigator.clipboard.writeText(data.embed_code);
     toast('Embed code copied to clipboard', 'info');
   } catch (err) {

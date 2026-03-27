@@ -8,11 +8,15 @@ import { error } from '../core/toast.js';
 import { initRouter } from '../core/router.js';
 
 let onAuthenticated = null;
+let routerInitialized = false;
 
 function showApp() {
   $('page-login').style.display = 'none';
   $('appLayout').classList.remove('hidden');
-  initRouter();
+  if (!routerInitialized) {
+    initRouter();
+    routerInitialized = true;
+  }
 }
 
 function showLogin() {

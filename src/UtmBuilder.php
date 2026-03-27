@@ -18,8 +18,13 @@ final class UtmBuilder
                 $params[$key] = $val;
             }
         }
-        $separator = str_contains($base, '?') ? '&' : '?';
-        $fullUrl = $base . $separator . http_build_query($params);
+        $query = http_build_query($params);
+        if ($query !== '') {
+            $separator = str_contains($base, '?') ? '&' : '?';
+            $fullUrl = $base . $separator . $query;
+        } else {
+            $fullUrl = $base;
+        }
 
         $stmt = $this->pdo->prepare('INSERT INTO utm_links(campaign_name, base_url, utm_source, utm_medium, utm_campaign, utm_term, utm_content, full_url, created_at) VALUES(:cn,:bu,:us,:um,:uc,:ut,:uco,:fu,:c)');
         $stmt->execute([

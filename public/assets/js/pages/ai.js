@@ -55,6 +55,10 @@ function setButtonLoading(btnId, isLoading) {
 async function run(endpoint, payload, resultKey, btnId, toolName) {
   loading(toolName);
   if (btnId) setButtonLoading(btnId, true);
+  const selectedProvider = $('aiProviderSelect')?.value;
+  if (selectedProvider && selectedProvider !== 'multi') {
+    payload.provider = selectedProvider;
+  }
   try {
     const { item } = await api(endpoint, { method: 'POST', body: JSON.stringify(payload) });
     const text = resultKey ? item[resultKey] : item;

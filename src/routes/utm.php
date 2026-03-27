@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 function register_utm_routes(Router $router, UtmBuilder $utm, LinkShortener $shortener): void
 {
-    $router->get('/api/utm', fn() => json_response($utm->all()));
+    $router->get('/api/utm', fn() => json_response(['items' => $utm->all()]));
 
     $router->post('/api/utm', function () use ($utm, $shortener) {
         $data = request_json();
@@ -24,7 +24,7 @@ function register_utm_routes(Router $router, UtmBuilder $utm, LinkShortener $sho
             $link['short_link'] = $short;
         }
 
-        json_response($link, 201);
+        json_response(['item' => $link], 201);
     });
 
     $router->delete('/api/utm/{id}', function (array $params) use ($utm) {

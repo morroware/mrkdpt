@@ -366,6 +366,17 @@ class EmailService
                 }
             }
 
+            // Update campaign status and sent_count
+            $stmt = $this->db->prepare(
+                'UPDATE email_campaigns SET status = :status, sent_count = :sent_count, sent_at = :sent_at WHERE id = :id'
+            );
+            $stmt->execute([
+                ':status' => 'sent',
+                ':sent_count' => $stats['sent'],
+                ':sent_at' => date('Y-m-d H:i:s'),
+                ':id' => $campaignId,
+            ]);
+
         } catch (\Throwable $e) {
             $stats['errors'][] = "Campaign send error: {$e->getMessage()}";
         }

@@ -46,7 +46,7 @@ final class CampaignRepository
         foreach (['name', 'channel', 'objective', 'budget', 'notes', 'start_date', 'end_date', 'status', 'spend_to_date', 'revenue', 'target_audience', 'kpi_target'] as $col) {
             if (array_key_exists($col, $data)) {
                 $fields[] = "{$col} = :{$col}";
-                $params[":{$col}"] = $col === 'budget' ? (float)$data[$col] : $data[$col];
+                $params[":{$col}"] = in_array($col, ['budget', 'spend_to_date', 'revenue'], true) ? (float)$data[$col] : $data[$col];
             }
         }
         if ($fields) {
@@ -83,7 +83,7 @@ final class PostRepository
             $where[] = 'p.platform = :platform';
             $params[':platform'] = $platform;
         }
-        if ($campaignId) {
+        if ($campaignId !== null && $campaignId !== '') {
             $where[] = 'p.campaign_id = :cid';
             $params[':cid'] = $campaignId;
         }
@@ -439,7 +439,7 @@ final class SubscriberRepository
 
     public function all(?int $listId = null): array
     {
-        if ($listId) {
+        if ($listId !== null) {
             $stmt = $this->pdo->prepare('SELECT s.*, el.name as list_name FROM subscribers s LEFT JOIN email_lists el ON el.id = s.list_id WHERE s.list_id = :lid ORDER BY s.id DESC');
             $stmt->execute([':lid' => $listId]);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);

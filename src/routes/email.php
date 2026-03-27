@@ -79,7 +79,10 @@ function register_email_routes(
         json_response(['item' => $emailCampaigns->create($p)], 201);
     });
 
-    $router->get('/api/email-campaigns/{id}', fn($p) => json_response(['item' => $emailCampaigns->find((int)$p['id'])]));
+    $router->get('/api/email-campaigns/{id}', function ($p) use ($emailCampaigns) {
+        $item = $emailCampaigns->find((int)$p['id']);
+        $item ? json_response(['item' => $item]) : json_response(['error' => 'Not found'], 404);
+    });
 
     $router->put('/api/email-campaigns/{id}', fn($p) => json_response(['item' => $emailCampaigns->update((int)$p['id'], request_json())]));
 

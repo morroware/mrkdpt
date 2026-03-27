@@ -449,7 +449,7 @@
           </div>
           <div class="table-wrap">
             <table class="data-table">
-              <thead><tr><th><input type="checkbox" id="selectAll" /></th><th>ID</th><th>Platform</th><th>Type</th><th>Title</th><th>Status</th><th>Scheduled</th><th>Actions</th></tr></thead>
+              <thead><tr><th><input type="checkbox" id="selectAll" aria-label="Select all posts" /></th><th>ID</th><th>Platform</th><th>Type</th><th>Title</th><th>Status</th><th>Scheduled</th><th>Actions</th></tr></thead>
               <tbody id="postTable"></tbody>
             </table>
           </div>
@@ -521,6 +521,12 @@
               <option value="openai">OpenAI</option>
               <option value="anthropic">Anthropic Claude</option>
               <option value="gemini">Google Gemini</option>
+              <option value="deepseek">DeepSeek</option>
+              <option value="groq">Groq</option>
+              <option value="mistral">Mistral</option>
+              <option value="openrouter">OpenRouter</option>
+              <option value="xai">xAI (Grok)</option>
+              <option value="together">Together AI</option>
               <option value="multi">All Providers (Compare)</option>
             </select>
           </div>
@@ -929,6 +935,12 @@ Tip: Use the provider selector above to compare results from different AI models
                 <option value="openai">OpenAI</option>
                 <option value="anthropic">Anthropic Claude</option>
                 <option value="gemini">Google Gemini</option>
+                <option value="deepseek">DeepSeek</option>
+                <option value="groq">Groq</option>
+                <option value="mistral">Mistral</option>
+                <option value="openrouter">OpenRouter</option>
+                <option value="xai">xAI (Grok)</option>
+                <option value="together">Together AI</option>
               </select>
               <select id="chatModelSelect" class="mt-1">
                 <option value="">Default Model</option>

@@ -27,7 +27,7 @@ function register_social_queue_routes(Router $router, SocialQueue $socialQueue):
 
     $router->patch('/api/social-queue/{id}', function (array $params) use ($socialQueue) {
         $data = request_json();
-        if (!empty($data['priority'])) {
+        if (isset($data['priority'])) {
             $socialQueue->reorder((int)$params['id'], (int)$data['priority']);
         }
         if (!empty($data['status'])) {

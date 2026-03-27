@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 function register_form_routes(Router $router, FormRepository $forms, ContactRepository $contacts, AutomationRepository $automations, ?Auth $auth = null): void
 {
-    $router->get('/api/forms', fn() => json_response($forms->all()));
+    $router->get('/api/forms', fn() => json_response(['items' => $forms->all()]));
 
     $router->post('/api/forms', function () use ($forms) {
         $data = request_json();
@@ -12,18 +12,18 @@ function register_form_routes(Router $router, FormRepository $forms, ContactRepo
             json_response(['error' => 'name is required'], 400);
             return;
         }
-        json_response($forms->create($data), 201);
+        json_response(['item' => $forms->create($data)], 201);
     });
 
     $router->get('/api/forms/{id}', function (array $params) use ($forms) {
         $form = $forms->find((int)$params['id']);
-        $form ? json_response($form) : json_response(['error' => 'Not found'], 404);
+        $form ? json_response(['item' => $form]) : json_response(['error' => 'Not found'], 404);
     });
 
     $router->patch('/api/forms/{id}', function (array $params) use ($forms) {
         $data = request_json();
         $form = $forms->update((int)$params['id'], $data);
-        $form ? json_response($form) : json_response(['error' => 'Not found'], 404);
+        $form ? json_response(['item' => $form]) : json_response(['error' => 'Not found'], 404);
     });
 
     $router->delete('/api/forms/{id}', function (array $params) use ($forms) {
@@ -33,7 +33,7 @@ function register_form_routes(Router $router, FormRepository $forms, ContactRepo
     });
 
     $router->get('/api/forms/{id}/submissions', function (array $params) use ($forms) {
-        json_response($forms->submissions((int)$params['id']));
+        json_response(['items' => $forms->submissions((int)$params['id'])]);
     });
 
     $router->get('/api/forms/{id}/embed', function (array $params) use ($forms) {

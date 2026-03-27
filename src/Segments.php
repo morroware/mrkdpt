@@ -174,7 +174,7 @@ final class SegmentRepository
         $segment = $this->find($id);
         if (!$segment) return;
 
-        $criteria = json_decode($segment['criteria'] ?? '{}', true) ?: [];
+        $criteria = $segment['criteria'] ?: [];
         $where = [];
         $params = [];
 

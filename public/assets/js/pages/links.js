@@ -8,6 +8,7 @@ import { toast } from '../core/toast.js';
 export function init() {
   $('utmForm')?.addEventListener('submit', handleUtmCreate);
   $('shortLinkForm')?.addEventListener('submit', handleShortCreate);
+  initTableDelegation();
 
   // AI Smart UTM
   const aiUtmBtn = $('aiSmartUtm');
@@ -55,17 +56,18 @@ export async function refresh() {
 async function loadUtmLinks() {
   try {
     const data = await api('/api/utm');
+    const items = data.items || data;
     const tb = $('utmTable');
     if (!tb) return;
-    tb.innerHTML = data.map(l => `<tr>
+    tb.innerHTML = items.map(l => `<tr>
       <td>${escapeHtml(l.campaign_name)}</td>
       <td>${escapeHtml(l.utm_source)}</td>
       <td>${escapeHtml(l.utm_medium)}</td>
       <td class="text-small" style="max-width:300px;overflow:hidden;text-overflow:ellipsis">${escapeHtml(l.full_url)}</td>
       <td><strong>${l.clicks}</strong></td>
       <td>
-        <button class="btn btn-sm btn-outline" onclick="window._copyText('${escapeHtml(l.full_url)}')">Copy</button>
-        <button class="btn btn-sm btn-danger" onclick="window._deleteUtm(${l.id})">Del</button>
+        <button class="btn btn-sm btn-outline" data-copy-url="${escapeHtml(l.full_url)}">Copy</button>
+        <button class="btn btn-sm btn-danger" data-delete-utm="${l.id}">Del</button>
       </td>
     </tr>`).join('');
   } catch (err) {
@@ -76,10 +78,11 @@ async function loadUtmLinks() {
 async function loadShortLinks() {
   try {
     const data = await api('/api/links');
+    const items = data.items || data;
     const tb = $('shortLinkTable');
     if (!tb) return;
     const base = window.location.origin + getBasePath();
-    tb.innerHTML = data.map(l => {
+    tb.innerHTML = items.map(l => {
       const shortUrl = `${base}/s/${l.code}`;
       return `<tr>
         <td><a href="${shortUrl}" target="_blank">${getBasePath()}/s/${escapeHtml(l.code)}</a></td>
@@ -88,8 +91,8 @@ async function loadShortLinks() {
         <td><strong>${l.clicks}</strong></td>
         <td class="text-muted text-small">${formatDate(l.created_at)}</td>
         <td>
-          <button class="btn btn-sm btn-outline" onclick="window._copyText('${shortUrl}')">Copy</button>
-          <button class="btn btn-sm btn-danger" onclick="window._deleteShortLink(${l.id})">Del</button>
+          <button class="btn btn-sm btn-outline" data-copy-url="${escapeHtml(shortUrl)}">Copy</button>
+          <button class="btn btn-sm btn-danger" data-delete-link="${l.id}">Del</button>
         </td>
       </tr>`;
     }).join('');
@@ -104,7 +107,8 @@ async function handleUtmCreate(e) {
   const data = Object.fromEntries(fd.entries());
   data.create_short_link = fd.has('create_short_link');
   try {
-    const result = await api('/api/utm', { method: 'POST', body: JSON.stringify(data) });
+    const resp = await api('/api/utm', { method: 'POST', body: JSON.stringify(data) });
+    const result = resp.item || resp;
     toast('UTM link created', 'success');
 
     $('utmResult')?.classList.remove('hidden');
@@ -141,17 +145,26 @@ async function handleShortCreate(e) {
   }
 }
 
-window._copyText = (text) => {
-  navigator.clipboard.writeText(text).then(() => toast('Copied to clipboard', 'info'));
-};
-
-window._deleteUtm = async (id) => {
-  if (!confirm('Delete this UTM link?')) return;
-  try { await api(`/api/utm/${id}`, { method: 'DELETE' }); toast('Deleted', 'success'); refresh(); } catch (e) { toast(e.message, 'error'); }
-};
-
-window._deleteShortLink = async (id) => {
-  if (!confirm('Delete this short link?')) return;
-  try { await api(`/api/links/${id}`, { method: 'DELETE' }); toast('Deleted', 'success'); refresh(); } catch (e) { toast(e.message, 'error'); }
-};
+function initTableDelegation() {
+  document.addEventListener('click', async (e) => {
+    const copyBtn = e.target.closest('[data-copy-url]');
+    if (copyBtn) {
+      navigator.clipboard.writeText(copyBtn.dataset.copyUrl)
+        .then(() => toast('Copied to clipboard', 'info'))
+        .catch(() => toast('Failed to copy', 'error'));
+      return;
+    }
+    const delUtm = e.target.closest('[data-delete-utm]');
+    if (delUtm) {
+      if (!confirm('Delete this UTM link?')) return;
+      try { await api(`/api/utm/${delUtm.dataset.deleteUtm}`, { method: 'DELETE' }); toast('Deleted', 'success'); refresh(); } catch (err) { toast(err.message, 'error'); }
+      return;
+    }
+    const delLink = e.target.closest('[data-delete-link]');
+    if (delLink) {
+      if (!confirm('Delete this short link?')) return;
+      try { await api(`/api/links/${delLink.dataset.deleteLink}`, { method: 'DELETE' }); toast('Deleted', 'success'); refresh(); } catch (err) { toast(err.message, 'error'); }
+    }
+  });
+}
 

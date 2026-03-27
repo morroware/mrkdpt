@@ -278,7 +278,7 @@ if ($installed) {
       </div>
       <div>
         <label for="admin_password">Password</label>
-        <input id="admin_password" name="admin_password" type="password" autocomplete="new-password" minlength="8" <?= $hasUsers ? '' : 'required' ?> />
+        <input id="admin_password" name="admin_password" type="password" autocomplete="new-password" minlength="10" <?= $hasUsers ? '' : 'required' ?> />
       </div>
     </div>
     <?php if ($hasUsers): ?>

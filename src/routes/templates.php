@@ -13,7 +13,10 @@ function register_template_routes(Router $router, TemplateRepository $templates,
         json_response(['item' => $templates->create($p)], 201);
     });
 
-    $router->get('/api/templates/{id}', fn($p) => json_response(['item' => $templates->find((int)$p['id'])]));
+    $router->get('/api/templates/{id}', function ($p) use ($templates) {
+        $item = $templates->find((int)$p['id']);
+        $item ? json_response(['item' => $item]) : json_response(['error' => 'Not found'], 404);
+    });
 
     $router->put('/api/templates/{id}', fn($p) => json_response(['item' => $templates->update((int)$p['id'], request_json())]));
 
@@ -24,7 +27,11 @@ function register_template_routes(Router $router, TemplateRepository $templates,
 
     $router->post('/api/templates/{id}/clone', function ($p) use ($templates) {
         $item = $templates->duplicate((int)$p['id']);
-        json_response(['item' => $item], $item ? 201 : 404);
+        if ($item) {
+            json_response(['item' => $item], 201);
+        } else {
+            json_response(['error' => 'Template not found'], 404);
+        }
     });
 
     $router->post('/api/templates/{id}/render', function ($p) use ($templates) {
@@ -42,7 +49,10 @@ function register_template_routes(Router $router, TemplateRepository $templates,
         json_response(['item' => $brandProfiles->create($p)], 201);
     });
 
-    $router->get('/api/brand-profiles/{id}', fn($p) => json_response(['item' => $brandProfiles->find((int)$p['id'])]));
+    $router->get('/api/brand-profiles/{id}', function ($p) use ($brandProfiles) {
+        $item = $brandProfiles->find((int)$p['id']);
+        $item ? json_response(['item' => $item]) : json_response(['error' => 'Not found'], 404);
+    });
 
     $router->put('/api/brand-profiles/{id}', fn($p) => json_response(['item' => $brandProfiles->update((int)$p['id'], request_json())]));
 

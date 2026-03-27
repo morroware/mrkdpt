@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 function register_landing_page_routes(Router $router, LandingPageRepository $pages): void
 {
-    $router->get('/api/landing-pages', fn() => json_response($pages->all()));
+    $router->get('/api/landing-pages', fn() => json_response(['items' => $pages->all()]));
 
     $router->post('/api/landing-pages', function () use ($pages) {
         $data = request_json();
@@ -12,12 +12,12 @@ function register_landing_page_routes(Router $router, LandingPageRepository $pag
             json_response(['error' => 'title is required'], 400);
             return;
         }
-        json_response($pages->create($data), 201);
+        json_response(['item' => $pages->create($data)], 201);
     });
 
     $router->get('/api/landing-pages/{id}', function (array $params) use ($pages) {
         $page = $pages->find((int)$params['id']);
-        $page ? json_response($page) : json_response(['error' => 'Not found'], 404);
+        $page ? json_response(['item' => $page]) : json_response(['error' => 'Not found'], 404);
     });
 
     $router->patch('/api/landing-pages/{id}', function (array $params) use ($pages) {

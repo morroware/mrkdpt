@@ -72,9 +72,10 @@ async function loadContacts() {
     if (stage) url += `stage=${encodeURIComponent(stage)}&`;
     if (search) url += `search=${encodeURIComponent(search)}&`;
     const data = await api(url);
+    const items = data.items || data;
     const tb = $('contactTable');
     if (!tb) return;
-    tb.innerHTML = data.map(c => `<tr>
+    tb.innerHTML = items.map(c => `<tr>
       <td>${escapeHtml(c.email)}</td>
       <td>${escapeHtml(c.first_name)} ${escapeHtml(c.last_name)}</td>
       <td>${escapeHtml(c.company)}</td>
@@ -109,7 +110,8 @@ async function handleCreate(e) {
 
 async function viewContact(id) {
   try {
-    const c = await api(`/api/contacts/${id}`);
+    const resp = await api(`/api/contacts/${id}`);
+    const c = resp.item || resp;
     const modalTitle = $('contactModalTitle');
     if (modalTitle) modalTitle.textContent = `${c.first_name || ''} ${c.last_name || ''} - ${c.email}`;
     const body = $('contactModalBody');

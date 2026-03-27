@@ -91,12 +91,12 @@ export async function refresh() {
 
 async function loadAutopilotSummary() {
   try {
-    const [onboardingRes, campaignRes] = await Promise.all([
+    const [onboardingRes, campaignRes] = await Promise.allSettled([
       api('/api/autopilot/status?type=onboarding'),
       api('/api/autopilot/status?type=campaign_autopilot'),
     ]);
-    const onboardingTask = onboardingRes?.task || null;
-    const campaignTask = campaignRes?.task || null;
+    const onboardingTask = onboardingRes.status === 'fulfilled' ? (onboardingRes.value?.task || null) : null;
+    const campaignTask = campaignRes.status === 'fulfilled' ? (campaignRes.value?.task || null) : null;
     const task = pickLatestTask(onboardingTask, campaignTask);
     const card = $('autopilotSummary');
     const content = $('autopilotSummaryContent');

@@ -8,6 +8,7 @@ import { toast } from '../core/toast.js';
 export function init() {
   $('utmForm')?.addEventListener('submit', handleUtmCreate);
   $('shortLinkForm')?.addEventListener('submit', handleShortCreate);
+  initTableDelegation();
 
   // AI Smart UTM
   const aiUtmBtn = $('aiSmartUtm');
@@ -65,8 +66,8 @@ async function loadUtmLinks() {
       <td class="text-small" style="max-width:300px;overflow:hidden;text-overflow:ellipsis">${escapeHtml(l.full_url)}</td>
       <td><strong>${l.clicks}</strong></td>
       <td>
-        <button class="btn btn-sm btn-outline" onclick="window._copyText('${escapeHtml(l.full_url)}')">Copy</button>
-        <button class="btn btn-sm btn-danger" onclick="window._deleteUtm(${l.id})">Del</button>
+        <button class="btn btn-sm btn-outline" data-copy-url="${escapeHtml(l.full_url)}">Copy</button>
+        <button class="btn btn-sm btn-danger" data-delete-utm="${l.id}">Del</button>
       </td>
     </tr>`).join('');
   } catch (err) {
@@ -90,8 +91,8 @@ async function loadShortLinks() {
         <td><strong>${l.clicks}</strong></td>
         <td class="text-muted text-small">${formatDate(l.created_at)}</td>
         <td>
-          <button class="btn btn-sm btn-outline" onclick="window._copyText('${shortUrl}')">Copy</button>
-          <button class="btn btn-sm btn-danger" onclick="window._deleteShortLink(${l.id})">Del</button>
+          <button class="btn btn-sm btn-outline" data-copy-url="${escapeHtml(shortUrl)}">Copy</button>
+          <button class="btn btn-sm btn-danger" data-delete-link="${l.id}">Del</button>
         </td>
       </tr>`;
     }).join('');
@@ -144,17 +145,26 @@ async function handleShortCreate(e) {
   }
 }
 
-window._copyText = (text) => {
-  navigator.clipboard.writeText(text).then(() => toast('Copied to clipboard', 'info'));
-};
-
-window._deleteUtm = async (id) => {
-  if (!confirm('Delete this UTM link?')) return;
-  try { await api(`/api/utm/${id}`, { method: 'DELETE' }); toast('Deleted', 'success'); refresh(); } catch (e) { toast(e.message, 'error'); }
-};
-
-window._deleteShortLink = async (id) => {
-  if (!confirm('Delete this short link?')) return;
-  try { await api(`/api/links/${id}`, { method: 'DELETE' }); toast('Deleted', 'success'); refresh(); } catch (e) { toast(e.message, 'error'); }
-};
+function initTableDelegation() {
+  document.addEventListener('click', async (e) => {
+    const copyBtn = e.target.closest('[data-copy-url]');
+    if (copyBtn) {
+      navigator.clipboard.writeText(copyBtn.dataset.copyUrl)
+        .then(() => toast('Copied to clipboard', 'info'))
+        .catch(() => toast('Failed to copy', 'error'));
+      return;
+    }
+    const delUtm = e.target.closest('[data-delete-utm]');
+    if (delUtm) {
+      if (!confirm('Delete this UTM link?')) return;
+      try { await api(`/api/utm/${delUtm.dataset.deleteUtm}`, { method: 'DELETE' }); toast('Deleted', 'success'); refresh(); } catch (err) { toast(err.message, 'error'); }
+      return;
+    }
+    const delLink = e.target.closest('[data-delete-link]');
+    if (delLink) {
+      if (!confirm('Delete this short link?')) return;
+      try { await api(`/api/links/${delLink.dataset.deleteLink}`, { method: 'DELETE' }); toast('Deleted', 'success'); refresh(); } catch (err) { toast(err.message, 'error'); }
+    }
+  });
+}
 

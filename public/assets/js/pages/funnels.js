@@ -104,6 +104,7 @@ window._editFunnelStages = async (id) => {
       const newActual = prompt(`${stage.name} - current: ${stage.actual_count}, new actual count:`, String(stage.actual_count));
       if (newActual !== null) {
         const actual = parseInt(newActual, 10);
+        if (isNaN(actual)) continue;
         const rate = stage.target_count > 0 ? (actual / stage.target_count) * 100 : 0;
         await api(`/api/funnels/stages/${stage.id}`, { method: 'PATCH', body: JSON.stringify({ actual_count: actual, conversion_rate: rate }) });
       }

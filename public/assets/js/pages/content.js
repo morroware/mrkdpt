@@ -122,7 +122,7 @@ async function bulkAction(action) {
 function renderCalendar(posts) {
   const grid = $('calendarGrid');
   const title = $('calTitle');
-  if (!grid) return;
+  if (!grid || !title) return;
 
   const year = calendarDate.getFullYear();
   const month = calendarDate.getMonth();

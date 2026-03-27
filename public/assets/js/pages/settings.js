@@ -3,7 +3,7 @@
  */
 
 import { api, setApiToken } from '../core/api.js';
-import { $, escapeHtml, formatDateTime, onSubmit, formData, onClick } from '../core/utils.js';
+import { $, escapeHtml, formatDateTime, onSubmit, formData, onClick, copyToClipboard, confirm } from '../core/utils.js';
 import { success, error } from '../core/toast.js';
 
 let currentSettings = {};
@@ -181,14 +181,13 @@ async function refreshToken() {
         </div>
       `;
       const fullToken = token;
-      onClick('copyToken', async () => {
-        try {
-          await navigator.clipboard.writeText(fullToken);
-          success('Token copied to clipboard');
-        } catch { error('Failed to copy'); }
+      onClick('copyToken', () => {
+        const btn = $('copyToken');
+        copyToClipboard(fullToken, btn);
       });
       onClick('regenToken', async () => {
-        if (!confirm('Regenerate API token? The current token will stop working.')) return;
+        const ok = await confirm('Regenerate Token', 'The current API token will stop working. Any integrations using it will need to be updated.', { icon: '&#128274;', okText: 'Regenerate', okClass: 'btn-warning' });
+        if (!ok) return;
         try {
           const result = await api('/api/regenerate-token', { method: 'POST' });
           if (result.api_token) setApiToken(result.api_token);
@@ -230,7 +229,8 @@ async function refreshWebhooks() {
 
     list.querySelectorAll('[data-delete-wh]').forEach((btn) => {
       btn.addEventListener('click', async () => {
-        if (!confirm('Delete this webhook?')) return;
+        const ok = await confirm('Delete Webhook', 'Are you sure you want to remove this webhook?');
+        if (!ok) return;
         try {
           await api(`/api/webhooks/${btn.dataset.deleteWh}`, { method: 'DELETE' });
           success('Webhook deleted');

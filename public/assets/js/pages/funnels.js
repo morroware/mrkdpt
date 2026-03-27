@@ -2,7 +2,7 @@
  * Funnels / Pipeline page module.
  */
 import { api } from '../core/api.js';
-import { $, escapeHtml, formatDate } from '../core/utils.js';
+import { $, escapeHtml, formatDate, emptyState, confirm } from '../core/utils.js';
 import { toast } from '../core/toast.js';
 
 export function init() {
@@ -42,7 +42,7 @@ async function loadFunnels() {
             const widthPct = maxVal > 0 ? Math.max(20, Math.round((s.actual_count / maxVal) * 100)) : 100 - i * 15;
             const rate = s.target_count > 0 ? ((s.actual_count / s.target_count) * 100).toFixed(1) : '0.0';
             return `<div class="funnel-stage" style="margin-bottom:4px">
-              <div class="flex-between text-small"><span><strong>${escapeHtml(s.name)}</strong></span><span>${s.actual_count} / ${s.target_count} (${rate}%)</span></div>
+              <div class="flex-between text-small"><span><strong>${escapeHtml(s.name)}</strong></span><span><input type="number" class="stage-actual-input" data-stage-id="${s.id}" data-target="${s.target_count}" value="${s.actual_count}" min="0" style="width:60px;padding:1px 4px;text-align:right;border:1px solid var(--line);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:inherit" title="Edit actual count"> / ${s.target_count} (${rate}%)</span></div>
               <div style="background:var(--bg-tertiary);border-radius:6px;height:28px;margin-top:3px;overflow:hidden;position:relative">
                 <div style="background:${s.color || 'var(--accent)'};height:100%;border-radius:6px;width:${widthPct}%;transition:width .4s;display:flex;align-items:center;justify-content:center;min-width:40px">
                   <span style="color:#fff;font-size:11px;font-weight:600">${s.actual_count}</span>
@@ -57,7 +57,7 @@ async function loadFunnels() {
           <button class="btn btn-sm btn-danger" onclick="window._deleteFunnel(${f.id})">Delete</button>
         </div>
       </div>`;
-    }).join('') || '<p class="text-muted">No funnels yet. Create one to visualize your marketing pipeline.</p>';
+    }).join('') || emptyState('&#127987;', 'No funnels yet', 'Create one to visualize your marketing pipeline and track conversions.');
   } catch (err) {
     toast('Failed to load funnels: ' + err.message, 'error');
   }
@@ -96,28 +96,36 @@ async function handleCreate(e) {
 }
 
 window._editFunnelStages = async (id) => {
-  try {
-    const resp = await api(`/api/funnels/${id}`);
-    const funnel = resp.item || resp;
-    const stages = funnel.stages || [];
-    for (const stage of stages) {
-      const newActual = prompt(`${stage.name} - current: ${stage.actual_count}, new actual count:`, String(stage.actual_count));
-      if (newActual !== null) {
-        const actual = parseInt(newActual, 10);
-        if (isNaN(actual)) continue;
-        const rate = stage.target_count > 0 ? (actual / stage.target_count) * 100 : 0;
-        await api(`/api/funnels/stages/${stage.id}`, { method: 'PATCH', body: JSON.stringify({ actual_count: actual, conversion_rate: rate }) });
+  // Collect all changed stage inputs within this funnel's card and save them
+  const cards = document.querySelectorAll('#funnelList .card');
+  let updated = 0;
+  for (const card of cards) {
+    const editBtn = card.querySelector(`[onclick="window._editFunnelStages(${id})"]`);
+    if (!editBtn) continue;
+    const inputs = card.querySelectorAll('.stage-actual-input');
+    for (const input of inputs) {
+      const stageId = input.dataset.stageId;
+      const target = parseInt(input.dataset.target, 10) || 0;
+      const actual = parseInt(input.value, 10);
+      if (isNaN(actual)) continue;
+      const rate = target > 0 ? (actual / target) * 100 : 0;
+      try {
+        await api(`/api/funnels/stages/${stageId}`, { method: 'PATCH', body: JSON.stringify({ actual_count: actual, conversion_rate: rate }) });
+        updated++;
+      } catch (err) {
+        toast(`Failed to update stage: ${err.message}`, 'error');
       }
     }
-    toast('Stages updated', 'success');
+    break;
+  }
+  if (updated > 0) {
+    toast(`${updated} stage${updated > 1 ? 's' : ''} updated`, 'success');
     refresh();
-  } catch (err) {
-    toast(err.message, 'error');
   }
 };
 
 window._deleteFunnel = async (id) => {
-  if (!confirm('Delete this funnel?')) return;
+  if (!await confirm('Delete Funnel', 'Are you sure you want to delete this funnel and all its stages? This cannot be undone.')) return;
   try { await api(`/api/funnels/${id}`, { method: 'DELETE' }); toast('Deleted', 'success'); refresh(); } catch (e) { toast(e.message, 'error'); }
 };
 

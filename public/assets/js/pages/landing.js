@@ -2,7 +2,7 @@
  * Landing Pages page module.
  */
 import { api, getBasePath } from '../core/api.js';
-import { $, escapeHtml, formatDate } from '../core/utils.js';
+import { $, escapeHtml, formatDate, emptyState, confirm } from '../core/utils.js';
 import { toast } from '../core/toast.js';
 
 export function init() {
@@ -87,7 +87,7 @@ async function loadPages() {
           <button class="btn btn-sm btn-danger" onclick="window._deleteLanding(${p.id})">Delete</button>
         </div>
       </div>`;
-    }).join('') || '<p class="text-muted">No landing pages yet</p>';
+    }).join('') || emptyState('&#128196;', 'No landing pages yet', 'Create your first landing page to capture leads and drive conversions.');
   } catch (err) {
     toast('Failed to load landing pages: ' + err.message, 'error');
   }
@@ -140,7 +140,7 @@ window._publishLanding = async (id) => {
 };
 
 window._deleteLanding = async (id) => {
-  if (!confirm('Delete this landing page?')) return;
+  if (!await confirm('Delete Landing Page', 'Are you sure you want to delete this landing page? This cannot be undone.')) return;
   try { await api(`/api/landing-pages/${id}`, { method: 'DELETE' }); toast('Deleted', 'success'); refresh(); } catch (e) { toast(e.message, 'error'); }
 };
 

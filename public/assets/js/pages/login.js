@@ -3,7 +3,7 @@
  */
 
 import { api, setCsrfToken, setApiToken } from '../core/api.js';
-import { $, onSubmit } from '../core/utils.js';
+import { $, onSubmit, confirm } from '../core/utils.js';
 import { error } from '../core/toast.js';
 import { initRouter } from '../core/router.js';
 
@@ -47,7 +47,7 @@ export async function checkSession() {
         showApp();
         return true;
       }
-    } catch { /* ignore */ }
+    } catch (err) { error('Failed to check setup status: ' + err.message); }
     showLogin();
     return false;
   }
@@ -76,7 +76,9 @@ export function init() {
   const logoutBtn = $('logoutBtn');
   if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
-      try { await api('/api/logout', { method: 'POST' }); } catch { /* ignore */ }
+      const ok = await confirm('Sign Out', 'Are you sure you want to sign out?', { icon: '&#128682;', okText: 'Sign Out', okClass: 'btn-outline' });
+      if (!ok) return;
+      try { await api('/api/logout', { method: 'POST' }); } catch (err) { error('Logout request failed: ' + err.message); }
       setCsrfToken('');
       setApiToken('');
       showLogin();

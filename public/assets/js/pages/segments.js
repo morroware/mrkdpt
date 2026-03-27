@@ -3,7 +3,7 @@
  */
 
 import { api } from '../core/api.js';
-import { $, escapeHtml, formatDate, onSubmit, onClick } from '../core/utils.js';
+import { $, escapeHtml, formatDate, onSubmit, onClick, emptyState, confirm } from '../core/utils.js';
 import { success, error } from '../core/toast.js';
 
 async function loadSegments() {
@@ -24,7 +24,7 @@ async function loadSegments() {
         <button class="btn btn-sm btn-outline" data-refresh="${s.id}">Refresh</button>
         <button class="btn btn-sm btn-danger" data-del="${s.id}">Delete</button>
       </div>
-    </div>`).join('') || '<p class="text-muted">No segments yet. Create one above.</p>';
+    </div>`).join('') || emptyState('&#128101;', 'No segments yet', 'Create your first segment above to group contacts by criteria.');
 
     list.querySelectorAll('[data-view]').forEach((btn) => {
       btn.addEventListener('click', () => viewSegmentContacts(parseInt(btn.dataset.view)));
@@ -40,7 +40,7 @@ async function loadSegments() {
     });
     list.querySelectorAll('[data-del]').forEach((btn) => {
       btn.addEventListener('click', async () => {
-        if (!confirm('Delete this segment?')) return;
+        if (!await confirm('Delete Segment', 'Are you sure you want to delete this segment? This cannot be undone.')) return;
         try {
           await api(`/api/segments/${btn.dataset.del}`, { method: 'DELETE' });
           success('Segment deleted');

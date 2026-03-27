@@ -3,7 +3,7 @@
  */
 
 import { api } from '../core/api.js';
-import { $, escapeHtml, formatDate, onSubmit, formData, onClick } from '../core/utils.js';
+import { $, escapeHtml, formatDate, onSubmit, formData, onClick, emptyState, tableEmpty, confirm } from '../core/utils.js';
 import { success, error } from '../core/toast.js';
 import { navigate } from '../core/router.js';
 
@@ -27,7 +27,7 @@ async function refreshFeeds() {
           <p class="text-small text-muted">${escapeHtml(f.url)}</p>
           <p class="text-small text-muted">Last fetched: ${formatDate(f.last_fetched_at) || 'Never'}</p>
         </div>`).join('')
-      : '<p class="text-muted">No RSS feeds configured</p>';
+      : emptyState('&#128225;', 'No RSS Feeds', 'Add RSS feeds to monitor industry news and generate content.');
 
     list.querySelectorAll('[data-fetch]').forEach((btn) => {
       btn.addEventListener('click', async () => {
@@ -41,7 +41,7 @@ async function refreshFeeds() {
 
     list.querySelectorAll('[data-delete-feed]').forEach((btn) => {
       btn.addEventListener('click', async () => {
-        if (!confirm('Delete this feed?')) return;
+        if (!await confirm('Delete Feed', 'Are you sure you want to delete this RSS feed?')) return;
         try {
           await api(`/api/rss-feeds/${btn.dataset.deleteFeed}`, { method: 'DELETE' });
           success('Feed deleted');
@@ -67,7 +67,7 @@ async function refreshItems() {
           <td>${formatDate(i.published_at)}</td>
           <td><button class="btn btn-sm btn-ai" data-rss-post="${i.id}" data-rss-title="${escapeHtml(i.title)}" data-rss-summary="${escapeHtml(i.summary || '')}" data-rss-url="${escapeHtml(i.url || '')}"><span class="btn-ai-icon">&#9733;</span> AI Post</button></td>
         </tr>`).join('')
-      : '<tr><td colspan="4" class="text-muted">No items</td></tr>';
+      : tableEmpty(4, 'No RSS items yet');
 
     // Wire AI Post buttons
     table.querySelectorAll('[data-rss-post]').forEach((btn) => {
@@ -123,7 +123,7 @@ export function init() {
 
   onClick('rssPostCreate', () => {
     if (!lastRssPost) return;
-    sessionStorage.setItem('ai_generated_content', lastRssPost);
+    try { sessionStorage.setItem('ai_generated_content', lastRssPost); } catch (err) { error('Failed to store content: ' + err.message); }
     $('rssPostModal')?.classList.remove('visible');
     navigate('content');
     setTimeout(() => {

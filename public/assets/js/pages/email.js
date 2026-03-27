@@ -3,7 +3,7 @@
  */
 
 import { api } from '../core/api.js';
-import { $, escapeHtml, formatDateTime, onSubmit, formData, statusBadge, onClick } from '../core/utils.js';
+import { $, escapeHtml, formatDateTime, onSubmit, formData, statusBadge, onClick, tableEmpty, emptyState, confirm } from '../core/utils.js';
 import { success, error } from '../core/toast.js';
 
 async function refreshLists() {
@@ -19,11 +19,11 @@ async function refreshLists() {
             </div>
             <p class="text-small text-muted">${escapeHtml(l.description || '')} &mdash; ${l.subscriber_count || 0} subscribers</p>
           </div>`).join('')
-        : '<p class="text-muted">No email lists</p>';
+        : emptyState('&#9993;', 'No email lists', 'Create your first email list to start collecting subscribers.');
 
       el.querySelectorAll('[data-delete-list]').forEach((btn) => {
         btn.addEventListener('click', async () => {
-          if (!confirm('Delete list and all its subscribers?')) return;
+          if (!await confirm('Delete List', 'Delete list and all its subscribers?')) return;
           try {
             await api(`/api/email-lists/${btn.dataset.deleteList}`, { method: 'DELETE' });
             success('List deleted');
@@ -52,13 +52,15 @@ async function refreshSubscribers() {
     const table = $('subscriberTable');
     if (!table) return;
 
-    table.innerHTML = items.map((s) => `<tr>
+    table.innerHTML = items.length
+      ? items.map((s) => `<tr>
       <td>${escapeHtml(s.email)}</td>
       <td>${escapeHtml(s.name || '')}</td>
       <td>${escapeHtml(s.list_name || '')}</td>
       <td>${statusBadge(s.status)}</td>
       <td><button class="btn btn-sm btn-danger" data-delete-sub="${s.id}">Del</button></td>
-    </tr>`).join('');
+    </tr>`).join('')
+      : tableEmpty(5, 'No subscribers in this list yet.');
 
     table.querySelectorAll('[data-delete-sub]').forEach((btn) => {
       btn.addEventListener('click', async () => {
@@ -80,7 +82,8 @@ async function refreshEmailCampaigns() {
     const table = $('emailCampaignTable');
     if (!table) return;
 
-    table.innerHTML = items.map((c) => `<tr>
+    table.innerHTML = items.length
+      ? items.map((c) => `<tr>
       <td>${escapeHtml(c.name)}</td>
       <td>${escapeHtml(c.subject)}</td>
       <td>${escapeHtml(c.list_name || '-')}</td>
@@ -90,11 +93,12 @@ async function refreshEmailCampaigns() {
         ${c.status === 'draft' ? `<button class="btn btn-sm btn-success" data-send="${c.id}">Send</button>` : ''}
         <button class="btn btn-sm btn-danger" data-delete-ec="${c.id}">Del</button>
       </td>
-    </tr>`).join('');
+    </tr>`).join('')
+      : tableEmpty(6, 'No email campaigns yet. Compose your first campaign to get started.');
 
     table.querySelectorAll('[data-send]').forEach((btn) => {
       btn.addEventListener('click', async () => {
-        if (!confirm('Send this campaign to all subscribers?')) return;
+        if (!await confirm('Send Campaign', 'Send this campaign to all subscribers?', { okText: 'Send', okClass: 'btn-success' })) return;
         try {
           const result = await api(`/api/email-campaigns/${btn.dataset.send}/send`, { method: 'POST' });
           success(`Sent to ${result.sent || 0} subscribers`);
@@ -105,7 +109,7 @@ async function refreshEmailCampaigns() {
 
     table.querySelectorAll('[data-delete-ec]').forEach((btn) => {
       btn.addEventListener('click', async () => {
-        if (!confirm('Delete this email campaign?')) return;
+        if (!await confirm('Delete Campaign', 'Delete this email campaign?')) return;
         try {
           await api(`/api/email-campaigns/${btn.dataset.deleteEc}`, { method: 'DELETE' });
           success('Email campaign deleted');
@@ -173,7 +177,7 @@ async function refreshEmailTemplates() {
 
     list.querySelectorAll('[data-del-tpl]').forEach((btn) => {
       btn.addEventListener('click', async () => {
-        if (!confirm('Delete this template?')) return;
+        if (!await confirm('Delete Template', 'Delete this template?')) return;
         try {
           await api(`/api/email-templates/${btn.dataset.delTpl}`, { method: 'DELETE' });
           success('Template deleted');
@@ -248,8 +252,23 @@ export function init() {
   onClick('sendTestEmail', async () => {
     const to = prompt('Send test to email address:');
     if (!to) return;
-    // We need an existing campaign — for now just alert
-    error('Save the campaign first, then use the Send Test button from the campaigns list');
+    const form = $('emailComposeForm');
+    if (!form) return;
+    const subject = form.querySelector('[name="subject"]')?.value;
+    const bodyHtml = form.querySelector('[name="body_html"]')?.value;
+    if (!subject || !bodyHtml) {
+      error('Please fill in the subject and email body before sending a test.');
+      return;
+    }
+    try {
+      await api('/api/email-campaigns/test', {
+        method: 'POST',
+        body: JSON.stringify({ to, subject, body_html: bodyHtml }),
+      });
+      success(`Test email sent to ${to}`);
+    } catch (err) {
+      error('Could not send test email: ' + err.message);
+    }
   });
 
   // AI generate email body

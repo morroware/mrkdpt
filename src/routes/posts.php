@@ -135,11 +135,15 @@ function register_post_routes(Router $router, PostRepository $posts, Analytics $
         $ids = array_map('intval', $ids);
         $action = $data['action'] ?? '';
         if (empty($ids)) { json_response(['error' => 'No IDs provided'], 422); return; }
+        $validActions = ['publish', 'schedule', 'delete'];
+        if (!in_array($action, $validActions, true)) {
+            json_response(['error' => 'Invalid action. Must be one of: ' . implode(', ', $validActions)], 422);
+            return;
+        }
         $count = match($action) {
             'publish' => $posts->bulkUpdateStatus($ids, 'published'),
             'schedule' => $posts->bulkUpdateStatus($ids, 'scheduled'),
             'delete' => $posts->bulkDelete($ids),
-            default => 0,
         };
         json_response(['affected' => $count]);
     });

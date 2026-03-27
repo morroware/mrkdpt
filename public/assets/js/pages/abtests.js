@@ -2,7 +2,7 @@
  * A/B Testing page module.
  */
 import { api } from '../core/api.js';
-import { $, escapeHtml, formatDate } from '../core/utils.js';
+import { $, escapeHtml, formatDate, emptyState, confirm } from '../core/utils.js';
 import { toast } from '../core/toast.js';
 
 export function init() {
@@ -90,7 +90,7 @@ async function loadTests() {
           <button class="btn btn-sm btn-danger" onclick="window._deleteTest(${t.id})">Delete</button>
         </div>
       </div>`;
-    }).join('') || '<p class="text-muted">No A/B tests yet</p>';
+    }).join('') || emptyState('&#9878;', 'No A/B tests yet', 'Create your first test to compare content variants and optimize performance.');
   } catch (err) {
     toast('Failed to load A/B tests: ' + err.message, 'error');
   }
@@ -138,26 +138,70 @@ window._abConversion = async (variantId) => {
 };
 
 window._completeTest = async (id) => {
-  const winner = prompt('Enter winning variant name (or leave empty):');
+  // Fetch test to get variant names for selection
+  let variantNames = [];
   try {
-    await api(`/api/ab-tests/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'completed', winner_variant: winner || '' }) });
-    toast('Test completed', 'success');
-    refresh();
-  } catch (err) { toast(err.message, 'error'); }
+    const resp = await api(`/api/ab-tests/${id}`);
+    const test = resp.item || resp;
+    variantNames = (test.variants || []).map(v => v.variant_name);
+  } catch (err) { toast('Could not load variant details: ' + err.message, 'error'); }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay visible';
+  overlay.innerHTML = `<div class="modal" role="dialog">
+    <div class="modal-header"><h2>Complete A/B Test</h2><button class="modal-close" id="closeCompleteTest">&times;</button></div>
+    <div class="modal-body">
+      <label class="form-label">Winner (optional)</label>
+      ${variantNames.length ? `<select id="completeTestWinner" class="form-input w-full">
+        <option value="">No winner / Inconclusive</option>
+        ${variantNames.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('')}
+      </select>` : `<input type="text" id="completeTestWinner" class="form-input w-full" placeholder="Enter winning variant name (or leave empty)">`}
+    </div>
+    <div class="modal-footer flex-end gap-1">
+      <button class="btn btn-outline" id="cancelCompleteTest">Cancel</button>
+      <button class="btn btn-success" id="confirmCompleteTest">Complete Test</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+
+  const cleanup = () => overlay.remove();
+  overlay.querySelector('#closeCompleteTest').addEventListener('click', cleanup);
+  overlay.querySelector('#cancelCompleteTest').addEventListener('click', cleanup);
+  overlay.querySelector('#confirmCompleteTest').addEventListener('click', async () => {
+    const winner = document.getElementById('completeTestWinner')?.value || '';
+    cleanup();
+    try {
+      await api(`/api/ab-tests/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'completed', winner_variant: winner }) });
+      toast('Test completed', 'success');
+      refresh();
+    } catch (err) { toast(err.message, 'error'); }
+  });
 };
 
 window._deleteTest = async (id) => {
-  if (!confirm('Delete this test?')) return;
+  if (!await confirm('Delete Test', 'Are you sure you want to delete this A/B test? This cannot be undone.')) return;
   try { await api(`/api/ab-tests/${id}`, { method: 'DELETE' }); toast('Deleted', 'success'); refresh(); } catch (e) { toast(e.message, 'error'); }
 };
 
 window._aiAnalyzeTest = async (id) => {
+  const card = document.getElementById('abAnalysisCard');
+  const output = document.getElementById('abAnalysisOutput');
+  if (card) card.classList.remove('hidden');
+  if (output) output.textContent = 'Analyzing test... please wait.';
   try {
     const { item } = await api('/api/ai/ab-analyze', { method: 'POST', body: JSON.stringify({ test_id: id }) });
     if (item?.analysis) {
-      alert(item.analysis.slice(0, 2000));
+      if (output) {
+        output.textContent = item.analysis;
+        card?.scrollIntoView({ behavior: 'smooth' });
+      }
+    } else {
+      if (output) output.textContent = 'No analysis available.';
     }
-  } catch (e) { toast(e.message, 'error'); }
+  } catch (e) {
+    if (output) output.textContent = 'Error: ' + e.message;
+    toast(e.message, 'error');
+  }
 };
 
 // AI Analyze button - wired in init() via event delegation

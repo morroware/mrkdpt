@@ -3,7 +3,7 @@
  */
 
 import { api } from '../core/api.js';
-import { $, escapeHtml, onSubmit, formData } from '../core/utils.js';
+import { $, escapeHtml, onSubmit, formData, emptyState, confirm } from '../core/utils.js';
 import { success, error } from '../core/toast.js';
 
 /* ---- Templates ---- */
@@ -26,7 +26,7 @@ async function refreshTemplates() {
           <pre class="text-small">${escapeHtml((t.structure || '').slice(0, 200))}</pre>
           ${t.variables ? `<p class="text-small text-muted">Variables: ${escapeHtml(t.variables)}</p>` : ''}
         </div>`).join('')
-      : '<p class="text-muted">No templates yet</p>';
+      : emptyState('&#128196;', 'No Templates', 'Create reusable content templates to speed up your workflow.');
 
     list.querySelectorAll('[data-clone-tpl]').forEach((btn) => {
       btn.addEventListener('click', async () => {
@@ -40,7 +40,7 @@ async function refreshTemplates() {
 
     list.querySelectorAll('[data-delete-tpl]').forEach((btn) => {
       btn.addEventListener('click', async () => {
-        if (!confirm('Delete this template?')) return;
+        if (!await confirm('Delete Template', 'Are you sure you want to delete this template?')) return;
         try {
           await api(`/api/templates/${btn.dataset.deleteTpl}`, { method: 'DELETE' });
           success('Template deleted');
@@ -73,7 +73,7 @@ async function refreshBrands() {
           <p class="text-small"><strong>Tone:</strong> ${escapeHtml(b.voice_tone || '')}</p>
           <p class="text-small"><strong>Audience:</strong> ${escapeHtml(b.target_audience || '')}</p>
         </div>`).join('')
-      : '<p class="text-muted">No brand profiles yet</p>';
+      : emptyState('&#127912;', 'No Brand Profiles', 'Define your brand voice to keep AI-generated content consistent.');
 
     list.querySelectorAll('[data-activate]').forEach((btn) => {
       btn.addEventListener('click', async () => {
@@ -87,7 +87,7 @@ async function refreshBrands() {
 
     list.querySelectorAll('[data-delete-brand]').forEach((btn) => {
       btn.addEventListener('click', async () => {
-        if (!confirm('Delete this brand profile?')) return;
+        if (!await confirm('Delete Brand Profile', 'Are you sure you want to delete this brand profile?')) return;
         try {
           await api(`/api/brand-profiles/${btn.dataset.deleteBrand}`, { method: 'DELETE' });
           success('Brand profile deleted');
@@ -120,11 +120,11 @@ async function refreshMedia() {
             </div>
           </div>`;
         }).join('')
-      : '<p class="text-muted">No media uploaded</p>';
+      : emptyState('&#128247;', 'No Media', 'Upload images and files to use in your content.');
 
     grid.querySelectorAll('[data-delete-media]').forEach((btn) => {
       btn.addEventListener('click', async () => {
-        if (!confirm('Delete this file?')) return;
+        if (!await confirm('Delete File', 'Are you sure you want to delete this file?')) return;
         try {
           await api(`/api/media/${btn.dataset.deleteMedia}`, { method: 'DELETE' });
           success('File deleted');

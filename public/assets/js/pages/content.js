@@ -3,7 +3,7 @@
  */
 
 import { api } from '../core/api.js';
-import { $, $$, escapeHtml, formatDateTime, onSubmit, formData, statusBadge, onClick } from '../core/utils.js';
+import { $, $$, escapeHtml, formatDateTime, onSubmit, formData, statusBadge, onClick, tableEmpty, emptyState, debounce, copyToClipboard, confirm } from '../core/utils.js';
 import { success, error } from '../core/toast.js';
 
 let selectedIds = new Set();
@@ -30,7 +30,9 @@ async function refreshPosts() {
     const table = $('postTable');
     if (!table) return;
 
-    table.innerHTML = filtered.map((p) => `<tr>
+    table.innerHTML = filtered.length === 0
+      ? tableEmpty(8, 'No posts found. Create your first post to get started.')
+      : filtered.map((p) => `<tr>
       <td><input type="checkbox" class="post-check" value="${p.id}" /></td>
       <td>${p.id}</td>
       <td>${escapeHtml(p.platform)}</td>
@@ -68,7 +70,7 @@ async function handlePostAction(action, id, btn) {
       await api(`/api/posts/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'published' }) });
       success('Post published');
     } else if (action === 'delete') {
-      if (!confirm('Delete this post?')) return;
+      if (!await confirm('Delete Post', 'Are you sure you want to delete this post? This action cannot be undone.')) return;
       await api(`/api/posts/${id}`, { method: 'DELETE' });
       success('Post deleted');
     } else if (action === 'repurpose') {
@@ -180,7 +182,7 @@ async function loadCampaignFilter() {
       postSel.innerHTML = '<option value="">None</option>' +
         items.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
     }
-  } catch { /* ignore */ }
+  } catch (err) { error('Failed to load campaigns: ' + err.message); }
 }
 
 export async function refresh() {
@@ -191,7 +193,7 @@ export async function refresh() {
   try {
     const { items } = await api('/api/posts');
     renderCalendar(items);
-  } catch { /* ignore */ }
+  } catch (err) { error('Failed to load calendar: ' + err.message); }
 }
 
 export function init() {
@@ -218,11 +220,7 @@ export function init() {
   });
   const search = $('filterSearch');
   if (search) {
-    let timeout;
-    search.addEventListener('input', () => {
-      clearTimeout(timeout);
-      timeout = setTimeout(refreshPosts, 300);
-    });
+    search.addEventListener('input', debounce(refreshPosts, 300));
   }
 
   // Select all checkbox
@@ -238,8 +236,8 @@ export function init() {
 
   // Bulk actions
   onClick('bulkPublish', () => bulkAction('publish'));
-  onClick('bulkDelete', () => {
-    if (confirm(`Delete ${selectedIds.size} posts?`)) bulkAction('delete');
+  onClick('bulkDelete', async () => {
+    if (await confirm('Bulk Delete', `Are you sure you want to delete ${selectedIds.size} post(s)? This action cannot be undone.`)) bulkAction('delete');
   });
 
   // Bulk repurpose

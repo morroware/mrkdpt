@@ -1551,6 +1551,315 @@ body.light .ai-fab,
   100% { background-position: -200% 0; }
 }
 
+/* ---- Empty States ---- */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  color: var(--text-muted);
+}
+.empty-state-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+  opacity: 0.5;
+}
+.empty-state h4 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.35rem;
+}
+.empty-state p {
+  font-size: 0.85rem;
+  max-width: 400px;
+  line-height: 1.5;
+  margin-bottom: 1rem;
+}
+.empty-state .btn {
+  margin-top: 0.25rem;
+}
+
+/* ---- Table Empty Row ---- */
+.table-empty td {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+/* ---- Confirm Dialog ---- */
+.confirm-dialog {
+  max-width: 420px;
+}
+.confirm-dialog .modal-body {
+  text-align: center;
+  padding: 1.5rem;
+}
+.confirm-dialog .confirm-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+}
+.confirm-dialog h4 {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+}
+.confirm-dialog p {
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  margin-bottom: 1.25rem;
+}
+.confirm-dialog .btn-group {
+  justify-content: center;
+}
+
+/* ---- Status Badges ---- */
+.badge-draft { background: var(--bg-tertiary); color: var(--text-muted); }
+.badge-scheduled { background: rgba(76, 141, 255, 0.12); color: var(--accent); }
+.badge-published { background: var(--success-bg); color: var(--success); }
+.badge-failed { background: var(--danger-bg); color: var(--danger); }
+.badge-pending { background: var(--warning-bg); color: var(--warning); }
+.badge-active { background: var(--success-bg); color: var(--success); }
+.badge-paused { background: var(--bg-tertiary); color: var(--text-muted); }
+
+/* ---- Tooltip ---- */
+[data-tooltip] {
+  position: relative;
+}
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-secondary);
+  color: var(--text);
+  border: 1px solid var(--line);
+  padding: 0.35rem 0.6rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 500;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+[data-tooltip]:hover::after {
+  opacity: 1;
+}
+
+/* ---- Progress Bar (general) ---- */
+.progress-sm { height: 4px; }
+
+/* ---- Breadcrumb ---- */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+.breadcrumb a {
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+.breadcrumb a:hover {
+  color: var(--accent);
+}
+.breadcrumb span {
+  color: var(--text-muted);
+}
+
+/* ---- Skeleton Variants ---- */
+.skeleton-text {
+  height: 0.85rem;
+  margin-bottom: 0.5rem;
+  border-radius: 4px;
+}
+.skeleton-text:last-child {
+  width: 60%;
+}
+.skeleton-card {
+  height: 80px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.75rem;
+}
+.skeleton-metric {
+  height: 72px;
+  border-radius: var(--radius-sm);
+}
+
+/* ---- Copy Button Feedback ---- */
+.btn-copied {
+  background: var(--success) !important;
+  border-color: var(--success) !important;
+  color: #fff !important;
+  transition: all 0.2s;
+}
+
+/* ---- Selected Table Row ---- */
+.data-table tr.selected {
+  background: rgba(76, 141, 255, 0.08);
+}
+
+/* ---- Card Section Header ---- */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+.section-header h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+/* ---- Content Max Width (readability) ---- */
+.content-area {
+  max-width: 1400px;
+}
+
+/* ---- Improved Input Group ---- */
+.input-group {
+  display: flex;
+  gap: 0;
+}
+.input-group input {
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+.input-group .btn {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  white-space: nowrap;
+}
+
+/* ---- Page Description ---- */
+.page-desc {
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+/* ---- Improved Data Table ---- */
+.data-table th {
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+  z-index: 1;
+}
+
+/* ---- Improved Metric Card Layout ---- */
+.metric-card {
+  position: relative;
+  overflow: hidden;
+}
+.metric-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.metric-card:hover::before {
+  opacity: 1;
+}
+
+/* ---- Login Page Polish ---- */
+.login-box {
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+.login-box h1 {
+  background: linear-gradient(135deg, #6366f1, #a855f7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ---- Card Footer ---- */
+.card-footer {
+  border-top: 1px solid var(--line);
+  padding-top: 0.75rem;
+  margin-top: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* ---- Divider ---- */
+.divider {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 1rem 0;
+}
+
+/* ---- Tag/Chip ---- */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+/* ---- Notification Dot ---- */
+.has-notification::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 8px;
+  height: 8px;
+  background: var(--danger);
+  border-radius: 50%;
+  border: 2px solid var(--bg-secondary);
+}
+
+/* ---- Improved Sidebar Active ---- */
+.sidebar-nav a.active {
+  background: linear-gradient(90deg, rgba(76, 141, 255, 0.1), transparent);
+}
+
+/* ---- Smooth Scrollbar ---- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+*::-webkit-scrollbar { width: 6px; height: 6px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+*::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ---- Settings Form Grid ---- */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+.form-grid .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+@media (max-width: 768px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ---- Print ---- */
 @media print {
   .sidebar, .header-bar, .bulk-bar, .toast-container, form, button, .filters { display: none !important; }

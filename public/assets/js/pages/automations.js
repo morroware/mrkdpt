@@ -2,7 +2,7 @@
  * Automations page module.
  */
 import { api } from '../core/api.js';
-import { $, escapeHtml, formatDate } from '../core/utils.js';
+import { $, escapeHtml, formatDate, tableEmpty, confirm } from '../core/utils.js';
 import { toast } from '../core/toast.js';
 
 export function init() {
@@ -34,7 +34,7 @@ async function loadAutomations() {
         </button>
       </td>
       <td><button class="btn btn-sm btn-danger" onclick="window._deleteAutomation(${a.id})">Del</button></td>
-    </tr>`).join('') || '<tr><td colspan="7" class="text-muted">No automation rules yet</td></tr>';
+    </tr>`).join('') || tableEmpty(7, 'No automation rules yet. Create one above to automate your workflows.');
   } catch (err) {
     toast('Failed to load automations: ' + err.message, 'error');
   }
@@ -67,6 +67,9 @@ async function handleCreate(e) {
 }
 
 window._toggleAutomation = async (id, active) => {
+  if (!active) {
+    if (!await confirm('Pause Automation', 'Are you sure you want to pause this automation?', { okText: 'Pause', okClass: 'btn-warning' })) return;
+  }
   try {
     await api(`/api/automations/${id}`, { method: 'PATCH', body: JSON.stringify({ is_active: active }) });
     toast(active ? 'Activated' : 'Paused', 'success');
@@ -75,7 +78,7 @@ window._toggleAutomation = async (id, active) => {
 };
 
 window._deleteAutomation = async (id) => {
-  if (!confirm('Delete this automation?')) return;
+  if (!await confirm('Delete Automation', 'Are you sure you want to delete this automation? This cannot be undone.')) return;
   try { await api(`/api/automations/${id}`, { method: 'DELETE' }); toast('Deleted', 'success'); refresh(); } catch (e) { toast(e.message, 'error'); }
 };
 

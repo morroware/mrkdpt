@@ -3,7 +3,7 @@
  */
 
 import { api } from '../core/api.js';
-import { $, escapeHtml, onClick } from '../core/utils.js';
+import { $, escapeHtml, onClick, confirm } from '../core/utils.js';
 import { success, error } from '../core/toast.js';
 
 let currentConversationId = 0;
@@ -130,7 +130,7 @@ async function renameConversation(id, currentTitle) {
 }
 
 async function deleteConversation(id) {
-  if (!confirm('Delete this conversation?')) return;
+  if (!await confirm('Delete Conversation', 'Are you sure you want to delete this conversation?')) return;
   try {
     await api(`/api/ai/conversations/${id}`, { method: 'DELETE' });
     success('Conversation deleted');
@@ -176,7 +176,7 @@ async function refreshConversations() {
         deleteConversation(parseInt(btn.dataset.deleteConv));
       });
     });
-  } catch (err) { console.warn('Failed to load conversations:', err); }
+  } catch (err) { error('Failed to load conversations: ' + err.message); }
 }
 
 function newChat() {
@@ -245,8 +245,8 @@ async function loadProviderModels() {
         }
       }
     }
-  } catch {
-    // Fallback: provider select stays with defaults
+  } catch (err) {
+    error('Failed to load AI providers: ' + err.message);
   }
 }
 
@@ -278,7 +278,7 @@ async function refreshSharedMemory() {
 
     list.querySelectorAll('.chat-memory-delete').forEach((btn) => {
       btn.addEventListener('click', async () => {
-        if (!confirm('Delete this memory item? All AI tools use shared memory.')) return;
+        if (!await confirm('Delete Memory', 'Delete this memory item? All AI tools use shared memory.')) return;
         try {
           await api(`/api/ai/shared-memory/${btn.dataset.memoryId}`, { method: 'DELETE' });
           success('Memory deleted');
@@ -288,8 +288,9 @@ async function refreshSharedMemory() {
         }
       });
     });
-  } catch {
+  } catch (err) {
     list.innerHTML = '<p class="text-muted text-small">Memory unavailable.</p>';
+    error('Failed to load shared memory: ' + err.message);
   }
 }
 

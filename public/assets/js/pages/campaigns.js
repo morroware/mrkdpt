@@ -3,7 +3,7 @@
  */
 
 import { api } from '../core/api.js';
-import { $, escapeHtml, formatDate, onSubmit, formData } from '../core/utils.js';
+import { $, escapeHtml, formatDate, onSubmit, formData, emptyState, confirm } from '../core/utils.js';
 import { success, error } from '../core/toast.js';
 
 export async function refresh() {
@@ -18,7 +18,7 @@ export async function refresh() {
           const revenue = parseFloat(c.revenue || 0);
           const budget = parseFloat(c.budget || 0);
           const roi = spend > 0 ? ((revenue - spend) / spend * 100).toFixed(1) : '-';
-          const budgetUsed = budget > 0 ? Math.min(100, (spend / budget * 100)).toFixed(0) : 0;
+          const budgetUsed = budget > 0 ? Math.max(0, Math.min(100, (spend / budget * 100))).toFixed(0) : 0;
 
           return `<div class="card">
           <div class="flex-between">
@@ -36,11 +36,11 @@ export async function refresh() {
           <div class="campaign-metrics-inline" id="cm-${c.id}"></div>
         </div>`;
         }).join('')
-      : '<p class="text-muted">No campaigns yet</p>';
+      : emptyState('&#9776;', 'No campaigns yet', 'Create your first campaign to start tracking ROI.');
 
     list.querySelectorAll('[data-delete]').forEach((btn) => {
       btn.addEventListener('click', async () => {
-        if (!confirm('Delete this campaign?')) return;
+        if (!await confirm('Delete campaign?', 'This campaign and its metrics will be permanently removed.')) return;
         try {
           await api(`/api/campaigns/${btn.dataset.delete}`, { method: 'DELETE' });
           success('Campaign deleted');

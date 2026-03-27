@@ -2,7 +2,7 @@
  * SPA page router — hash-based navigation and tab switching.
  */
 
-import { $ } from './utils.js';
+import { $, copyToClipboard } from './utils.js';
 import { api } from './api.js';
 
 const pageModules = {};
@@ -137,9 +137,15 @@ export function initRouter() {
   if (themeToggle) {
     const saved = localStorage.getItem('theme');
     if (saved === 'light') document.body.classList.add('light');
+    function updateThemeIcon() {
+      themeToggle.innerHTML = document.body.classList.contains('light') ? '&#9728;' : '&#9790;';
+      themeToggle.title = document.body.classList.contains('light') ? 'Switch to dark mode' : 'Switch to light mode';
+    }
+    updateThemeIcon();
     themeToggle.addEventListener('click', () => {
       document.body.classList.toggle('light');
       localStorage.setItem('theme', document.body.classList.contains('light') ? 'light' : 'dark');
+      updateThemeIcon();
     });
   }
 
@@ -273,7 +279,7 @@ function initAiCommandBar() {
   if (copyBtn) {
     copyBtn.addEventListener('click', () => {
       const text = $('aiCommandResult')?.textContent || '';
-      navigator.clipboard.writeText(text).catch(() => {});
+      copyToClipboard(text, copyBtn);
     });
   }
 

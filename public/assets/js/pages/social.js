@@ -5,7 +5,7 @@
  */
 
 import { api } from '../core/api.js';
-import { $, escapeHtml, onSubmit, formData } from '../core/utils.js';
+import { $, escapeHtml, onSubmit, formData, emptyState, confirm } from '../core/utils.js';
 import { success, error } from '../core/toast.js';
 
 /* ── Token field labels & placeholders per platform ── */
@@ -108,7 +108,7 @@ export async function refresh() {
           <p class="text-small text-muted">Token: ${a.access_token ? '\u2022\u2022\u2022\u2022\u2022' : 'Not set'}${details}</p>
         </div>`;
         }).join('')
-      : '<p class="text-muted">No social accounts connected</p>';
+      : emptyState('&#128279;', 'No Social Accounts', 'Connect your social media accounts to start publishing.');
 
     list.querySelectorAll('[data-test]').forEach((btn) => {
       btn.addEventListener('click', async () => {
@@ -124,7 +124,7 @@ export async function refresh() {
 
     list.querySelectorAll('[data-delete]').forEach((btn) => {
       btn.addEventListener('click', async () => {
-        if (!confirm('Remove this account?')) return;
+        if (!await confirm('Remove Account', 'Are you sure you want to remove this social account?')) return;
         try {
           await api(`/api/social-accounts/${btn.dataset.delete}`, { method: 'DELETE' });
           success('Account removed');

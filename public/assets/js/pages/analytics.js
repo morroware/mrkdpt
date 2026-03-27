@@ -80,8 +80,9 @@ export function init() {
   window.exportCsv = async function (type) {
     try {
       const response = await api(`/api/analytics/export/${type}`);
-      // response is a raw Response for non-JSON
-      const blob = await response.blob();
+      // api() returns raw Response for non-JSON content types
+      const text = await response.text();
+      const blob = new Blob([text], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

@@ -3,7 +3,7 @@
  */
 
 import { api } from '../core/api.js';
-import { $, escapeHtml, onSubmit, formData, onClick } from '../core/utils.js';
+import { $, escapeHtml, onSubmit, formData, onClick, emptyState, confirm } from '../core/utils.js';
 import { success, error } from '../core/toast.js';
 
 export async function refresh() {
@@ -22,11 +22,11 @@ export async function refresh() {
           ${c.recent_activity ? `<p class="text-small"><strong>Activity:</strong> ${escapeHtml(c.recent_activity)}</p>` : ''}
           ${c.opportunity ? `<p class="text-small"><strong>Opportunity:</strong> ${escapeHtml(c.opportunity)}</p>` : ''}
         </div>`).join('')
-      : '<p class="text-muted">No competitors tracked yet</p>';
+      : emptyState('&#128065;', 'No Competitors', 'Track your competitors to stay ahead of the market.');
 
     list.querySelectorAll('[data-delete]').forEach((btn) => {
       btn.addEventListener('click', async () => {
-        if (!confirm('Delete this competitor?')) return;
+        if (!await confirm('Delete Competitor', 'Are you sure you want to delete this competitor?')) return;
         try {
           await api(`/api/competitors/${btn.dataset.delete}`, { method: 'DELETE' });
           success('Competitor removed');

@@ -3,7 +3,7 @@
  */
 
 import { api } from '../core/api.js';
-import { $, escapeHtml, formatDateTime, truncate } from '../core/utils.js';
+import { $, escapeHtml, formatDateTime, truncate, statusBadge, emptyState } from '../core/utils.js';
 import { error, success } from '../core/toast.js';
 import { navigate } from '../core/router.js';
 
@@ -62,9 +62,9 @@ export async function refresh() {
       const posts = dashData.recent_posts || [];
       postsEl.innerHTML = posts.length
         ? posts.map((p) =>
-            `<div class="list-item"><strong>${escapeHtml(p.title)}</strong> <span class="badge">${escapeHtml(p.platform)}</span> <span class="badge">${escapeHtml(p.status)}</span><div class="text-small text-muted">${formatDateTime(p.scheduled_for || p.created_at)}</div></div>`
+            `<div class="list-item"><strong>${escapeHtml(p.title)}</strong> <span class="badge badge-${escapeHtml(p.platform)}">${escapeHtml(p.platform)}</span> ${statusBadge(p.status)}<div class="text-small text-muted">${formatDateTime(p.scheduled_for || p.created_at)}</div></div>`
           ).join('')
-        : '<p class="text-muted">No posts yet</p>';
+        : emptyState('&#9998;', 'No posts yet', 'Create your first post to start building your content library.', '<button class="btn btn-sm" onclick="navigate(\'content\')">Create Post</button>');
     }
 
     // Recent ideas
@@ -75,7 +75,7 @@ export async function refresh() {
         ? ideas.map((i) =>
             `<div class="list-item"><strong>${escapeHtml(i.topic)}</strong> <span class="badge">${escapeHtml(i.platform)}</span><div class="text-small text-muted">${escapeHtml(truncate(i.output, 120))}</div></div>`
           ).join('')
-        : '<p class="text-muted">No ideas generated yet</p>';
+        : emptyState('&#128161;', 'No ideas yet', 'Use AI Studio to brainstorm content ideas for your marketing.', '<button class="btn btn-sm btn-ai" onclick="navigate(\'ai\')"><span class="btn-ai-icon">&#9733;</span> Open AI Studio</button>');
     }
   } catch (err) {
     error('Failed to load dashboard: ' + err.message);

@@ -2,7 +2,7 @@
  * Contacts / Mini CRM page module.
  */
 import { api } from '../core/api.js';
-import { $, escapeHtml, formatDate } from '../core/utils.js';
+import { $, escapeHtml, formatDate, tableEmpty, emptyState, debounce, confirm } from '../core/utils.js';
 import { toast } from '../core/toast.js';
 
 export function init() {
@@ -75,6 +75,10 @@ async function loadContacts() {
     const items = data.items || data;
     const tb = $('contactTable');
     if (!tb) return;
+    if (!items.length) {
+      tb.innerHTML = tableEmpty(8, 'No contacts yet. Add your first contact or import from CSV.');
+      return;
+    }
     tb.innerHTML = items.map(c => `<tr>
       <td>${escapeHtml(c.email)}</td>
       <td>${escapeHtml(c.first_name)} ${escapeHtml(c.last_name)}</td>
@@ -131,7 +135,7 @@ async function viewContact(id) {
 }
 
 async function deleteContact(id) {
-  if (!confirm('Delete this contact?')) return;
+  if (!await confirm('Delete Contact', 'Are you sure you want to delete this contact?')) return;
   try {
     await api(`/api/contacts/${id}`, { method: 'DELETE' });
     toast('Contact deleted', 'success');
@@ -150,11 +154,6 @@ function stageBadge(stage) {
   return map[stage] || 'muted';
 }
 
-function debounce(fn, ms) {
-  let t;
-  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
-}
-
 async function handleToolbarAction(event) {
   const button = event.target.closest('[data-contact-action]');
   if (!button) return;
@@ -170,9 +169,21 @@ async function handleToolbarAction(event) {
 
 // CSV Import handler
 async function importContactsCsv() {
-  const csv = prompt('Paste CSV data (email,first_name,last_name,company,phone,stage,tags):');
-  if (!csv) return;
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.csv';
+  input.style.display = 'none';
+  document.body.appendChild(input);
+
+  const file = await new Promise((resolve) => {
+    input.addEventListener('change', () => resolve(input.files[0] || null));
+    input.click();
+  });
+  input.remove();
+
+  if (!file) return;
   try {
+    const csv = await file.text();
     const result = await api('/api/contacts/import', {
       method: 'POST',
       body: JSON.stringify({ csv, source: 'csv_import' }),

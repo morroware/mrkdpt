@@ -12,10 +12,16 @@
 <div id="page-login" class="login-container">
   <div class="login-box">
     <h1>Marketing Suite</h1>
-    <p>Sign in to manage your marketing</p>
+    <p>Sign in to your marketing command center</p>
     <form id="loginForm" class="stack">
-      <input name="username" placeholder="Username" required autocomplete="username" />
-      <input name="password" type="password" placeholder="Password" required autocomplete="current-password" />
+      <div>
+        <label for="loginUsername">Username</label>
+        <input id="loginUsername" name="username" placeholder="Enter your username" required autocomplete="username" />
+      </div>
+      <div>
+        <label for="loginPassword">Password</label>
+        <input id="loginPassword" name="password" type="password" placeholder="Enter your password" required autocomplete="current-password" />
+      </div>
       <button type="submit">Sign In</button>
     </form>
   </div>
@@ -1390,6 +1396,10 @@ Tip: Use the provider selector above to compare results from different AI models
           <div class="btn-group"><button type="submit">Create Test</button><button type="button" class="btn btn-ai btn-sm" id="aiGenerateVariant" title="AI-generate A/B test variants"><span class="btn-ai-icon">&#9733;</span> AI Variants</button><button type="button" class="btn btn-ai btn-sm" id="aiAnalyzeAb" title="AI analyze test results"><span class="btn-ai-icon">&#9733;</span> AI Analyze</button></div>
         </form>
         <div id="abTestList" class="mt-1"></div>
+        <div id="abAnalysisCard" class="card mt-2 hidden">
+          <h3><span class="btn-ai-icon">&#9733;</span> AI Analysis</h3>
+          <pre id="abAnalysisOutput" class="ai-output mt-1" style="white-space:pre-wrap"></pre>
+        </div>
       </section>
 
       <!-- Funnels -->
@@ -1500,19 +1510,35 @@ Tip: Use the provider selector above to compare results from different AI models
 
       <!-- Settings -->
       <section id="page-settings" class="page">
+        <div class="card mb-2">
+          <h3>Business &amp; AI Configuration</h3>
+          <p class="text-small text-muted mb-1">Manage your business profile, AI providers, and API keys.</p>
+          <div id="settingsInfo"></div>
+        </div>
         <div class="card-grid">
-          <div class="card"><h3>Business &amp; AI Settings</h3><div id="settingsInfo"></div></div>
-          <div class="card"><h3>System Health</h3><div id="healthInfo"></div></div>
-          <div class="card"><h3>API Token</h3><div id="tokenInfo"></div></div>
-          <div class="card"><h3>Database</h3><div class="stack"><button class="btn btn-outline" id="downloadBackup">Download Backup</button></div></div>
+          <div class="card">
+            <h3>System Health</h3>
+            <div id="healthInfo"><div class="skeleton skeleton-card"></div></div>
+          </div>
+          <div class="card">
+            <h3>API Token</h3>
+            <p class="text-small text-muted mb-1">Use this token to access the API programmatically.</p>
+            <div id="tokenInfo"><div class="skeleton skeleton-text"></div></div>
+          </div>
+          <div class="card">
+            <h3>Database</h3>
+            <p class="text-small text-muted mb-1">Download a full backup of your marketing database.</p>
+            <div class="stack"><button class="btn btn-outline" id="downloadBackup">&#128190; Download Backup</button></div>
+          </div>
         </div>
         <div class="card mt-1"><h3>Webhooks</h3>
+          <p class="text-small text-muted mb-1">Send automated notifications to external services when events occur.</p>
           <form id="webhookForm" class="stack">
-            <div class="row3"><div><label>Event</label><select name="event"><option>post.published</option><option>post.scheduled</option><option>campaign.created</option><option>subscriber.added</option><option>cron.completed</option><option>email.sent</option></select></div><div><label>URL</label><input name="url" type="url" required /></div><div><label>&nbsp;</label><button type="submit">Add Webhook</button></div></div>
+            <div class="row3"><div><label>Event</label><select name="event"><option>post.published</option><option>post.scheduled</option><option>campaign.created</option><option>subscriber.added</option><option>cron.completed</option><option>email.sent</option></select></div><div><label>URL</label><input name="url" type="url" required placeholder="https://hooks.example.com/webhook" /></div><div><label>&nbsp;</label><button type="submit">Add Webhook</button></div></div>
           </form>
           <div id="webhookList" class="mt-1"></div>
         </div>
-        <div class="card mt-1"><h3>Cron Log</h3><div id="cronLog"></div></div>
+        <div class="card mt-1"><h3>Cron Log</h3><p class="text-small text-muted mb-1">Recent background task execution history.</p><div id="cronLog"></div></div>
       </section>
 
     </div><!-- content-area -->
@@ -1590,7 +1616,22 @@ Tip: Use the provider selector above to compare results from different AI models
   <span class="ai-fab-label">AI Assist</span>
 </button>
 
-<div class="toast-container" id="toastContainer"></div>
+<!-- Confirmation Dialog -->
+<div class="modal-overlay" id="confirmDialog" role="dialog" aria-label="Confirm action">
+  <div class="modal-content confirm-dialog">
+    <div class="modal-body">
+      <div class="confirm-icon" id="confirmIcon">&#9888;</div>
+      <h4 id="confirmTitle">Are you sure?</h4>
+      <p id="confirmMessage">This action cannot be undone.</p>
+      <div class="btn-group">
+        <button class="btn btn-outline" id="confirmCancel">Cancel</button>
+        <button class="btn btn-danger" id="confirmOk">Confirm</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer" role="status" aria-live="polite"></div>
 
 <script type="module" src="assets/js/app.js"></script>
 </body>

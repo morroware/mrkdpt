@@ -4,7 +4,7 @@
  */
 
 import { api } from '../core/api.js';
-import { $, escapeHtml } from '../core/utils.js';
+import { $, escapeHtml, copyToClipboard } from '../core/utils.js';
 import { success, error } from '../core/toast.js';
 
 let activeTextarea = null;
@@ -77,7 +77,7 @@ export function init() {
   const copyBtn = $('aiAssistCopy');
   if (copyBtn) {
     copyBtn.addEventListener('click', () => {
-      navigator.clipboard.writeText(lastResult).then(() => success('Copied!')).catch(() => {});
+      copyToClipboard(lastResult, copyBtn);
     });
   }
 

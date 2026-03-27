@@ -4,7 +4,7 @@
  */
 
 import { api } from '../core/api.js';
-import { $, onClick } from '../core/utils.js';
+import { $, onClick, copyToClipboard } from '../core/utils.js';
 import { success, error } from '../core/toast.js';
 import { navigate } from '../core/router.js';
 
@@ -436,7 +436,7 @@ export function init() {
   // ---- Output Actions ----
   onClick('aiCopyOutput', () => {
     if (!lastOutput) { error('Nothing to copy'); return; }
-    navigator.clipboard.writeText(lastOutput).then(() => success('Copied to clipboard')).catch(() => error('Copy failed'));
+    copyToClipboard(lastOutput, $('aiCopyBtn'));
   });
 
   onClick('aiUseInPost', () => {

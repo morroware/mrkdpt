@@ -3,7 +3,7 @@
  */
 
 import { api } from '../core/api.js';
-import { $, escapeHtml, formatDateTime, onSubmit, onClick, statusBadge } from '../core/utils.js';
+import { $, escapeHtml, formatDateTime, onSubmit, onClick, statusBadge, tableEmpty } from '../core/utils.js';
 import { success, error } from '../core/toast.js';
 
 async function loadQueue() {
@@ -24,7 +24,7 @@ async function loadQueue() {
 
     const table = $('queueTable');
     if (!table) return;
-    table.innerHTML = items.map((q) => `<tr>
+    table.innerHTML = items.length ? items.map((q) => `<tr>
       <td><strong>${escapeHtml(q.post_title || 'Post #' + q.post_id)}</strong><div class="text-small text-muted">${escapeHtml(q.post_platform || '')}</div></td>
       <td>${escapeHtml(q.account_name || '-')}</td>
       <td>${formatDateTime(q.optimal_time)}</td>
@@ -33,7 +33,7 @@ async function loadQueue() {
       <td>
         ${q.status === 'queued' ? `<button class="btn btn-sm btn-danger" data-remove="${q.id}">Remove</button>` : ''}
       </td>
-    </tr>`).join('') || '<tr><td colspan="6" class="text-muted">Queue is empty</td></tr>';
+    </tr>`).join('') : tableEmpty(6, 'Queue is empty');
 
     table.querySelectorAll('[data-remove]').forEach((btn) => {
       btn.addEventListener('click', async () => {
@@ -64,7 +64,7 @@ async function loadSelects() {
     if (accSel && accounts.items) {
       accSel.innerHTML = accounts.items.map((a) => `<option value="${a.id}">${escapeHtml(a.account_name)} (${a.platform})</option>`).join('');
     }
-  } catch { /* ignore */ }
+  } catch (err) { error('Failed to load form options: ' + err.message); }
 }
 
 async function loadBestTimes() {

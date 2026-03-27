@@ -2,7 +2,7 @@
  * Form Builder page module.
  */
 import { api, getBasePath } from '../core/api.js';
-import { $, escapeHtml, formatDate } from '../core/utils.js';
+import { $, escapeHtml, formatDate, emptyState, confirm, tableEmpty } from '../core/utils.js';
 import { toast } from '../core/toast.js';
 
 export function init() {
@@ -24,7 +24,7 @@ async function loadForms() {
     el.innerHTML = items.map(f => {
       const embedUrl = `${base}/f/${f.slug}`;
       let fieldCount = 0;
-      try { fieldCount = (JSON.parse(f.fields || '[]')).length; } catch { /* invalid JSON */ }
+      try { fieldCount = (JSON.parse(f.fields || '[]')).length; } catch { fieldCount = 0; }
       return `<div class="card">
         <div class="flex-between"><h3>${escapeHtml(f.name)}</h3><span class="badge badge-${f.status === 'active' ? 'success' : 'muted'}">${f.status}</span></div>
         <p class="text-muted text-small mt-1">${fieldCount} fields &middot; ${f.submissions} submissions &middot; ${getBasePath()}/f/${escapeHtml(f.slug)}</p>
@@ -34,7 +34,7 @@ async function loadForms() {
           <button class="btn btn-sm btn-danger" onclick="window._deleteForm(${f.id})">Delete</button>
         </div>
       </div>`;
-    }).join('') || '<p class="text-muted">No forms yet</p>';
+    }).join('') || emptyState('&#128221;', 'No forms yet', 'Build your first form to collect leads and feedback.');
   } catch (err) {
     toast('Failed to load forms: ' + err.message, 'error');
   }
@@ -95,7 +95,7 @@ async function loadSubmissions() {
     if (!tb) return;
     tb.innerHTML = items.map(s => {
       let d = {};
-      try { d = JSON.parse(s.data_json || '{}'); } catch (_) { /* invalid JSON */ }
+      try { d = JSON.parse(s.data_json || '{}'); } catch { d = {}; }
       const fields = Object.entries(d).map(([k, v]) => `<strong>${escapeHtml(k)}:</strong> ${escapeHtml(String(v))}`).join(', ');
       return `<tr>
         <td class="text-small">${formatDate(s.submitted_at)}</td>
@@ -103,7 +103,7 @@ async function loadSubmissions() {
         <td class="text-small">${fields}</td>
         <td class="text-small text-muted">${escapeHtml(s.page_url)}</td>
       </tr>`;
-    }).join('') || '<tr><td colspan="4" class="text-muted">No submissions</td></tr>';
+    }).join('') || tableEmpty(4, 'No submissions yet');
   } catch (err) {
     toast(err.message, 'error');
   }
@@ -121,7 +121,7 @@ window._copyFormEmbed = async (id) => {
 };
 
 window._deleteForm = async (id) => {
-  if (!confirm('Delete this form and all submissions?')) return;
+  if (!await confirm('Delete Form', 'Are you sure you want to delete this form and all its submissions? This cannot be undone.')) return;
   try { await api(`/api/forms/${id}`, { method: 'DELETE' }); toast('Deleted', 'success'); refresh(); } catch (e) { toast(e.message, 'error'); }
 };
 

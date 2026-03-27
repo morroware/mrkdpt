@@ -30,13 +30,14 @@ final class AiService
             'gpt-4o'          => 'GPT-4o',
             'gpt-4o-mini'     => 'GPT-4o Mini',
             'o3-mini'         => 'o3-mini (Reasoning)',
+            'o4-mini'         => 'o4-mini (Latest Reasoning)',
         ],
         'anthropic' => [
-            'claude-sonnet-4-20250514'   => 'Claude Sonnet 4 (Balanced)',
             'claude-sonnet-4-6-20250627' => 'Claude Sonnet 4.6 (Latest)',
+            'claude-sonnet-4-20250514'   => 'Claude Sonnet 4',
             'claude-haiku-4-5-20251001'  => 'Claude Haiku 4.5 (Fast)',
-            'claude-opus-4-20250514'     => 'Claude Opus 4 (Best quality)',
             'claude-opus-4-6-20250627'   => 'Claude Opus 4.6 (Latest, Best)',
+            'claude-opus-4-20250514'     => 'Claude Opus 4',
         ],
         'gemini' => [
             'gemini-2.5-pro'   => 'Gemini 2.5 Pro (Best quality)',

@@ -602,7 +602,7 @@ final class AiAutopilot
         $stmt = $this->pdo->prepare('SELECT error FROM ai_tasks WHERE id = :id');
         $stmt->execute([':id' => $taskId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        $errors = $row['error'] ?: '';
+        $errors = ($row['error'] ?? '') ?: '';
         $errors .= "[{$step}] {$message}\n";
         $stmt = $this->pdo->prepare('UPDATE ai_tasks SET error = :error, updated_at = :updated WHERE id = :id');
         $stmt->execute([':error' => $errors, ':updated' => gmdate(DATE_ATOM), ':id' => $taskId]);

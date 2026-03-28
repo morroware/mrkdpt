@@ -170,7 +170,8 @@ async function viewContact(id) {
     });
 
     // Activity tab
-    $('cm-activity').innerHTML = (c.activities || []).length
+    const cmActivity = $('cm-activity');
+    if (cmActivity) cmActivity.innerHTML = (c.activities || []).length
       ? (c.activities || []).map(a => `<div class="list-item" style="padding:.4rem 0;border-bottom:1px solid var(--line)">
           <span class="badge badge-info text-small">${escapeHtml(a.activity_type)}</span>
           ${escapeHtml(a.description)}

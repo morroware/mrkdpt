@@ -23,7 +23,8 @@ function register_campaign_routes(Router $router, CampaignRepository $campaigns,
 
     $router->put('/api/campaigns/{id}', function ($p) use ($campaigns) {
         $data = request_json();
-        json_response(['item' => $campaigns->update((int)$p['id'], $data)]);
+        $item = $campaigns->update((int)$p['id'], $data);
+        $item ? json_response(['item' => $item]) : json_response(['error' => 'Not found'], 404);
     });
 
     $router->delete('/api/campaigns/{id}', function ($p) use ($campaigns) {

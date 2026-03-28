@@ -394,6 +394,7 @@ label {
 .badge-success { background: var(--success-bg); color: var(--success); }
 .badge-warning { background: var(--warning-bg); color: var(--warning); }
 .badge-danger { background: var(--danger-bg); color: var(--danger); }
+.input-error { border-color: var(--danger) !important; box-shadow: 0 0 0 2px var(--danger-bg); }
 .badge-instagram { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); color: #fff; }
 .badge-twitter { background: #1d9bf0; color: #fff; }
 .badge-facebook { background: #1877f2; color: #fff; }

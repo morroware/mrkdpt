@@ -2,7 +2,15 @@
 
 ## Beta Status (March 28, 2026)
 
-Beta-blocking bugs have been fixed. Remaining hardening items (token encryption, OAuth refresh, distributed locks, etc.) are tracked internally and can follow after initial single-business deployment. Smoke tests should pass for install, auth, content creation, social queue, email send/tracking, forms, and cron.
+Beta audit complete. All beta-blocking bugs have been fixed:
+- Fixed missing `escapeHtml` import in AI Studio JS (caused runtime error on next-actions)
+- Fixed null pointer in `AiAutopilot::recordStepError()` when task row missing
+- Added missing `.input-error` CSS class (broke onboarding validation UX)
+- Added missing `competitor-radar` tool to `AiOrchestrator::executeToolStep()` (pipelines crashed)
+- Fixed null reference on `cm-activity` element in contacts detail modal
+- Added 404 null checks on 9 PUT route handlers (campaigns, segments, templates, brand-profiles, webhooks, email-campaigns, email-templates, rss-feeds, social-accounts)
+
+Remaining hardening items (token encryption, OAuth refresh, distributed locks, etc.) are tracked internally and can follow after initial single-business deployment. Smoke tests should pass for install, auth, content creation, social queue, email send/tracking, forms, and cron.
 
 ## Overview
 

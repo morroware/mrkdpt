@@ -12,7 +12,10 @@ function register_rss_routes(Router $router, RssFetcher $rssFetcher): void
         json_response(['item' => $rssFetcher->createFeed($p)], 201);
     });
 
-    $router->put('/api/rss-feeds/{id}', fn($p) => json_response(['item' => $rssFetcher->updateFeed((int)$p['id'], request_json())]));
+    $router->put('/api/rss-feeds/{id}', function ($p) use ($rssFetcher) {
+        $item = $rssFetcher->updateFeed((int)$p['id'], request_json());
+        $item ? json_response(['item' => $item]) : json_response(['error' => 'Not found'], 404);
+    });
 
     $router->delete('/api/rss-feeds/{id}', function ($p) use ($rssFetcher) {
         $rssFetcher->deleteFeed((int)$p['id']);

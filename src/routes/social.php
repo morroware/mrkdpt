@@ -14,7 +14,10 @@ function register_social_routes(Router $router, SocialAccountRepository $socialA
         json_response(['item' => $socialAccounts->create($p)], 201);
     });
 
-    $router->put('/api/social-accounts/{id}', fn($p) => json_response(['item' => $socialAccounts->update((int)$p['id'], request_json())]));
+    $router->put('/api/social-accounts/{id}', function ($p) use ($socialAccounts) {
+        $item = $socialAccounts->update((int)$p['id'], request_json());
+        $item ? json_response(['item' => $item]) : json_response(['error' => 'Not found'], 404);
+    });
 
     $router->delete('/api/social-accounts/{id}', function ($p) use ($socialAccounts) {
         $socialAccounts->delete((int)$p['id']);

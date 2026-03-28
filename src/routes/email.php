@@ -111,7 +111,10 @@ function register_email_routes(
         $item ? json_response(['item' => $item]) : json_response(['error' => 'Not found'], 404);
     });
 
-    $router->put('/api/email-campaigns/{id}', fn($p) => json_response(['item' => $emailCampaigns->update((int)$p['id'], request_json())]));
+    $router->put('/api/email-campaigns/{id}', function ($p) use ($emailCampaigns) {
+        $item = $emailCampaigns->update((int)$p['id'], request_json());
+        $item ? json_response(['item' => $item]) : json_response(['error' => 'Not found'], 404);
+    });
 
     $router->delete('/api/email-campaigns/{id}', function ($p) use ($emailCampaigns) {
         $emailCampaigns->delete((int)$p['id']);

@@ -148,7 +148,9 @@ function initDragDrop() {
       } else {
         addBlock(data.type, data.event);
       }
-    } catch {}
+    } catch (err) {
+      console.warn('Automation drop: invalid drag data', err);
+    }
   });
 }
 

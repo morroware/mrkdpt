@@ -150,9 +150,15 @@ export function init() {
 
 function detectActiveTextarea() {
   if (!activeTextarea) {
+    // Search active page first, then open modals/overlays
     const textareas = document.querySelectorAll('.page.active textarea');
     if (textareas.length > 0) {
       activeTextarea = textareas[0];
+    } else {
+      const modalTextareas = document.querySelectorAll('.modal-overlay.visible textarea, .modal-overlay.open textarea');
+      if (modalTextareas.length > 0) {
+        activeTextarea = modalTextareas[0];
+      }
     }
   }
   updateContext();

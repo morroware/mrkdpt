@@ -71,13 +71,25 @@ export async function refresh() {
 // Section Builder
 // =========================================================================
 
+const DEFAULT_SECTION_TEMPLATES = [
+  { label: 'Features Grid', description: 'Highlight key features or benefits', default: { type: 'features', heading: 'Why Choose Us', items: [{ title: 'Feature 1', description: 'Description of your first key feature.' }, { title: 'Feature 2', description: 'Description of your second key feature.' }, { title: 'Feature 3', description: 'Description of your third key feature.' }] } },
+  { label: 'Testimonials', description: 'Social proof from happy customers', default: { type: 'testimonials', heading: 'What Our Customers Say', items: [{ quote: 'This product changed everything for us.', author: 'Jane Doe', role: 'CEO, Acme Inc.' }] } },
+  { label: 'FAQ', description: 'Frequently asked questions', default: { type: 'faq', heading: 'Frequently Asked Questions', items: [{ question: 'How does it work?', answer: 'Simply sign up and follow the setup wizard.' }, { question: 'Is there a free trial?', answer: 'Yes, we offer a 14-day free trial.' }] } },
+  { label: 'Pricing Table', description: 'Show your pricing plans', default: { type: 'pricing', heading: 'Simple Pricing', items: [{ name: 'Starter', price: '$9/mo', features: 'Core features, email support' }, { name: 'Pro', price: '$29/mo', features: 'All features, priority support' }] } },
+  { label: 'CTA Banner', description: 'Call to action with button', default: { type: 'cta', heading: 'Ready to Get Started?', subheading: 'Join thousands of happy customers today.', cta_text: 'Start Free Trial', cta_url: '#' } },
+  { label: 'Text Block', description: 'Free-form text content section', default: { type: 'text', heading: 'About Us', body: 'Tell your story here. Share your mission, values, or any additional information visitors need.' } },
+];
+
 async function loadSectionTemplates() {
   try {
     const resp = await api('/api/landing-pages/section-templates');
     sectionTemplates = resp.items || [];
   } catch {
-    // Templates are nice-to-have
     sectionTemplates = [];
+  }
+  // Use built-in fallback templates if API returned none
+  if (sectionTemplates.length === 0) {
+    sectionTemplates = DEFAULT_SECTION_TEMPLATES;
   }
 }
 
@@ -110,7 +122,6 @@ function toggleSectionPicker() {
   };
 
   picker.classList.remove('hidden');
-  picker.style.display = 'grid';
 }
 
 function renderSections() {
@@ -132,9 +143,10 @@ function renderSections() {
                     s.type === 'text' ? escapeHtml((s.heading || s.body || '').slice(0, 50)) :
                     `${itemCount} item${itemCount !== 1 ? 's' : ''}`;
 
-    return `<div class="form-field-item" style="background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:.6rem .8rem">
+    return `<div class="form-field-item lp-section-item" data-idx="${i}" draggable="true" style="background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:.6rem .8rem">
       <div class="flex-between">
         <div style="display:flex;align-items:center;gap:.5rem">
+          <span class="text-muted" style="cursor:grab">&#9776;</span>
           <span class="badge badge-info text-small">${escapeHtml(label)}</span>
           <span class="text-small text-muted">${escapeHtml(s.heading || '')} &middot; ${summary}</span>
         </div>
@@ -198,6 +210,43 @@ function renderSections() {
         pageSections[idx].items = JSON.parse(textarea.value);
         syncSectionsJson();
       } catch { toast('Invalid JSON for section items', 'error'); }
+    });
+  });
+
+  // Drag-and-drop reorder for sections
+  let dragIdx = null;
+  container.querySelectorAll('.lp-section-item').forEach(item => {
+    item.addEventListener('dragstart', (e) => {
+      dragIdx = parseInt(item.dataset.idx);
+      item.style.opacity = '0.4';
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    item.addEventListener('dragend', () => {
+      item.style.opacity = '1';
+      item.classList.remove('dragging');
+      container.querySelectorAll('.lp-section-item').forEach(el => el.classList.remove('drop-above', 'drop-below'));
+      dragIdx = null;
+    });
+    item.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (dragIdx === null) return;
+      container.querySelectorAll('.lp-section-item').forEach(el => el.classList.remove('drop-above', 'drop-below'));
+      const rect = item.getBoundingClientRect();
+      const mid = rect.top + rect.height / 2;
+      item.classList.add(e.clientY < mid ? 'drop-above' : 'drop-below');
+    });
+    item.addEventListener('dragleave', () => {
+      item.classList.remove('drop-above', 'drop-below');
+    });
+    item.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const dropIdx = parseInt(item.dataset.idx);
+      if (dragIdx !== null && dragIdx !== dropIdx) {
+        const moved = pageSections.splice(dragIdx, 1)[0];
+        pageSections.splice(dropIdx, 0, moved);
+        renderSections();
+      }
     });
   });
 

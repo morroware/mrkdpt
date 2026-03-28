@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-function register_form_routes(Router $router, FormRepository $forms, ContactRepository $contacts, AutomationRepository $automations, ?Auth $auth = null): void
+function register_form_routes(Router $router, FormRepository $forms, ContactRepository $contacts, AutomationRepository $automations, ?Auth $auth = null, ?EmailService $emailService = null): void
 {
     $router->get('/api/forms', fn() => json_response(['items' => $forms->all()]));
 
@@ -36,6 +36,20 @@ function register_form_routes(Router $router, FormRepository $forms, ContactRepo
         json_response(['items' => $forms->submissions((int)$params['id'])]);
     });
 
+    $router->get('/api/forms/{id}/submissions/export', function (array $params) use ($forms) {
+        $form = $forms->find((int)$params['id']);
+        if (!$form) {
+            json_response(['error' => 'Not found'], 404);
+            return;
+        }
+        $csv = $forms->submissionsCsv((int)$params['id']);
+        if (empty($csv)) {
+            csv_response('No submissions', $form['slug'] . '-submissions.csv');
+            return;
+        }
+        csv_response($csv, $form['slug'] . '-submissions.csv');
+    });
+
     $router->get('/api/forms/{id}/embed', function (array $params) use ($forms) {
         $form = $forms->find((int)$params['id']);
         if (!$form) {
@@ -47,7 +61,7 @@ function register_form_routes(Router $router, FormRepository $forms, ContactRepo
     });
 
     // Public submission endpoint (no CSRF required - handled separately)
-    $router->post('/api/forms/{slug}/submit', function (array $params) use ($forms, $contacts, $automations, $auth) {
+    $router->post('/api/forms/{slug}/submit', function (array $params) use ($forms, $contacts, $automations, $auth, $emailService) {
         // Rate limit public form submissions to prevent spam
         if ($auth && !$auth->rateLimit('form_submit', 10, 60)) {
             json_response(['error' => 'Too many submissions. Please try again later.'], 429);
@@ -62,7 +76,7 @@ function register_form_routes(Router $router, FormRepository $forms, ContactRepo
         $ipHash = hash('sha256', $_SERVER['REMOTE_ADDR'] ?? '');
         $pageUrl = $_SERVER['HTTP_REFERER'] ?? '';
 
-        $result = $forms->submit($form['id'], $data, $ipHash, $pageUrl, $contacts);
+        $result = $forms->submit($form['id'], $data, $ipHash, $pageUrl, $contacts, $emailService);
         $automations->fire('form.submitted', [
             'form_id' => $form['id'],
             'form_name' => $form['name'],

@@ -1487,9 +1487,29 @@
         <div class="table-wrap mt-1">
           <table class="data-table" aria-label="Contacts"><thead><tr><th>Email</th><th>Name</th><th>Company</th><th>Stage</th><th>Score</th><th>Source</th><th>Last Activity</th><th>Actions</th></tr></thead><tbody id="contactTable"><tr class="table-empty"><td colspan="8">No contacts yet. Add contacts manually or import a CSV file.</td></tr></tbody></table>
         </div>
-        <!-- Contact detail modal -->
+        <!-- Contact detail modal (enhanced with tabs) -->
         <div class="modal-overlay" id="contactModal" role="dialog" aria-modal="true" aria-labelledby="contactModalTitle">
-          <div class="modal-content"><div class="modal-header"><h3 id="contactModalTitle">Contact</h3><button class="modal-close" aria-label="Close" id="closeContactModal">&times;</button></div><div class="modal-body" id="contactModalBody"></div></div>
+          <div class="modal-content" style="max-width:720px">
+            <div class="modal-header">
+              <h3 id="contactModalTitle">Contact</h3>
+              <button class="modal-close" aria-label="Close" id="closeContactModal">&times;</button>
+            </div>
+            <div class="modal-body" id="contactModalBody">
+              <div id="contactDetailHeader"></div>
+              <div class="tabs mt-1">
+                <button class="tab-btn active" data-tab="cm-info">Info</button>
+                <button class="tab-btn" data-tab="cm-activity">Activity</button>
+                <button class="tab-btn" data-tab="cm-deals">Deals</button>
+                <button class="tab-btn" data-tab="cm-tasks">Tasks</button>
+                <button class="tab-btn" data-tab="cm-notes">Notes</button>
+              </div>
+              <div id="cm-info" class="tab-panel active"></div>
+              <div id="cm-activity" class="tab-panel"></div>
+              <div id="cm-deals" class="tab-panel"></div>
+              <div id="cm-tasks" class="tab-panel"></div>
+              <div id="cm-notes" class="tab-panel"></div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -1538,10 +1558,23 @@
             <div class="row2"><div><label>Title</label><input name="title" required /></div><div><label>Slug</label><input name="slug" placeholder="my-page" /></div></div>
             <div class="row3"><div><label>Template</label><select name="template"><option value="blank">Default Dark</option><option value="startup">Startup Purple</option><option value="minimal">Minimal Light</option><option value="bold">Bold Red</option><option value="nature">Nature Green</option></select></div><div><label>Status</label><select name="status"><option value="draft">Draft</option><option value="published">Published</option></select></div><div><label>Linked Form</label><select name="form_id" id="lpFormSelect"><option value="">None</option></select></div></div>
             <div class="row2"><div><label>Campaign</label><select name="campaign_id" id="lpCampaignSelect"><option value="">None</option></select></div><div><label>Meta Title</label><input name="meta_title" /></div></div>
-            <div><label>Meta Description</label><input name="meta_description" /></div>
+            <div class="row2"><div><label>Meta Description</label><input name="meta_description" /></div><div><label>OG Image URL</label><input name="og_image" placeholder="https://..." /></div></div>
             <div class="row2"><div><label>Hero Heading</label><input name="hero_heading" placeholder="Your Main Headline" /></div><div><label>Hero Subheading</label><input name="hero_subheading" placeholder="Supporting text" /></div></div>
             <div class="row2"><div><label>CTA Button Text</label><input name="hero_cta_text" placeholder="Get Started" /></div><div><label>CTA Button URL</label><input name="hero_cta_url" placeholder="#form" /></div></div>
-            <div><label>Body HTML</label><textarea name="body_html" rows="8" placeholder="<h2>Why Choose Us</h2><p>Your content here...</p>"></textarea></div>
+
+            <!-- Section Builder -->
+            <div class="card" style="background:var(--input-bg);padding:1rem;border-radius:var(--radius)">
+              <div class="flex-between mb-1">
+                <h4>Page Sections</h4>
+                <button type="button" class="btn btn-sm" id="addLpSection">+ Add Section</button>
+              </div>
+              <div id="lpSectionsList" class="stack" style="gap:.5rem"></div>
+              <div id="lpSectionTemplates" class="hidden" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.5rem;margin-top:.5rem"></div>
+              <p class="text-muted text-small mt-1">Add pre-built sections like features, testimonials, FAQ, pricing, or CTA blocks.</p>
+            </div>
+            <input type="hidden" name="sections_json" id="lpSectionsJson" />
+
+            <div><label>Body HTML (additional content)</label><textarea name="body_html" rows="6" placeholder="<h2>Why Choose Us</h2><p>Your content here...</p>"></textarea></div>
             <div><label>Custom CSS</label><textarea name="custom_css" rows="3" placeholder=".lp-hero { background: linear-gradient(...); }"></textarea></div>
             <div class="btn-group"><button type="submit">Save Landing Page</button><button type="button" class="btn btn-ai btn-sm" id="aiGenerateLanding" title="AI-generate landing page copy"><span class="btn-ai-icon">&#9733;</span> AI Generate Copy</button></div>
           </form>
@@ -1563,13 +1596,45 @@
             <div class="row2"><div><label>Form Name</label><input name="name" required /></div><div><label>Slug</label><input name="slug" placeholder="contact-us" /></div></div>
             <div class="row2"><div><label>Submit Label</label><input name="submit_label" value="Submit" /></div><div><label>Success Message</label><input name="success_message" value="Thank you!" /></div></div>
             <div class="row2"><div><label>Redirect URL (optional)</label><input name="redirect_url" /></div><div><label>Tag on Submit</label><input name="tag_on_submit" placeholder="lead, webinar" /></div></div>
-            <div class="row2"><div><label>Email List</label><select name="list_id" id="formListSelect"><option value="">None</option></select></div><div><label>Notification Email</label><input name="notification_email" type="email" /></div></div>
-            <div><label>Fields (JSON)</label><textarea name="fields" rows="6" placeholder='[{"name":"email","label":"Email","type":"email","required":true},{"name":"name","label":"Full Name","type":"text","required":true}]'></textarea></div>
+            <div class="row2"><div><label>Email List</label><select name="list_id" id="formListSelect"><option value="">None</option></select></div><div><label>Notification Email</label><input name="notification_email" type="email" placeholder="you@example.com" /></div></div>
+
+            <!-- Visual Field Builder -->
+            <div class="card" style="background:var(--input-bg);padding:1rem;border-radius:var(--radius)">
+              <div class="flex-between mb-1">
+                <h4>Form Fields</h4>
+                <div class="btn-group">
+                  <select id="fieldTypeSelect">
+                    <option value="text">Text</option>
+                    <option value="email">Email</option>
+                    <option value="tel">Phone</option>
+                    <option value="number">Number</option>
+                    <option value="textarea">Text Area</option>
+                    <option value="select">Dropdown</option>
+                    <option value="radio">Radio Buttons</option>
+                    <option value="checkbox">Checkboxes</option>
+                    <option value="date">Date</option>
+                    <option value="url">URL</option>
+                    <option value="consent">Consent Checkbox</option>
+                    <option value="heading">Section Heading</option>
+                    <option value="paragraph">Info Text</option>
+                    <option value="hidden">Hidden</option>
+                  </select>
+                  <button type="button" class="btn btn-sm" id="addFormField">+ Add Field</button>
+                </div>
+              </div>
+              <div id="formFieldsList" class="stack" style="gap:.5rem"></div>
+              <p class="text-muted text-small mt-1">Drag fields to reorder. Click the gear icon to expand field settings.</p>
+            </div>
+            <input type="hidden" name="fields" id="formFieldsJson" />
+
             <button type="submit">Save Form</button>
           </form>
         </div>
         <div id="forms-submissions" class="tab-panel">
-          <div class="row2 mb-2"><div><label>Select Form</label><select id="submissionFormSelect"></select></div><div><label>&nbsp;</label><button class="btn" id="loadSubmissions">Load Submissions</button></div></div>
+          <div class="flex-between mb-2">
+            <div class="row2" style="flex:1;gap:.5rem"><div><label>Select Form</label><select id="submissionFormSelect"></select></div><div><label>&nbsp;</label><button class="btn" id="loadSubmissions">Load Submissions</button></div></div>
+            <div><label>&nbsp;</label><button class="btn btn-outline btn-sm" id="exportSubmissions">Export CSV</button></div>
+          </div>
           <div class="table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>Contact</th><th>Data</th><th>Page</th></tr></thead><tbody id="submissionTable"></tbody></table></div>
         </div>
       </section>

@@ -74,6 +74,9 @@ export async function api(path, options = {}) {
 
   const data = await response.json();
   if (!response.ok) {
+    if (typeof data?.retry_after === 'number' && data.retry_after > 0) {
+      throw new Error(`${data.error || `HTTP ${response.status}`} (retry in ${data.retry_after}s)`);
+    }
     throw new Error(data.error || `HTTP ${response.status}`);
   }
   return data;

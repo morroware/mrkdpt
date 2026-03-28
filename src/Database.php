@@ -623,6 +623,9 @@ final class Database
         $this->applySafeAlter('campaigns', 'revenue', 'REAL DEFAULT 0');
         $this->applySafeAlter('campaigns', 'target_audience', 'TEXT DEFAULT ""');
         $this->applySafeAlter('campaigns', 'kpi_target', 'TEXT DEFAULT ""');
+        $this->applySafeAlter('users', 'failed_login_attempts', 'INTEGER DEFAULT 0');
+        $this->applySafeAlter('users', 'last_failed_login_at', 'INTEGER');
+        $this->applySafeAlter('users', 'locked_until', 'INTEGER');
     }
 
     private function applySafeAlter(string $table, string $column, string $type): void

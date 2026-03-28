@@ -56,9 +56,14 @@ export async function checkSession() {
 export function init() {
   onSubmit('loginForm', async (e) => {
     const form = e.target;
+    const submitBtn = form.querySelector('button[type="submit"]');
     const username = form.querySelector('[name="username"]')?.value || '';
     const password = form.querySelector('[name="password"]')?.value || '';
 
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Signing In...';
+    }
     try {
       const data = await api('/api/login', {
         method: 'POST',
@@ -69,7 +74,19 @@ export function init() {
       showApp();
       if (onAuthenticated) onAuthenticated();
     } catch (err) {
-      error(err.message || 'Login failed');
+      let message = err.message || 'Login failed';
+      const retryMatch = message.match(/retry in (\d+)s/i);
+      if (retryMatch) {
+        const seconds = Number(retryMatch[1]);
+        const minutes = Math.ceil(seconds / 60);
+        message = `Too many attempts. Try again in about ${minutes} minute${minutes === 1 ? '' : 's'}.`;
+      }
+      error(message);
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Sign In';
+      }
     }
   });
 

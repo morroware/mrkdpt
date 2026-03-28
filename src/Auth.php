@@ -104,16 +104,43 @@ final class Auth
 
     public function login(string $username, string $password): ?array
     {
-        $user = $this->findByUsername($username);
-        if (!$user || !password_verify($password, $user['password_hash'])) {
+        $attempt = $this->attemptLogin($username, $password);
+        if (($attempt['status'] ?? 'invalid') !== 'ok' || empty($attempt['user'])) {
             return null;
         }
+        return $attempt['user'];
+    }
+
+    public function attemptLogin(string $username, string $password): array
+    {
+        $user = $this->findByUsername($username);
+        if (!$user) {
+            return ['status' => 'invalid'];
+        }
+
+        $now = time();
+        $lockedUntil = (int)($user['locked_until'] ?? 0);
+        if ($lockedUntil > $now) {
+            return [
+                'status' => 'locked',
+                'retry_after' => $lockedUntil - $now,
+            ];
+        }
+
+        if (!password_verify($password, $user['password_hash'])) {
+            return $this->recordFailedLogin((int)$user['id'], (int)($user['failed_login_attempts'] ?? 0), $now);
+        }
+
+        $this->resetFailedLoginState((int)$user['id']);
         $this->startSession();
         session_regenerate_id(true);
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         $this->cachedUser = null;
-        return $user;
+        return [
+            'status' => 'ok',
+            'user' => $user,
+        ];
     }
 
     public function logout(): void
@@ -248,5 +275,39 @@ final class Auth
 
         $remoteAddr = (string)($_SERVER['REMOTE_ADDR'] ?? '127.0.0.1');
         return filter_var($remoteAddr, FILTER_VALIDATE_IP) !== false ? $remoteAddr : '127.0.0.1';
+    }
+
+    private function recordFailedLogin(int $userId, int $currentAttempts, int $attemptedAt): array
+    {
+        $maxAttempts = max(1, (int)app_config('LOGIN_LOCKOUT_ATTEMPTS', '5'));
+        $lockSeconds = max(60, (int)app_config('LOGIN_LOCKOUT_SECONDS', '900'));
+        $newAttempts = $currentAttempts + 1;
+
+        if ($newAttempts >= $maxAttempts) {
+            $lockedUntil = $attemptedAt + $lockSeconds;
+            $this->pdo->prepare('UPDATE users SET failed_login_attempts = 0, last_failed_login_at = :attempted, locked_until = :locked_until WHERE id = :id')->execute([
+                ':attempted' => $attemptedAt,
+                ':locked_until' => $lockedUntil,
+                ':id' => $userId,
+            ]);
+            return [
+                'status' => 'locked',
+                'retry_after' => $lockSeconds,
+            ];
+        }
+
+        $this->pdo->prepare('UPDATE users SET failed_login_attempts = :attempts, last_failed_login_at = :attempted, locked_until = NULL WHERE id = :id')->execute([
+            ':attempts' => $newAttempts,
+            ':attempted' => $attemptedAt,
+            ':id' => $userId,
+        ]);
+        return ['status' => 'invalid'];
+    }
+
+    private function resetFailedLoginState(int $userId): void
+    {
+        $this->pdo->prepare('UPDATE users SET failed_login_attempts = 0, last_failed_login_at = NULL, locked_until = NULL WHERE id = :id')->execute([
+            ':id' => $userId,
+        ]);
     }
 }

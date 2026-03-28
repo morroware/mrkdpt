@@ -12,7 +12,15 @@ function register_auth_routes(Router $router, Auth $auth): void
             json_response(['error' => 'Too many login attempts. Try again later.'], 429);
             return;
         }
-        $user = $auth->login($username, (string)($data['password'] ?? ''));
+        $attempt = $auth->attemptLogin($username, (string)($data['password'] ?? ''));
+        if (($attempt['status'] ?? 'invalid') === 'locked') {
+            json_response([
+                'error' => 'Account temporarily locked after repeated failed login attempts.',
+                'retry_after' => (int)($attempt['retry_after'] ?? 0),
+            ], 423);
+            return;
+        }
+        $user = $attempt['user'] ?? null;
         if (!$user) {
             json_response(['error' => 'Invalid credentials'], 401);
             return;

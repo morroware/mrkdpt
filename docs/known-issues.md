@@ -46,11 +46,11 @@ A catalog of identified issues, limitations, and improvement recommendations org
 
 **Description:**
 - Some public endpoints still do not have rate limiting (e.g., short link redirects)
-- No full account lockout flow yet (only rate limiting)
+- Global rate-limit policy still needs to be expanded beyond authentication endpoints
 
 **Status (March 26, 2026):** Partially resolved. Login rate limiting now supports optional validated `X-Forwarded-For` (`TRUST_PROXY_HEADERS=true`) and uses username-specific keys to reduce cross-user throttling.
 
-**Remaining recommendation:** Add rate limiting to all public endpoints and implement account lockout/cooldown persistence.
+**Remaining recommendation:** Add rate limiting to all public endpoints (for example short-link redirects).
 
 ---
 
@@ -78,9 +78,9 @@ A catalog of identified issues, limitations, and improvement recommendations org
 
 **Location:** `src/Auth.php`
 
-**Description:** There is no account lockout after repeated failed login attempts. The rate limiter slows down attempts but doesn't block them.
+**Status (March 28, 2026):** Resolved. Per-account lockout is now enforced after repeated failed login attempts, with configurable threshold and cooldown (`LOGIN_LOCKOUT_ATTEMPTS`, `LOGIN_LOCKOUT_SECONDS`).
 
-**Recommendation:** Implement account lockout after N failed attempts with a cooldown period.
+**Recommendation:** Optionally add admin-facing audit events for lockout/unlock history.
 
 ---
 

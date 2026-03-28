@@ -187,10 +187,19 @@ function initAiCommandBar() {
   const modal = $('aiCommandModal');
   const input = $('aiCommandInput');
   const globalBtn = $('globalAiBtn');
+  const shortcutKbd = $('aiShortcutKbd');
   const suggestionsEl = modal?.querySelector('.ai-command-suggestions');
   const outputEl = $('aiCommandOutput');
 
   if (!modal || !input) return;
+
+  const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform || '');
+  if (shortcutKbd) {
+    shortcutKbd.textContent = isMac ? '⌘K' : 'Ctrl+K';
+  }
+  if (globalBtn) {
+    globalBtn.title = `Quick AI Generate (${isMac ? '⌘' : 'Ctrl'}+K)`;
+  }
 
   function openCommandBar() {
     modal.classList.add('visible');

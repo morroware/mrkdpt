@@ -108,6 +108,8 @@ Valid values: `openai`, `anthropic`, `gemini`, `deepseek`, `groq`, `mistral`, `o
 | `APP_URL` | Yes | — | Public URL (e.g., `https://marketing.example.com`) |
 | `APP_FORCE_HTTPS` | No | `false` | Force HTTP requests to redirect to HTTPS in production |
 | `TRUST_PROXY_HEADERS` | No | `false` | Trust `X-Forwarded-For` for rate limiting/client IP when behind a reverse proxy |
+| `LOGIN_LOCKOUT_ATTEMPTS` | No | `5` | Failed password attempts before account lockout is enforced |
+| `LOGIN_LOCKOUT_SECONDS` | No | `900` | Account lockout duration in seconds after reaching failed attempt threshold |
 | `MAX_UPLOAD_MB` | No | `10` | Maximum upload file size (1-100 MB) |
 | `CRON_KEY` | Yes | — | Secret key for cron endpoint authentication |
 

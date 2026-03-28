@@ -704,6 +704,59 @@ final class Database
         $this->applySafeAlter('users', 'last_failed_login_at', 'INTEGER');
         $this->applySafeAlter('users', 'locked_until', 'INTEGER');
 
+        /* ---- Phase 10: CRM Deals & Tasks ---- */
+
+        $this->pdo->exec('CREATE TABLE IF NOT EXISTS deals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            contact_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            value REAL DEFAULT 0,
+            currency TEXT DEFAULT "USD",
+            stage TEXT DEFAULT "lead",
+            probability INTEGER DEFAULT 0,
+            expected_close TEXT,
+            description TEXT DEFAULT "",
+            status TEXT DEFAULT "open",
+            won_at TEXT,
+            lost_at TEXT,
+            lost_reason TEXT DEFAULT "",
+            created_at TEXT NOT NULL,
+            updated_at TEXT,
+            FOREIGN KEY(contact_id) REFERENCES contacts(id)
+        )');
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_deals_contact ON deals(contact_id)');
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_deals_stage ON deals(stage)');
+
+        $this->pdo->exec('CREATE TABLE IF NOT EXISTS contact_tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            contact_id INTEGER,
+            deal_id INTEGER,
+            title TEXT NOT NULL,
+            description TEXT DEFAULT "",
+            due_date TEXT,
+            priority TEXT DEFAULT "medium",
+            status TEXT DEFAULT "pending",
+            completed_at TEXT,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(contact_id) REFERENCES contacts(id),
+            FOREIGN KEY(deal_id) REFERENCES deals(id)
+        )');
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_contact_tasks_contact ON contact_tasks(contact_id)');
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_contact_tasks_due ON contact_tasks(due_date)');
+
+        $this->pdo->exec('CREATE TABLE IF NOT EXISTS contact_notes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            contact_id INTEGER NOT NULL,
+            content TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(contact_id) REFERENCES contacts(id)
+        )');
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_contact_notes_contact ON contact_notes(contact_id)');
+
+        /* ---- Landing page sections (JSON-based section builder) ---- */
+        $this->applySafeAlter('landing_pages', 'sections_json', 'TEXT DEFAULT "[]"');
+        $this->applySafeAlter('landing_pages', 'og_image', 'TEXT DEFAULT ""');
+
         // AI Brain enhancements
         $this->applySafeAlter('ai_shared_memory', 'relevance_score', 'REAL DEFAULT 1.0');
         $this->applySafeAlter('ai_shared_memory', 'access_count', 'INTEGER DEFAULT 0');

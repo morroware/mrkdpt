@@ -32,6 +32,9 @@ function register_contact_routes(Router $router, ContactRepository $contacts, Au
             return;
         }
         $contact['activities'] = $contacts->activities((int)$params['id']);
+        $contact['deals'] = $contacts->contactDeals((int)$params['id']);
+        $contact['tasks'] = $contacts->contactTasks((int)$params['id']);
+        $contact['contact_notes'] = $contacts->contactNotes((int)$params['id']);
         json_response(['item' => $contact]);
     });
 
@@ -56,6 +59,90 @@ function register_contact_routes(Router $router, ContactRepository $contacts, Au
         $data = request_json();
         $contacts->logActivity((int)$params['id'], $data['type'] ?? 'note', $data['description'] ?? '', $data['data'] ?? []);
         json_response(['ok' => true]);
+    });
+
+    // =========================================================================
+    // Deals
+    // =========================================================================
+
+    $router->get('/api/deals', function () use ($contacts) {
+        $status = $_GET['status'] ?? null;
+        json_response(['items' => $contacts->allDeals($status)]);
+    });
+
+    $router->post('/api/deals', function () use ($contacts) {
+        $data = request_json();
+        if (empty($data['title']) || empty($data['contact_id'])) {
+            json_response(['error' => 'title and contact_id are required'], 400);
+            return;
+        }
+        json_response(['item' => $contacts->createDeal($data)], 201);
+    });
+
+    $router->get('/api/deals/{id}', function (array $params) use ($contacts) {
+        $deal = $contacts->findDeal((int)$params['id']);
+        $deal ? json_response(['item' => $deal]) : json_response(['error' => 'Not found'], 404);
+    });
+
+    $router->patch('/api/deals/{id}', function (array $params) use ($contacts) {
+        $data = request_json();
+        $deal = $contacts->updateDeal((int)$params['id'], $data);
+        $deal ? json_response(['item' => $deal]) : json_response(['error' => 'Not found'], 404);
+    });
+
+    $router->delete('/api/deals/{id}', function (array $params) use ($contacts) {
+        $contacts->deleteDeal((int)$params['id'])
+            ? json_response(['deleted' => true])
+            : json_response(['error' => 'Not found'], 404);
+    });
+
+    // =========================================================================
+    // Tasks
+    // =========================================================================
+
+    $router->get('/api/tasks', function () use ($contacts) {
+        $status = $_GET['status'] ?? null;
+        json_response(['items' => $contacts->allTasks($status)]);
+    });
+
+    $router->post('/api/tasks', function () use ($contacts) {
+        $data = request_json();
+        if (empty($data['title'])) {
+            json_response(['error' => 'title is required'], 400);
+            return;
+        }
+        json_response(['item' => $contacts->createTask($data)], 201);
+    });
+
+    $router->patch('/api/tasks/{id}', function (array $params) use ($contacts) {
+        $data = request_json();
+        $task = $contacts->updateTask((int)$params['id'], $data);
+        $task ? json_response(['item' => $task]) : json_response(['error' => 'Not found'], 404);
+    });
+
+    $router->delete('/api/tasks/{id}', function (array $params) use ($contacts) {
+        $contacts->deleteTask((int)$params['id'])
+            ? json_response(['deleted' => true])
+            : json_response(['error' => 'Not found'], 404);
+    });
+
+    // =========================================================================
+    // Notes
+    // =========================================================================
+
+    $router->post('/api/contacts/{id}/notes', function (array $params) use ($contacts) {
+        $data = request_json();
+        if (empty($data['content'])) {
+            json_response(['error' => 'content is required'], 400);
+            return;
+        }
+        json_response(['item' => $contacts->createNote((int)$params['id'], $data['content'])], 201);
+    });
+
+    $router->delete('/api/notes/{id}', function (array $params) use ($contacts) {
+        $contacts->deleteNote((int)$params['id'])
+            ? json_response(['deleted' => true])
+            : json_response(['error' => 'Not found'], 404);
     });
 
     // CSV Import

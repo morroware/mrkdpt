@@ -438,7 +438,7 @@ if (str_starts_with($path, '/api/')) {
     register_link_routes($router, $linkShortener);
     register_landing_page_routes($router, $landingPages);
     register_contact_routes($router, $contactRepo, $automations);
-    register_form_routes($router, $formRepo, $contactRepo, $automations, $auth);
+    register_form_routes($router, $formRepo, $contactRepo, $automations, $auth, $emailService);
     register_ab_test_routes($router, $abTests);
     register_funnel_routes($router, $funnels);
     register_automation_routes($router, $automations);

@@ -665,6 +665,10 @@ final class Database
             FOREIGN KEY(pipeline_id) REFERENCES ai_pipelines(id)
         )');
 
+        /* ---- Performance indexes ---- */
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_posts_scheduled_for ON posts(scheduled_for)');
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_posts_status ON posts(status)');
+
         /* ---- Phase 9: App Settings (DB-backed overrides for .env) ---- */
         $this->pdo->exec('CREATE TABLE IF NOT EXISTS app_settings (
             setting_key TEXT PRIMARY KEY,

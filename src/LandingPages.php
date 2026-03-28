@@ -106,7 +106,7 @@ final class LandingPageRepository
             . '</head><body>'
             . '<div class="lp-container">'
             . $this->renderHero($page)
-            . '<div class="lp-body">' . ($page['body_html'] ?? '') . '</div>'
+            . '<div class="lp-body">' . $this->sanitizeBodyHtml($page['body_html'] ?? '') . '</div>'
             . $formHtml
             . '</div>'
             . '<script>document.querySelectorAll(".lp-form").forEach(f=>{f.addEventListener("submit",async e=>{e.preventDefault();const fd=new FormData(f);const d=Object.fromEntries(fd.entries());const r=await fetch("/api/forms/"+f.dataset.slug+"/submit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)});const j=await r.json();if(j.success){f.innerHTML="<p class=\\"lp-success\\">"+j.message+"</p>";}else{alert(j.error||"Error");}})});</script>'
@@ -159,6 +159,24 @@ final class LandingPageRepository
 
         $html .= '<button type="submit" class="lp-submit">' . htmlspecialchars($form['submit_label'] ?? 'Submit') . '</button>';
         $html .= '</form></div>';
+        return $html;
+    }
+
+    private function sanitizeBodyHtml(string $html): string
+    {
+        // Strip script tags, event handlers, and dangerous elements from public landing page body
+        $html = preg_replace('#<script\b[^>]*>.*?</script>#is', '', $html);
+        $html = preg_replace('#<iframe\b[^>]*>.*?</iframe>#is', '', $html);
+        $html = preg_replace('#<object\b[^>]*>.*?</object>#is', '', $html);
+        $html = preg_replace('#<embed\b[^>]*/?>#is', '', $html);
+        $html = preg_replace('#<link\b[^>]*>#is', '', $html);
+        $html = preg_replace('#<meta\b[^>]*>#is', '', $html);
+        $html = preg_replace('#<base\b[^>]*>#is', '', $html);
+        // Remove on* event handlers from remaining tags
+        $html = preg_replace('#\s+on\w+\s*=\s*["\'][^"\']*["\']#is', '', $html);
+        $html = preg_replace('#\s+on\w+\s*=\s*\S+#is', '', $html);
+        // Remove javascript: protocol in href/src attributes
+        $html = preg_replace('#(href|src|action)\s*=\s*["\']?\s*javascript\s*:#is', '$1="', $html);
         return $html;
     }
 

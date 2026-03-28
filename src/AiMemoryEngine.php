@@ -262,7 +262,7 @@ Return ONLY valid JSON, no markdown fences.";
             $params[':cat'] = $category;
         }
 
-        $sql .= " ORDER BY (confidence * (1 + LOG(MAX(times_reinforced, 1)))) DESC, updated_at DESC LIMIT :limit";
+        $sql .= " ORDER BY (confidence * (1 + MIN(times_reinforced, 50))) DESC, updated_at DESC LIMIT :limit";
         $stmt = $this->pdo->prepare($sql);
         foreach ($params as $k => $v) {
             $stmt->bindValue($k, $v);

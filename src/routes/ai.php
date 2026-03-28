@@ -53,15 +53,17 @@ function register_ai_routes(
 
     $router->post('/api/ai/video-script', function () use ($contentTools, $analytics) {
         $p = request_json();
-        $result = $contentTools->videoScript($p['topic'] ?? '', $p['platform'] ?? 'tiktok', (int)($p['duration'] ?? 60));
+        if (empty($p['topic'])) { json_response(['error' => 'Missing: topic'], 422); return; }
+        $result = $contentTools->videoScript($p['topic'], $p['platform'] ?? 'tiktok', (int)($p['duration'] ?? 60));
         $analytics->track('ai.video_script', 'ai', 0, ['platform' => $p['platform'] ?? 'tiktok']);
         json_response(['item' => $result]);
     });
 
     $router->post('/api/ai/caption-batch', function () use ($contentTools, $analytics) {
         $p = request_json();
+        if (empty($p['topic'])) { json_response(['error' => 'Missing: topic'], 422); return; }
         $platforms = $p['platforms'] ?? ['instagram', 'twitter', 'linkedin'];
-        $result = $contentTools->socialCaptionBatch($p['topic'] ?? '', $platforms, (int)($p['count'] ?? 3));
+        $result = $contentTools->socialCaptionBatch($p['topic'], $platforms, (int)($p['count'] ?? 3));
         $analytics->track('ai.caption_batch', 'ai', 0, ['count' => (int)($p['count'] ?? 3)]);
         json_response(['item' => $result]);
     });
@@ -77,7 +79,8 @@ function register_ai_routes(
 
     $router->post('/api/ai/ad-variations', function () use ($contentTools, $analytics) {
         $p = request_json();
-        $result = $contentTools->adVariations($p['base_ad'] ?? '', (int)($p['count'] ?? 5));
+        if (empty($p['base_ad'])) { json_response(['error' => 'Missing: base_ad'], 422); return; }
+        $result = $contentTools->adVariations($p['base_ad'], (int)($p['count'] ?? 5));
         $analytics->track('ai.ad_variations', 'ai', 0, ['count' => (int)($p['count'] ?? 5)]);
         json_response(['item' => $result]);
     });

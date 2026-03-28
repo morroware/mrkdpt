@@ -21,6 +21,11 @@ function env_value(string $key, ?string $default = null): ?string
                     continue;
                 }
                 [$k, $v] = array_map('trim', explode('=', $line, 2));
+                // Strip surrounding quotes written by the installer
+                if (strlen($v) >= 2 && (($v[0] === '"' && $v[-1] === '"') || ($v[0] === "'" && $v[-1] === "'"))) {
+                    $v = substr($v, 1, -1);
+                    $v = str_replace(['\\"', '\\\\'], ['"', '\\'], $v);
+                }
                 $_ENV[$k] = $v;
             }
         }

@@ -30,7 +30,8 @@ function setOutputMeta(provider, tool) {
 /** Simple markdown-to-HTML renderer */
 function renderMarkdown(text) {
   if (!text) return '';
-  let html = text
+  const sanitized = escapeHtml(String(text));
+  let html = sanitized
     // Code blocks
     .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
     // Inline code

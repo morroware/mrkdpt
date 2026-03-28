@@ -1026,4 +1026,373 @@ function register_ai_routes(
         AiService::deleteModelRouting($pdo, $taskType);
         json_response(['ok' => true]);
     });
+
+    /* ================================================================== */
+    /*  PHASE 1-4 ROADMAP ROUTES                                          */
+    /* ================================================================== */
+
+    // Phase 1.2: Daily Action Queue
+    $router->post('/api/ai/daily-actions', function () use ($ai, $pdo, $memoryEngine, $logAi) {
+        $brainCtx = $memoryEngine ? $memoryEngine->buildBrainContext() : '';
+
+        $drafts = $pdo->query("SELECT id, title, platform FROM posts WHERE status = 'draft' ORDER BY created_at DESC LIMIT 10")->fetchAll(PDO::FETCH_ASSOC);
+        $scheduled = $pdo->query("SELECT id, title, platform, scheduled_for FROM posts WHERE status = 'scheduled' AND scheduled_for <= datetime('now', '+48 hours') ORDER BY scheduled_for LIMIT 5")->fetchAll(PDO::FETCH_ASSOC);
+        $campaigns_data = $pdo->query("SELECT id, name, status FROM campaigns WHERE status = 'active' LIMIT 5")->fetchAll(PDO::FETCH_ASSOC);
+        $subCount = $pdo->query("SELECT COUNT(*) FROM subscribers WHERE status = 'active'")->fetchColumn();
+        $emailCampaigns = $pdo->query("SELECT id, name, status FROM email_campaigns WHERE status = 'draft' LIMIT 3")->fetchAll(PDO::FETCH_ASSOC);
+
+        $ctx = "TODAY: " . date('l, F j, Y') . "\n\nDRAFT POSTS:\n";
+        foreach ($drafts as $d) $ctx .= "- #{$d['id']} \"{$d['title']}\" ({$d['platform']})\n";
+        $ctx .= "\nUPCOMING SCHEDULED (next 48h):\n";
+        foreach ($scheduled as $s) $ctx .= "- #{$s['id']} \"{$s['title']}\" scheduled {$s['scheduled_for']}\n";
+        $ctx .= "\nACTIVE CAMPAIGNS:\n";
+        foreach ($campaigns_data as $c) $ctx .= "- #{$c['id']} \"{$c['name']}\"\n";
+        $ctx .= "\nSUBSCRIBERS: {$subCount} active\n";
+        $ctx .= "DRAFT EMAILS:\n";
+        foreach ($emailCampaigns as $e) $ctx .= "- #{$e['id']} \"{$e['name']}\"\n";
+
+        $prompt = "Based on this marketing data, generate exactly 5 prioritized daily actions as a JSON array. Each object must have: id (1-5), priority (high/medium/low), title (short), description (1 sentence), action_type (publish_draft|review_scheduled|create_content|send_email|analyze_performance|engage_audience), entity_id (number or null), entity_type (post|campaign|email|null).\n\n{$ctx}\n\nReturn ONLY valid JSON array.";
+        $system = "You are an AI marketing assistant that creates actionable daily to-do lists. {$brainCtx}\nRespond with ONLY a valid JSON array, no other text.";
+
+        $result = $ai->generate($prompt, $system);
+        $actions = json_decode($result, true);
+        if (!$actions && preg_match('/\[[\s\S]*\]/m', $result, $m)) {
+            $actions = json_decode($m[0], true);
+        }
+        $logAi('daily-actions', 'strategy', 'Generated daily action queue', $result);
+        json_response(['item' => ['actions' => $actions ?: [], 'raw' => $result]]);
+    });
+
+    // Phase 1.3: One-Click Repurpose Chain
+    $router->post('/api/ai/repurpose-chain', function () use ($ai, $memoryEngine, $logAi) {
+        $p = request_json();
+        $content = trim((string)($p['content'] ?? ''));
+        $title = trim((string)($p['title'] ?? ''));
+        $platforms = $p['platforms'] ?? ['twitter', 'instagram', 'linkedin', 'facebook', 'email'];
+        if ($content === '') { json_response(['error' => 'content is required'], 422); return; }
+
+        $brainCtx = $memoryEngine ? $memoryEngine->buildBrainContext() : '';
+        $platformList = implode(', ', $platforms);
+
+        $prompt = "Repurpose this content for these platforms: {$platformList}.\n\nOriginal content:\n{$content}\n\nFor each platform, create an adapted version respecting platform constraints:\n- Twitter: max 280 chars, concise, hashtags\n- Instagram: engaging caption, emojis, 5-10 hashtags\n- LinkedIn: professional tone, thought leadership\n- Facebook: conversational, question-driven\n- Email: subject line + body snippet\n\nReturn a JSON array where each object has: platform, content, hashtags (string of hashtags or empty).";
+        $system = "You are a content repurposing expert. {$brainCtx}\nReturn ONLY a valid JSON array.";
+
+        $result = $ai->generate($prompt, $system);
+        $variants = json_decode($result, true);
+        if (!$variants && preg_match('/\[[\s\S]*\]/m', $result, $m)) {
+            $variants = json_decode($m[0], true);
+        }
+        $logAi('repurpose-chain', 'content', "Repurposed content for {$platformList}", $result);
+        json_response(['item' => ['variants' => $variants ?: [], 'raw' => $result]]);
+    });
+
+    // Phase 1.4: Calendar Auto-Fill
+    $router->post('/api/ai/calendar-autofill', function () use ($ai, $pdo, $memoryEngine, $logAi) {
+        $p = request_json();
+        $period = ($p['period'] ?? 'week') === 'month' ? 'month' : 'week';
+        $startDate = $p['start_date'] ?? date('Y-m-d');
+        $brainCtx = $memoryEngine ? $memoryEngine->buildBrainContext() : '';
+
+        $bizName = '';
+        try { $bizName = $pdo->query("SELECT value FROM settings WHERE key = 'business_name'")->fetchColumn() ?: ''; } catch (\Exception $e) {}
+        $industry = '';
+        try { $industry = $pdo->query("SELECT value FROM settings WHERE key = 'business_industry'")->fetchColumn() ?: ''; } catch (\Exception $e) {}
+
+        $days = $period === 'month' ? 28 : 7;
+        $prompt = "Create a {$period}ly content calendar starting {$startDate} for a {$industry} business called \"{$bizName}\". Generate {$days} social media posts (1 per day) with variety: mix of promotional, educational, engagement, and storytelling content across platforms (instagram, twitter, linkedin, facebook).\n\nReturn a JSON array of objects with: title, body (the post content), platform, scheduled_for (YYYY-MM-DD HH:MM:SS format, spread across the {$days} days at optimal times), content_type (social_post).\n\n{$brainCtx}\nReturn ONLY valid JSON array.";
+        $system = "You are a content calendar expert. Create diverse, engaging content. Return ONLY a valid JSON array.";
+
+        $result = $ai->generate($prompt, $system);
+        $posts = json_decode($result, true);
+        if (!$posts && preg_match('/\[[\s\S]*\]/m', $result, $m)) {
+            $posts = json_decode($m[0], true);
+        }
+
+        $created = 0;
+        if (is_array($posts)) {
+            $stmt = $pdo->prepare("INSERT INTO posts (title, body, platform, status, content_type, scheduled_for, created_at) VALUES (?, ?, ?, 'draft', ?, ?, datetime('now'))");
+            foreach ($posts as $post) {
+                if (!isset($post['title'], $post['body'])) continue;
+                $stmt->execute([
+                    mb_substr($post['title'], 0, 200),
+                    mb_substr($post['body'], 0, 5000),
+                    $post['platform'] ?? 'instagram',
+                    $post['content_type'] ?? 'social_post',
+                    $post['scheduled_for'] ?? null,
+                ]);
+                $created++;
+            }
+        }
+        $logAi('calendar-autofill', 'content', "Auto-filled {$period} calendar: {$created} posts", $result);
+        json_response(['item' => ['posts_created' => $created, 'period' => $period]]);
+    });
+
+    // Phase 2.1: Chat Execute (Slash Commands)
+    $router->post('/api/ai/chat-execute', function () use ($ai, $pdo, $memoryEngine, $logAi) {
+        $p = request_json();
+        $command = strtolower(trim((string)($p['command'] ?? '')));
+        $args = trim((string)($p['args'] ?? ''));
+        $brainCtx = $memoryEngine ? $memoryEngine->buildBrainContext() : '';
+        $createdIds = [];
+        $message = '';
+        $data = null;
+
+        switch ($command) {
+            case 'create-post':
+                $prompt = "Generate a social media post based on this request: {$args}\nReturn JSON: {title, body, platform (instagram|twitter|linkedin|facebook), tags}";
+                $system = "You are a content creator. {$brainCtx}\nReturn ONLY valid JSON object.";
+                $result = $ai->generate($prompt, $system);
+                $post = json_decode($result, true);
+                if (!$post && preg_match('/\{[\s\S]*\}/m', $result, $m)) $post = json_decode($m[0], true);
+                if ($post && isset($post['body'])) {
+                    $stmt = $pdo->prepare("INSERT INTO posts (title, body, platform, status, tags, created_at) VALUES (?, ?, ?, 'draft', ?, datetime('now'))");
+                    $stmt->execute([$post['title'] ?? 'AI Post', $post['body'], $post['platform'] ?? 'instagram', $post['tags'] ?? '']);
+                    $id = (int)$pdo->lastInsertId();
+                    $createdIds[] = $id;
+                    $message = "Created draft post #{$id}: \"{$post['title']}\" for {$post['platform']}.\n\n**Content:**\n{$post['body']}";
+                } else {
+                    $message = "I generated this content but couldn't auto-save:\n\n{$result}";
+                }
+                break;
+
+            case 'schedule-posts':
+                $prompt = "Generate 5 social media posts based on this: {$args}\nReturn JSON array of objects with: title, body, platform, tags, scheduled_for (YYYY-MM-DD HH:MM:SS over the next 7 days at optimal times).";
+                $system = "You are a content scheduler. {$brainCtx}\nReturn ONLY valid JSON array.";
+                $result = $ai->generate($prompt, $system);
+                $posts = json_decode($result, true);
+                if (!$posts && preg_match('/\[[\s\S]*\]/m', $result, $m)) $posts = json_decode($m[0], true);
+                if (is_array($posts)) {
+                    $stmt = $pdo->prepare("INSERT INTO posts (title, body, platform, status, tags, scheduled_for, created_at) VALUES (?, ?, ?, 'scheduled', ?, ?, datetime('now'))");
+                    foreach ($posts as $post) {
+                        if (!isset($post['body'])) continue;
+                        $stmt->execute([$post['title'] ?? 'Scheduled Post', $post['body'], $post['platform'] ?? 'instagram', $post['tags'] ?? '', $post['scheduled_for'] ?? null]);
+                        $createdIds[] = (int)$pdo->lastInsertId();
+                    }
+                    $message = "Scheduled " . count($createdIds) . " posts for the next week.";
+                } else {
+                    $message = "Here's my suggestion:\n\n{$result}";
+                }
+                break;
+
+            case 'check-analytics':
+                $totalPosts = $pdo->query("SELECT COUNT(*) FROM posts")->fetchColumn();
+                $published = $pdo->query("SELECT COUNT(*) FROM posts WHERE status = 'published'")->fetchColumn();
+                $scheduled = $pdo->query("SELECT COUNT(*) FROM posts WHERE status = 'scheduled'")->fetchColumn();
+                $totalCampaigns = $pdo->query("SELECT COUNT(*) FROM campaigns")->fetchColumn();
+                $platforms = $pdo->query("SELECT platform, COUNT(*) as count FROM posts WHERE status = 'published' GROUP BY platform ORDER BY count DESC")->fetchAll(PDO::FETCH_ASSOC);
+
+                $analyticsCtx = "Total posts: {$totalPosts}, Published: {$published}, Scheduled: {$scheduled}, Campaigns: {$totalCampaigns}\n";
+                foreach ($platforms as $pl) $analyticsCtx .= "- {$pl['platform']}: {$pl['count']} published\n";
+
+                $prompt = "Analyze these marketing analytics and provide insights: {$args}\n\n{$analyticsCtx}\n\nProvide a concise analysis with recommendations.";
+                $system = "You are a marketing analyst. {$brainCtx}";
+                $message = $ai->generate($prompt, $system);
+                break;
+
+            case 'optimize-campaign':
+                $activeCampaigns = $pdo->query("SELECT * FROM campaigns WHERE status = 'active' LIMIT 3")->fetchAll(PDO::FETCH_ASSOC);
+                $ctx = '';
+                foreach ($activeCampaigns as $c) $ctx .= "Campaign: {$c['name']}, Channel: {$c['channel']}, Budget: {$c['budget']}\n";
+                $prompt = "Optimize these campaigns: {$args}\n\n{$ctx}\nProvide specific, actionable optimization recommendations.";
+                $system = "You are a campaign optimizer. {$brainCtx}";
+                $message = $ai->generate($prompt, $system);
+                break;
+
+            default:
+                $message = "Unknown command: /{$command}. Available: /create-post, /schedule-posts, /check-analytics, /optimize-campaign";
+        }
+
+        $logAi('chat-execute', 'strategy', "Executed /{$command}: {$args}", $message);
+        json_response(['item' => ['message' => $message, 'created_ids' => $createdIds, 'data' => $data]]);
+    });
+
+    // Phase 2.2: Performance Patterns
+    $router->post('/api/ai/performance-patterns', function () use ($ai, $pdo, $memoryEngine, $logAi) {
+        $brainCtx = $memoryEngine ? $memoryEngine->buildBrainContext() : '';
+        $posts = $pdo->query("SELECT title, platform, content_type, ai_score, status, created_at FROM posts WHERE status = 'published' ORDER BY created_at DESC LIMIT 50")->fetchAll(PDO::FETCH_ASSOC);
+        $feedback = $pdo->query("SELECT * FROM ai_performance_feedback ORDER BY created_at DESC LIMIT 20")->fetchAll(PDO::FETCH_ASSOC);
+
+        $ctx = "PUBLISHED POSTS:\n";
+        foreach ($posts as $p) $ctx .= "- \"{$p['title']}\" ({$p['platform']}, {$p['content_type']}, score:{$p['ai_score']}) on {$p['created_at']}\n";
+        $ctx .= "\nPERFORMANCE FEEDBACK:\n";
+        foreach ($feedback as $f) $ctx .= "- {$f['metric_name']}: {$f['metric_value']} ({$f['feedback_note']})\n";
+
+        $prompt = "Analyze these content performance patterns and identify:\n1. What content types perform best\n2. Best platforms and posting times\n3. Content topics that resonate\n4. Specific recommendations for improvement\n\n{$ctx}";
+        $system = "You are a marketing performance analyst. {$brainCtx}";
+        $result = $ai->generate($prompt, $system);
+        $logAi('performance-patterns', 'performance', 'Analyzed content performance patterns', $result);
+        json_response(['item' => ['patterns' => $result]]);
+    });
+
+    // Phase 2.2: Monthly Review
+    $router->post('/api/ai/monthly-review', function () use ($ai, $pdo, $memoryEngine, $logAi) {
+        $p = request_json();
+        $days = max(7, min(90, (int)($p['days'] ?? 30)));
+        $brainCtx = $memoryEngine ? $memoryEngine->buildBrainContext() : '';
+
+        $published = $pdo->query("SELECT COUNT(*) FROM posts WHERE status = 'published' AND created_at >= datetime('now', '-{$days} days')")->fetchColumn();
+        $scheduled = $pdo->query("SELECT COUNT(*) FROM posts WHERE status = 'scheduled' AND created_at >= datetime('now', '-{$days} days')")->fetchColumn();
+        $campaigns = $pdo->query("SELECT COUNT(*) FROM campaigns WHERE created_at >= datetime('now', '-{$days} days')")->fetchColumn();
+        $emailsSent = $pdo->query("SELECT COALESCE(SUM(sent_count), 0) FROM email_campaigns WHERE sent_at >= datetime('now', '-{$days} days')")->fetchColumn();
+        $platforms = $pdo->query("SELECT platform, COUNT(*) as count FROM posts WHERE status = 'published' AND created_at >= datetime('now', '-{$days} days') GROUP BY platform")->fetchAll(PDO::FETCH_ASSOC);
+        $aiCalls = $pdo->query("SELECT COUNT(*) FROM ai_activity_log WHERE created_at >= datetime('now', '-{$days} days')")->fetchColumn();
+
+        $ctx = "PERIOD: Last {$days} days\nPublished: {$published}, Scheduled: {$scheduled}, Campaigns: {$campaigns}\nEmails sent: {$emailsSent}, AI tool uses: {$aiCalls}\nBy platform:\n";
+        foreach ($platforms as $pl) $ctx .= "- {$pl['platform']}: {$pl['count']} posts\n";
+
+        $prompt = "Generate a comprehensive marketing performance review for the last {$days} days:\n{$ctx}\n\nInclude: Executive summary, key wins, areas for improvement, content performance by platform, and 5 specific recommendations for next month.";
+        $system = "You are a CMO reviewing marketing performance. Be specific and data-driven. {$brainCtx}";
+        $result = $ai->generate($prompt, $system);
+        $logAi('monthly-review', 'performance', "Monthly review ({$days} days)", $result);
+        json_response(['item' => ['review' => $result, 'days' => $days]]);
+    });
+
+    // Phase 2.3: Describe Audience (Natural Language → Segment Criteria)
+    $router->post('/api/ai/describe-audience', function () use ($ai, $logAi) {
+        $p = request_json();
+        $desc = trim((string)($p['description'] ?? ''));
+        if ($desc === '') { json_response(['error' => 'description is required'], 422); return; }
+
+        $prompt = "Convert this audience description into segment filter criteria:\n\"{$desc}\"\n\nReturn JSON object with:\n- segment_name (string, short name for this segment)\n- criteria (object with optional fields: stage (array of strings from: lead/prospect/customer/churned), min_score (int 0-100), max_score (int 0-100), tags (comma-separated string), source (string), company (string), has_activity_since (YYYY-MM-DD), no_activity_since (YYYY-MM-DD))\n- explanation (1 sentence explaining the criteria)\n- estimated_size (string like 'Small (~10-50)' or 'Medium (~50-200)')\n\nOnly include criteria fields that are relevant to the description.";
+        $system = "You are a marketing segmentation expert. Return ONLY valid JSON.";
+        $result = $ai->generate($prompt, $system);
+        $parsed = json_decode($result, true);
+        if (!$parsed && preg_match('/\{[\s\S]*\}/m', $result, $m)) $parsed = json_decode($m[0], true);
+        $logAi('describe-audience', 'audience', "Audience: {$desc}", $result);
+        json_response(['item' => $parsed ?: ['raw' => $result]]);
+    });
+
+    // Phase 2.4: Email Intelligence
+    $router->post('/api/ai/email-intelligence', function () use ($ai, $pdo, $memoryEngine, $logAi) {
+        $brainCtx = $memoryEngine ? $memoryEngine->buildBrainContext() : '';
+        $campaigns = $pdo->query("SELECT name, subject, sent_count, open_count, click_count, sent_at FROM email_campaigns WHERE sent_at IS NOT NULL ORDER BY sent_at DESC LIMIT 20")->fetchAll(PDO::FETCH_ASSOC);
+        $subCount = $pdo->query("SELECT COUNT(*) FROM subscribers WHERE status = 'active'")->fetchColumn();
+        $listCount = $pdo->query("SELECT COUNT(*) FROM email_lists")->fetchColumn();
+
+        $ctx = "EMAIL DATA:\n- {$subCount} active subscribers across {$listCount} lists\n- Campaign history:\n";
+        foreach ($campaigns as $c) {
+            $openRate = ($c['sent_count'] > 0) ? round(($c['open_count'] / $c['sent_count']) * 100, 1) : 0;
+            $clickRate = ($c['sent_count'] > 0) ? round(($c['click_count'] / $c['sent_count']) * 100, 1) : 0;
+            $ctx .= "  - \"{$c['name']}\" (Subject: \"{$c['subject']}\") sent:{$c['sent_count']} opens:{$openRate}% clicks:{$clickRate}% on {$c['sent_at']}\n";
+        }
+
+        $prompt = "Analyze this email marketing data and provide:\n1. Overall email health score\n2. Best performing subject line patterns\n3. Open rate and click rate trends\n4. Best send day/time patterns\n5. Specific recommendations to improve email performance\n6. Subscriber growth suggestions\n\n{$ctx}";
+        $system = "You are an email marketing expert. Be specific and actionable. {$brainCtx}";
+        $result = $ai->generate($prompt, $system);
+        $logAi('email-intelligence', 'channel', 'Email intelligence analysis', $result);
+        json_response(['item' => ['analysis' => $result]]);
+    });
+
+    // Phase 2.4: Deliverability Check
+    $router->post('/api/ai/deliverability-check', function () use ($ai, $logAi) {
+        $smtpHost = env_value('SMTP_HOST', '');
+        $smtpPort = env_value('SMTP_PORT', '');
+        $smtpFrom = env_value('SMTP_FROM', '');
+        $hasSmtp = $smtpHost !== '';
+        $fromDomain = $smtpFrom ? substr($smtpFrom, strpos($smtpFrom, '@') + 1) : '';
+
+        $ctx = "SMTP configured: " . ($hasSmtp ? 'Yes' : 'No') . "\n";
+        $ctx .= "SMTP host: {$smtpHost}\n";
+        $ctx .= "SMTP port: {$smtpPort}\n";
+        $ctx .= "From domain: {$fromDomain}\n";
+
+        $prompt = "Based on this email configuration, provide a deliverability assessment:\n{$ctx}\n\nCheck for:\n1. SMTP configuration completeness\n2. SPF/DKIM/DMARC recommendations for the domain\n3. Common deliverability issues\n4. Spam score risk factors\n5. Actionable steps to improve deliverability\n\nRate overall deliverability readiness as: Good / Needs Work / Critical Issues.";
+        $system = "You are an email deliverability expert.";
+        $result = $ai->generate($prompt, $system);
+        $logAi('deliverability-check', 'channel', 'Deliverability check', $result);
+        json_response(['item' => ['analysis' => $result]]);
+    });
+
+    // Phase 2.5: AI Review Response
+    $router->post('/api/ai/review-response', function () use ($ai, $logAi) {
+        $p = request_json();
+        $reviewText = trim((string)($p['review_text'] ?? ''));
+        $rating = (int)($p['rating'] ?? 3);
+        $reviewer = trim((string)($p['reviewer_name'] ?? 'Customer'));
+        if ($reviewText === '') { json_response(['error' => 'review_text is required'], 422); return; }
+
+        $bizName = env_value('BUSINESS_NAME', 'our business');
+        $tone = $rating >= 4 ? 'warm and grateful' : ($rating >= 3 ? 'appreciative and helpful' : 'empathetic and solution-oriented');
+
+        $prompt = "Write a professional business response to this {$rating}-star review from {$reviewer}:\n\n\"{$reviewText}\"\n\nTone: {$tone}\nBusiness: {$bizName}\n\nKeep it concise (2-4 sentences). " . ($rating < 3 ? "Acknowledge the issue, apologize, and offer to make it right. Include an invitation to discuss offline." : "Thank them genuinely and invite them back.");
+        $system = "You are a reputation manager for {$bizName}. Write natural, non-template responses.";
+        $result = $ai->generate($prompt, $system);
+        $logAi('review-response', 'brand', "Response for {$rating}-star review", $result);
+        json_response(['item' => ['response' => $result]]);
+    });
+
+    // Phase 4.1: Calendar Intelligence
+    $router->post('/api/ai/calendar-intelligence', function () use ($ai, $pdo, $memoryEngine, $logAi) {
+        $brainCtx = $memoryEngine ? $memoryEngine->buildBrainContext() : '';
+        $posts = $pdo->query("SELECT platform, content_type, status, scheduled_for, created_at FROM posts WHERE created_at >= datetime('now', '-30 days') ORDER BY created_at DESC")->fetchAll(PDO::FETCH_ASSOC);
+        $byPlatform = [];
+        $byType = [];
+        foreach ($posts as $p) {
+            $byPlatform[$p['platform']] = ($byPlatform[$p['platform']] ?? 0) + 1;
+            $byType[$p['content_type']] = ($byType[$p['content_type']] ?? 0) + 1;
+        }
+
+        $ctx = "LAST 30 DAYS:\n- Total posts: " . count($posts) . "\n- By platform: " . json_encode($byPlatform) . "\n- By type: " . json_encode($byType) . "\n";
+
+        $prompt = "Analyze this content calendar and provide:\n1. Content mix assessment (is it balanced?)\n2. Platform coverage gaps\n3. Seasonal opportunities for the next 2 weeks\n4. Content frequency recommendations\n5. Topics that are missing\n\n{$ctx}\nToday is " . date('F j, Y');
+        $system = "You are a content strategist. Identify gaps and opportunities. {$brainCtx}";
+        $result = $ai->generate($prompt, $system);
+        $logAi('calendar-intelligence', 'strategy', 'Calendar intelligence analysis', $result);
+        json_response(['item' => ['analysis' => $result]]);
+    });
+
+    // Phase 4.2: SEO Opportunities
+    $router->post('/api/ai/seo-opportunities', function () use ($ai, $pdo, $logAi) {
+        $p = request_json();
+        $topic = trim((string)($p['topic'] ?? ''));
+        $industry = '';
+        try { $industry = $pdo->query("SELECT value FROM settings WHERE key = 'business_industry'")->fetchColumn() ?: ''; } catch (\Exception $e) {}
+        $existingPosts = $pdo->query("SELECT title FROM posts WHERE status = 'published' ORDER BY created_at DESC LIMIT 20")->fetchAll(PDO::FETCH_COLUMN);
+
+        $ctx = "Industry: {$industry}\nTopic focus: {$topic}\nExisting content:\n";
+        foreach ($existingPosts as $t) $ctx .= "- {$t}\n";
+
+        $prompt = "Find SEO content opportunities:\n{$ctx}\n\n1. Identify 5 low-competition keywords this business could rank for\n2. For each keyword, suggest a content piece (title, type, target word count)\n3. Identify content gaps compared to typical competitors\n4. Suggest internal linking opportunities\n5. Quick wins for improving existing content SEO";
+        $system = "You are an SEO strategist. Focus on achievable, high-impact opportunities for small businesses.";
+        $result = $ai->generate($prompt, $system);
+        $logAi('seo-opportunities', 'strategy', "SEO opportunities: {$topic}", $result);
+        json_response(['item' => ['opportunities' => $result]]);
+    });
+
+    // Phase 4.2: Content Freshness
+    $router->post('/api/ai/content-freshness', function () use ($ai, $pdo, $logAi) {
+        $oldPosts = $pdo->query("SELECT id, title, platform, created_at FROM posts WHERE status = 'published' AND created_at <= datetime('now', '-60 days') ORDER BY created_at ASC LIMIT 20")->fetchAll(PDO::FETCH_ASSOC);
+
+        $ctx = "OLD PUBLISHED CONTENT (60+ days):\n";
+        foreach ($oldPosts as $p) $ctx .= "- #{$p['id']} \"{$p['title']}\" ({$p['platform']}) published {$p['created_at']}\n";
+
+        if (empty($oldPosts)) {
+            json_response(['item' => ['analysis' => 'All content is fresh (published within the last 60 days). No updates needed.']]);
+            return;
+        }
+
+        $prompt = "Review this old content and recommend:\n{$ctx}\n\n1. Which pieces should be updated and why\n2. What updates are needed (new data, refreshed examples, updated statistics)\n3. Which pieces could be repurposed into new formats\n4. Priority ranking (update first → later)";
+        $system = "You are a content freshness auditor. Be specific about what needs updating.";
+        $result = $ai->generate($prompt, $system);
+        $logAi('content-freshness', 'content', 'Content freshness check', $result);
+        json_response(['item' => ['analysis' => $result]]);
+    });
+
+    // Phase 4.5: Compliance Check
+    $router->post('/api/ai/compliance-check', function () use ($ai, $pdo, $logAi) {
+        $recentPosts = $pdo->query("SELECT title, body, platform FROM posts WHERE status IN ('draft', 'scheduled') ORDER BY created_at DESC LIMIT 10")->fetchAll(PDO::FETCH_ASSOC);
+        $hasEmails = $pdo->query("SELECT COUNT(*) FROM email_campaigns")->fetchColumn() > 0;
+        $hasForms = $pdo->query("SELECT COUNT(*) FROM forms")->fetchColumn() > 0;
+        $hasLanding = $pdo->query("SELECT COUNT(*) FROM landing_pages")->fetchColumn() > 0;
+
+        $ctx = "CONTENT TO CHECK:\n";
+        foreach ($recentPosts as $p) $ctx .= "- [{$p['platform']}] \"{$p['title']}\": {$p['body']}\n";
+        $ctx .= "\nFEATURES IN USE: Email campaigns: " . ($hasEmails ? 'Yes' : 'No') . ", Forms: " . ($hasForms ? 'Yes' : 'No') . ", Landing pages: " . ($hasLanding ? 'Yes' : 'No');
+
+        $prompt = "Perform a compliance audit:\n{$ctx}\n\nCheck for:\n1. GDPR compliance (consent, data handling, privacy notices)\n2. FTC guidelines (sponsored content disclosures, truthful claims)\n3. CAN-SPAM compliance (email opt-out, physical address)\n4. Platform-specific rules (character limits, prohibited content)\n5. Accessibility concerns\n6. Cookie consent requirements for landing pages\n\nRate overall compliance as: Compliant / Needs Attention / Non-Compliant, with specific action items.";
+        $system = "You are a marketing compliance auditor. Be thorough but practical.";
+        $result = $ai->generate($prompt, $system);
+        $logAi('compliance-check', 'general', 'Compliance audit', $result);
+        json_response(['item' => ['analysis' => $result]]);
+    });
 }

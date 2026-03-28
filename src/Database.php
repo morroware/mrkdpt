@@ -803,6 +803,23 @@ final class Database
             created_at TEXT NOT NULL
         )');
         $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_ai_search_history_created ON ai_search_history(created_at DESC)');
+
+        /* ---- Phase 2.5: Review & Reputation Manager ---- */
+
+        $this->pdo->exec('CREATE TABLE IF NOT EXISTS reviews (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            platform TEXT NOT NULL DEFAULT "manual",
+            reviewer_name TEXT NOT NULL,
+            rating INTEGER NOT NULL DEFAULT 5,
+            review_text TEXT DEFAULT "",
+            response_text TEXT DEFAULT "",
+            response_status TEXT NOT NULL DEFAULT "pending",
+            created_at TEXT NOT NULL,
+            responded_at TEXT
+        )');
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_reviews_platform ON reviews(platform)');
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(response_status)');
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_reviews_created ON reviews(created_at DESC)');
     }
 
     private function applySafeAlter(string $table, string $column, string $type): void

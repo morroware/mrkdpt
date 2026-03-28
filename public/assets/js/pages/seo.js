@@ -81,4 +81,44 @@ export function init() {
       if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
     }
   });
+
+  // SEO Opportunities
+  onClick('seoRunOpportunities', async () => {
+    const btn = $('seoRunOpportunities');
+    loading();
+    if (btn) { btn.classList.add('loading'); btn.disabled = true; }
+    try {
+      const { item } = await api('/api/ai/seo-opportunities', {
+        method: 'POST',
+        body: JSON.stringify({ topic: $('seoOppTopic')?.value || '' }),
+      });
+      output(item?.opportunities || item?.raw || item);
+      success('SEO opportunities found');
+    } catch (err) {
+      output('Error: ' + err.message);
+      error(err.message);
+    } finally {
+      if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
+    }
+  });
+
+  // Content Freshness Check
+  onClick('seoRunFreshness', async () => {
+    const btn = $('seoRunFreshness');
+    loading();
+    if (btn) { btn.classList.add('loading'); btn.disabled = true; }
+    try {
+      const { item } = await api('/api/ai/content-freshness', {
+        method: 'POST',
+        body: '{}',
+      });
+      output(item?.analysis || item?.raw || item);
+      success('Content freshness check complete');
+    } catch (err) {
+      output('Error: ' + err.message);
+      error(err.message);
+    } finally {
+      if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
+    }
+  });
 }

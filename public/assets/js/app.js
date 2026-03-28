@@ -32,6 +32,7 @@ import * as assistant from './pages/assistant.js';
 import * as chat from './pages/chat.js';
 import * as brain from './pages/brain.js';
 import * as onboarding from './pages/onboarding.js';
+import * as reviews from './pages/reviews.js';
 
 // Register each page module with the SPA router
 registerPage('dashboard', dashboard);
@@ -58,6 +59,7 @@ registerPage('queue', queue);
 registerPage('chat', chat);
 registerPage('brain', brain);
 registerPage('onboarding', onboarding);
+registerPage('reviews', reviews);
 
 // Initialize all page modules (binds forms, click handlers, etc.)
 function initAll() {
@@ -85,6 +87,7 @@ function initAll() {
   chat.init();
   brain.init();
   onboarding.init();
+  reviews.init();
   assistant.init();
   initInlineAiToolbars();
 

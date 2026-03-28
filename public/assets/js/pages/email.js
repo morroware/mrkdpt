@@ -329,4 +329,55 @@ export function init() {
     } catch (err) { error(err.message); }
     finally { if (btn) { btn.classList.remove('loading'); btn.disabled = false; } }
   });
+
+  // Email Intelligence
+  onClick('aiEmailIntelligence', async () => {
+    const btn = $('aiEmailIntelligence');
+    const results = $('emailIntelResults');
+    if (btn) { btn.classList.add('loading'); btn.disabled = true; }
+    if (results) results.innerHTML = '<span class="text-muted">Analyzing email history...</span>';
+    try {
+      const { item } = await api('/api/ai/email-intelligence', { method: 'POST', body: '{}' });
+      if (results) {
+        const analysis = item?.analysis || item?.raw || 'No analysis available';
+        results.innerHTML = `<div class="ai-output text-small">${escapeHtml(typeof analysis === 'string' ? analysis : JSON.stringify(analysis, null, 2))}</div>`;
+      }
+      success('Email intelligence analysis complete');
+    } catch (err) { error(err.message); if (results) results.innerHTML = ''; }
+    finally { if (btn) { btn.classList.remove('loading'); btn.disabled = false; } }
+  });
+
+  // Send Time Optimizer
+  onClick('aiSendTimeOptimize', async () => {
+    const btn = $('aiSendTimeOptimize');
+    const results = $('sendTimeResults');
+    if (btn) { btn.classList.add('loading'); btn.disabled = true; }
+    if (results) results.innerHTML = '<span class="text-muted">Calculating optimal send times...</span>';
+    try {
+      const { item } = await api('/api/ai/smart-times', { method: 'POST', body: JSON.stringify({ platform: 'email' }) });
+      if (results) {
+        const times = item?.times || item?.raw || 'No data available';
+        results.innerHTML = `<div class="ai-output text-small">${escapeHtml(typeof times === 'string' ? times : JSON.stringify(times, null, 2))}</div>`;
+      }
+      success('Send time analysis complete');
+    } catch (err) { error(err.message); if (results) results.innerHTML = ''; }
+    finally { if (btn) { btn.classList.remove('loading'); btn.disabled = false; } }
+  });
+
+  // Deliverability Check
+  onClick('aiDeliverabilityCheck', async () => {
+    const btn = $('aiDeliverabilityCheck');
+    const results = $('deliverabilityResults');
+    if (btn) { btn.classList.add('loading'); btn.disabled = true; }
+    if (results) results.innerHTML = '<span class="text-muted">Checking deliverability...</span>';
+    try {
+      const { item } = await api('/api/ai/deliverability-check', { method: 'POST', body: '{}' });
+      if (results) {
+        const check = item?.analysis || item?.raw || 'No data available';
+        results.innerHTML = `<div class="ai-output text-small">${escapeHtml(typeof check === 'string' ? check : JSON.stringify(check, null, 2))}</div>`;
+      }
+      success('Deliverability check complete');
+    } catch (err) { error(err.message); if (results) results.innerHTML = ''; }
+    finally { if (btn) { btn.classList.remove('loading'); btn.disabled = false; } }
+  });
 }

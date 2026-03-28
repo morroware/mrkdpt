@@ -147,4 +147,82 @@ export function init() {
     } catch (err) { error(err.message); }
     finally { if (btn) { btn.classList.remove('loading'); btn.disabled = false; } }
   });
+
+  // AI Audience Builder - Natural Language
+  onClick('aiDescribeAudience', async () => {
+    const desc = $('audienceDescription')?.value?.trim();
+    if (!desc) { error('Please describe your target audience.'); return; }
+
+    const btn = $('aiDescribeAudience');
+    if (btn) { btn.classList.add('loading'); btn.disabled = true; }
+
+    try {
+      const { item } = await api('/api/ai/describe-audience', {
+        method: 'POST',
+        body: JSON.stringify({ description: desc }),
+      });
+
+      const resultEl = $('aiAudienceResult');
+      if (!resultEl) return;
+      resultEl.classList.remove('hidden');
+
+      const criteria = item?.criteria;
+      if (criteria && typeof criteria === 'object') {
+        // Auto-fill the segment form
+        const form = $('segmentForm');
+        if (form) {
+          const nameField = form.querySelector('[name="name"]');
+          if (nameField && !nameField.value) nameField.value = item.segment_name || 'AI-Generated Segment';
+          const descField = form.querySelector('[name="description"]');
+          if (descField) descField.value = desc;
+
+          if (criteria.min_score) {
+            const el = form.querySelector('[name="criteria_min_score"]');
+            if (el) el.value = criteria.min_score;
+          }
+          if (criteria.max_score) {
+            const el = form.querySelector('[name="criteria_max_score"]');
+            if (el) el.value = criteria.max_score;
+          }
+          if (criteria.tags) {
+            const el = form.querySelector('[name="criteria_tags"]');
+            if (el) el.value = criteria.tags;
+          }
+          if (criteria.source) {
+            const el = form.querySelector('[name="criteria_source"]');
+            if (el) el.value = criteria.source;
+          }
+          if (criteria.has_activity_since) {
+            const el = form.querySelector('[name="criteria_has_activity_since"]');
+            if (el) el.value = criteria.has_activity_since;
+          }
+          if (criteria.no_activity_since) {
+            const el = form.querySelector('[name="criteria_no_activity_since"]');
+            if (el) el.value = criteria.no_activity_since;
+          }
+        }
+
+        resultEl.innerHTML = `
+          <div class="card" style="border-left:3px solid var(--accent)">
+            <strong>AI-Generated Criteria</strong>
+            <p class="text-small text-muted mt-1">${escapeHtml(item.explanation || 'Segment criteria populated in the form below.')}</p>
+            <p class="text-small mt-1">Estimated size: <strong>${escapeHtml(item.estimated_size || 'Unknown')}</strong></p>
+            <button class="btn btn-sm btn-ai mt-1" id="applyAiSegment">Create This Segment</button>
+          </div>
+        `;
+
+        $('applyAiSegment')?.addEventListener('click', () => {
+          form?.querySelector('button[type="submit"]')?.click();
+        });
+
+        success('Segment criteria generated from your description');
+      } else {
+        resultEl.innerHTML = `<pre class="ai-output text-small">${escapeHtml(item?.raw || 'No criteria generated')}</pre>`;
+      }
+    } catch (err) {
+      error('Failed to build audience: ' + err.message);
+    } finally {
+      if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
+    }
+  });
 }

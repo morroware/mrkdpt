@@ -90,6 +90,9 @@ export async function refresh() {
 
   // Load AI Brain status
   loadBrainStatus();
+
+  // Load daily action queue
+  loadDailyActions();
 }
 
 async function loadBrainStatus() {
@@ -250,6 +253,127 @@ function updateAssetCount(delta) {
   }
 }
 
+async function loadDailyActions() {
+  const list = $('actionQueueList');
+  const progressEl = $('actionProgress');
+  if (!list) return;
+
+  list.innerHTML = '<div class="flex gap-1"><div class="loading-spinner"></div> <span class="text-muted">AI is planning your day...</span></div>';
+
+  try {
+    const { item } = await api('/api/ai/daily-actions', { method: 'POST', body: '{}' });
+    const actions = item?.actions || [];
+
+    if (actions.length === 0) {
+      list.innerHTML = '<p class="text-muted">No pending actions. You\'re all caught up!</p>';
+      return;
+    }
+
+    // Track completed actions in localStorage
+    const today = new Date().toISOString().split('T')[0];
+    const completedKey = 'actions_completed_' + today;
+    const completed = JSON.parse(localStorage.getItem(completedKey) || '[]');
+
+    list.innerHTML = actions.map((a, i) => {
+      const isDone = completed.includes(i);
+      const priorityClass = a.priority === 'high' ? 'text-danger' : a.priority === 'medium' ? 'text-warning' : 'text-muted';
+      return `<div class="action-queue-item ${isDone ? 'action-done' : ''}" data-action-idx="${i}" data-action-type="${escapeHtml(a.action_type || '')}" data-entity-id="${a.entity_id || ''}" data-entity-type="${a.entity_type || ''}">
+        <div class="action-queue-check">
+          <input type="checkbox" class="action-check" ${isDone ? 'checked' : ''} data-idx="${i}" />
+        </div>
+        <div class="action-queue-content">
+          <div class="flex gap-1" style="align-items:center">
+            <span class="badge ${priorityClass}" style="font-size:10px">${escapeHtml(a.priority || 'medium')}</span>
+            <strong>${escapeHtml(a.title || 'Action ' + (i + 1))}</strong>
+          </div>
+          <p class="text-small text-muted mt-0">${escapeHtml(a.description || '')}</p>
+        </div>
+        <button class="btn btn-sm btn-ai action-execute-btn" data-idx="${i}">Do It</button>
+      </div>`;
+    }).join('');
+
+    // Update progress
+    const doneCount = completed.length;
+    if (progressEl) {
+      progressEl.innerHTML = `<span>${doneCount} of ${actions.length} done</span>`;
+    }
+
+    // Wire checkbox handlers
+    list.querySelectorAll('.action-check').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const idx = parseInt(cb.dataset.idx);
+        const stored = JSON.parse(localStorage.getItem(completedKey) || '[]');
+        if (cb.checked && !stored.includes(idx)) {
+          stored.push(idx);
+        } else if (!cb.checked) {
+          const pos = stored.indexOf(idx);
+          if (pos >= 0) stored.splice(pos, 1);
+        }
+        localStorage.setItem(completedKey, JSON.stringify(stored));
+        cb.closest('.action-queue-item')?.classList.toggle('action-done', cb.checked);
+        if (progressEl) progressEl.innerHTML = `<span>${stored.length} of ${actions.length} done</span>`;
+      });
+    });
+
+    // Wire execute buttons
+    list.querySelectorAll('.action-execute-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const item = btn.closest('.action-queue-item');
+        const type = item?.dataset.actionType || '';
+        const entityId = item?.dataset.entityId || '';
+
+        if (type === 'publish_draft' && entityId) {
+          navigate('content');
+        } else if (type === 'create_content') {
+          navigate('content');
+          setTimeout(() => document.querySelector('[data-tab="content-create"]')?.click(), 100);
+        } else if (type === 'send_email') {
+          navigate('email');
+          setTimeout(() => document.querySelector('[data-tab="email-compose"]')?.click(), 100);
+        } else if (type === 'analyze_performance') {
+          navigate('analytics');
+        } else if (type === 'engage_audience') {
+          navigate('queue');
+        } else if (type === 'review_scheduled') {
+          navigate('content');
+        } else {
+          navigate('ai');
+        }
+
+        // Auto-check the action
+        const cb = item?.querySelector('.action-check');
+        if (cb && !cb.checked) {
+          cb.checked = true;
+          cb.dispatchEvent(new Event('change'));
+        }
+      });
+    });
+
+    // Load weekly recap
+    loadWeeklyRecap();
+  } catch (err) {
+    list.innerHTML = '<p class="text-muted">Configure an AI provider in settings to get daily action recommendations.</p>';
+  }
+}
+
+async function loadWeeklyRecap() {
+  const el = $('weeklyRecap');
+  const content = $('weeklyRecapContent');
+  if (!el || !content) return;
+
+  try {
+    const data = await api('/api/dashboard');
+    const metrics = data.metrics || {};
+    const published = metrics.published || 0;
+    const scheduled = metrics.scheduled || 0;
+
+    if (published > 0 || scheduled > 0) {
+      content.innerHTML = `This week: <strong>${published}</strong> posts published, <strong>${scheduled}</strong> scheduled. Keep the momentum going!`;
+      el.style.display = '';
+    }
+  } catch (_) {}
+}
+
 async function loadAiInsights() {
   const list = $('aiInsightsList');
   if (!list) return;
@@ -344,6 +468,19 @@ export function init() {
       loadAiInsights().finally(() => {
         refreshInsightsBtn.classList.remove('loading');
         refreshInsightsBtn.disabled = false;
+      });
+    });
+  }
+
+  // Daily Actions refresh button
+  const refreshActionsBtn = $('refreshActionsBtn');
+  if (refreshActionsBtn) {
+    refreshActionsBtn.addEventListener('click', () => {
+      refreshActionsBtn.classList.add('loading');
+      refreshActionsBtn.disabled = true;
+      loadDailyActions().finally(() => {
+        refreshActionsBtn.classList.remove('loading');
+        refreshActionsBtn.disabled = false;
       });
     });
   }

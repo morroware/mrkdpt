@@ -76,6 +76,7 @@
         </button>
         <div class="nav-section-items" id="nav-intelligence">
           <a href="#analytics" data-page="analytics"><span class="nav-icon">&#9670;</span> Analytics</a>
+          <a href="#reviews" class="nav-link" data-page="reviews">&#11088; Reviews</a>
           <a href="#seo" data-page="seo"><span class="nav-icon">&#8982;</span> SEO Tools</a>
           <a href="#competitors" data-page="competitors"><span class="nav-icon">&#9878;</span> Competitors</a>
           <a href="#abtests" data-page="abtests"><span class="nav-icon">&#8644;</span> A/B Tests</a>
@@ -355,6 +356,20 @@
 
       <!-- Dashboard -->
       <section id="page-dashboard" class="page">
+        <!-- AI Daily Action Queue -->
+        <div class="card mb-2" id="actionQueueCard">
+          <div class="flex-between mb-1">
+            <h3>&#9889; What Should I Do Today?</h3>
+            <div class="flex gap-1">
+              <span class="text-small text-muted" id="actionProgress"></span>
+              <button class="btn btn-sm btn-ai" id="refreshActionsBtn"><span class="btn-ai-icon">&#9733;</span> Refresh</button>
+            </div>
+          </div>
+          <div id="actionQueueList"><p class="text-muted text-small">Loading your daily actions...</p></div>
+          <div class="mt-1" id="weeklyRecap" style="display:none">
+            <div class="text-small text-muted" id="weeklyRecapContent"></div>
+          </div>
+        </div>
         <div id="dashboardMetrics" class="metrics-row"></div>
 
         <!-- Autopilot Summary (shown after autopilot completes) -->
@@ -515,6 +530,7 @@
             <button class="btn btn-sm btn-outline" id="calPrev" aria-label="Previous month">&larr;</button>
             <h3 id="calTitle">March 2026</h3>
             <button class="btn btn-sm btn-outline" id="calNext" aria-label="Next month">&rarr;</button>
+            <button class="btn btn-sm btn-ai" id="calAutoFill"><span class="btn-ai-icon">&#9733;</span> AI Auto-Fill</button>
           </div>
           <div id="calendarGrid" class="calendar-grid"></div>
         </div>
@@ -615,6 +631,19 @@
           <button class="btn btn-sm btn-success" id="bulkPublish">Publish</button>
           <button class="btn btn-sm btn-danger" id="bulkDelete">Delete</button>
           <button class="btn btn-sm btn-ai" id="bulkRepurpose"><span class="btn-ai-icon">&#9733;</span> AI Repurpose</button>
+        </div>
+        <!-- Repurpose Chain Panel -->
+        <div class="card mt-2 hidden" id="repurposeChainPanel">
+          <div class="flex-between mb-1">
+            <h3>&#9889; One-Click Repurpose</h3>
+            <button class="btn btn-sm btn-ghost" id="closeRepurposeChain">&times;</button>
+          </div>
+          <p class="text-small text-muted mb-1">AI-generated variants for each platform:</p>
+          <div id="repurposeChainResults"></div>
+          <div class="flex gap-1 mt-1" id="repurposeChainActions" style="display:none">
+            <button class="btn btn-ai" id="queueAllRepurposed"><span class="btn-ai-icon">&#9733;</span> Queue All</button>
+            <button class="btn btn-outline" id="saveAllRepurposed">Save as Drafts</button>
+          </div>
         </div>
       </section>
 
@@ -1117,10 +1146,10 @@
                 <div class="chat-suggestions">
                   <button class="chat-suggest-btn" data-suggest="What was my best performing platform this month?">Best performing platform?</button>
                   <button class="chat-suggest-btn" data-suggest="Write me 3 Instagram posts about our latest product">Write 3 Instagram posts</button>
-                  <button class="chat-suggest-btn" data-suggest="Analyze my campaign performance and suggest improvements">Analyze campaigns</button>
+                  <button class="chat-suggest-btn" data-suggest="/schedule-posts Schedule 5 engaging posts for next week across all platforms">/schedule-posts for next week</button>
+                  <button class="chat-suggest-btn" data-suggest="/create-post Write a promotional post about our summer sale for Instagram">/create-post summer sale</button>
+                  <button class="chat-suggest-btn" data-suggest="/check-analytics How did my content perform this month?">/check-analytics this month</button>
                   <button class="chat-suggest-btn" data-suggest="What content should I create this week?">Content ideas for this week</button>
-                  <button class="chat-suggest-btn" data-suggest="Give me a summary of my email marketing performance">Email performance summary</button>
-                  <button class="chat-suggest-btn" data-suggest="How are my funnels performing? Where are the biggest drop-offs?">Funnel analysis</button>
                 </div>
               </div>
             </div>
@@ -1161,6 +1190,7 @@
                 <textarea id="chatInput" rows="2" placeholder="Ask about your marketing data, or request content creation..." autofocus></textarea>
                 <button class="btn btn-ai" id="chatSendBtn"><span class="btn-ai-icon">&#9733;</span> Send</button>
               </div>
+              <div class="text-small text-muted mt-1" style="padding:0 12px">Slash commands: /create-post, /schedule-posts, /check-analytics</div>
             </div>
           </div>
         </div>
@@ -1567,6 +1597,7 @@
           <button class="tab-btn" data-tab="email-campaigns">Campaigns</button>
           <button class="tab-btn" data-tab="email-compose">Compose</button>
           <button class="tab-btn" data-tab="email-templates-lib">Templates</button>
+          <button class="tab-btn" data-tab="email-intelligence">Intelligence</button>
         </div>
         <div id="email-lists" class="tab-panel active">
           <form id="emailListForm" class="stack card"><div class="row2"><div><label>List Name</label><input name="name" required /></div><div><label>Description</label><input name="description" /></div></div><button type="submit">Create List</button></form>
@@ -1605,6 +1636,28 @@
             <div class="modal-content"><div class="modal-header"><h3 id="emailTplModalTitle">Template Preview</h3><button class="modal-close" aria-label="Close" id="closeEmailTplModal">&times;</button></div><div class="modal-body" id="emailTplModalBody"></div></div>
           </div>
         </div>
+        <div class="tab-panel" id="email-intelligence">
+          <div class="card-grid">
+            <div class="card">
+              <h3>&#128202; Email Performance Insights</h3>
+              <p class="text-small text-muted">AI analyzes your email history to find what works.</p>
+              <button class="btn btn-ai" id="aiEmailIntelligence"><span class="btn-ai-icon">&#9733;</span> Analyze</button>
+              <div id="emailIntelResults" class="mt-1"></div>
+            </div>
+            <div class="card">
+              <h3>&#9200; Send Time Optimizer</h3>
+              <p class="text-small text-muted">Find the best time to send emails to your audience.</p>
+              <button class="btn btn-ai" id="aiSendTimeOptimize"><span class="btn-ai-icon">&#9733;</span> Optimize</button>
+              <div id="sendTimeResults" class="mt-1"></div>
+            </div>
+            <div class="card">
+              <h3>&#128272; Deliverability Check</h3>
+              <p class="text-small text-muted">Check your email setup for deliverability issues.</p>
+              <button class="btn btn-ai" id="aiDeliverabilityCheck"><span class="btn-ai-icon">&#9733;</span> Check</button>
+              <div id="deliverabilityResults" class="mt-1"></div>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- Analytics -->
@@ -1616,6 +1669,18 @@
         <div id="analyticsMetrics" class="metrics-row"></div>
         <div id="analyticsCharts" class="chart-container"></div>
         <div class="card mt-1"><h3>Export Data</h3><div class="btn-group"><button class="btn btn-outline btn-sm" onclick="exportCsv('posts')">Posts CSV</button><button class="btn btn-outline btn-sm" onclick="exportCsv('campaigns')">Campaigns CSV</button><button class="btn btn-outline btn-sm" onclick="exportCsv('kpis')">KPIs CSV</button><button class="btn btn-outline btn-sm" onclick="exportCsv('subscribers')">Subscribers CSV</button></div></div>
+        <div class="card mt-2">
+          <div class="flex-between mb-1">
+            <h3>&#128202; AI Analytics Summary</h3>
+            <button class="btn btn-sm btn-ai" id="aiAnalyticsSummary"><span class="btn-ai-icon">&#9733;</span> Generate</button>
+          </div>
+          <div id="aiAnalyticsResults"><p class="text-muted text-small">Click Generate for an AI-powered analysis of your marketing performance.</p></div>
+        </div>
+        <div class="card mt-1">
+          <h3>&#128200; Channel Attribution</h3>
+          <p class="text-small text-muted">See which channels drive the most results.</p>
+          <div id="channelAttribution"></div>
+        </div>
       </section>
 
       <!-- Competitors -->
@@ -1636,6 +1701,17 @@
         <div class="card-grid">
           <div class="card"><h3><span class="btn-ai-icon">&#128270;</span> Keyword Research</h3><div class="stack"><input id="seoTopic" placeholder="Topic to research" /><input id="seoNiche" placeholder="Your niche or industry" /><button class="btn btn-ai w-full" id="seoRunKeywords"><span class="btn-ai-icon">&#9733;</span> Research Keywords</button></div></div>
           <div class="card"><h3><span class="btn-ai-icon">&#9998;</span> Blog Generator</h3><div class="stack"><input id="seoBlogTitle" placeholder="Blog title" /><input id="seoBlogKeywords" placeholder="Target keywords" /><textarea id="seoBlogOutline" placeholder="Optional outline" rows="3"></textarea><button class="btn btn-ai w-full" id="seoRunBlog"><span class="btn-ai-icon">&#9733;</span> Generate Blog Post</button></div></div>
+          <div class="card">
+            <h3>&#128269; SEO Opportunities</h3>
+            <p class="text-small text-muted">Find low-competition keywords you can rank for.</p>
+            <input id="seoOppTopic" class="input w-full mb-1" placeholder="Your main topic or niche" />
+            <button class="btn btn-ai" id="seoRunOpportunities"><span class="btn-ai-icon">&#9733;</span> Find Opportunities</button>
+          </div>
+          <div class="card">
+            <h3>&#128340; Content Freshness</h3>
+            <p class="text-small text-muted">Find old content that needs updating.</p>
+            <button class="btn btn-ai" id="seoRunFreshness"><span class="btn-ai-icon">&#9733;</span> Check Freshness</button>
+          </div>
         </div>
         <div class="card mt-1"><h3>SEO Output</h3><pre class="ai-output" id="seoOutput">Results will appear here...</pre></div>
       </section>
@@ -2023,6 +2099,16 @@
 
       <!-- Audience Segments -->
       <section id="page-segments" class="page">
+        <!-- AI Smart Audience Builder -->
+        <div class="card mb-2">
+          <h3>&#9733; AI Audience Builder</h3>
+          <p class="text-small text-muted mb-1">Describe your audience in plain English and AI will create the segment rules.</p>
+          <textarea id="audienceDescription" class="input w-full" rows="2" placeholder="e.g., 'High-intent leads who opened 3+ emails and visited our pricing page in the last 30 days'"></textarea>
+          <div class="flex gap-1 mt-1">
+            <button class="btn btn-ai" id="aiDescribeAudience"><span class="btn-ai-icon">&#9733;</span> Build Segment</button>
+          </div>
+          <div id="aiAudienceResult" class="hidden mt-1"></div>
+        </div>
         <form id="segmentForm" class="stack card">
           <div class="row2">
             <div><label>Segment Name</label><input name="name" required placeholder="High-value leads" /></div>
@@ -2098,6 +2184,56 @@
         </div>
       </section>
 
+      <!-- Reviews & Reputation -->
+      <section class="page-section" id="page-reviews">
+        <div class="page-header">
+          <h2>&#11088; Reviews & Reputation</h2>
+          <button class="btn btn-ai" id="addReviewBtn"><span class="btn-ai-icon">+</span> Add Review</button>
+        </div>
+
+        <!-- Review Stats -->
+        <div class="flex gap-1 mb-2" id="reviewStats"></div>
+
+        <!-- Add Review Form (hidden by default) -->
+        <div class="card mb-2 hidden" id="addReviewForm">
+          <h3>Add Review</h3>
+          <form id="reviewForm">
+            <div class="form-grid">
+              <div>
+                <label>Platform</label>
+                <select name="platform" class="input">
+                  <option value="google">Google</option>
+                  <option value="yelp">Yelp</option>
+                  <option value="facebook">Facebook</option>
+                  <option value="manual">Other</option>
+                </select>
+              </div>
+              <div>
+                <label>Rating</label>
+                <select name="rating" class="input">
+                  <option value="5">5 Stars</option>
+                  <option value="4">4 Stars</option>
+                  <option value="3">3 Stars</option>
+                  <option value="2">2 Stars</option>
+                  <option value="1">1 Star</option>
+                </select>
+              </div>
+            </div>
+            <label>Reviewer Name</label>
+            <input name="reviewer_name" class="input w-full" placeholder="Customer name" />
+            <label>Review Text</label>
+            <textarea name="review_text" class="input w-full" rows="3" placeholder="What the customer wrote..."></textarea>
+            <div class="flex gap-1 mt-1">
+              <button type="submit" class="btn btn-ai">Save Review</button>
+              <button type="button" class="btn btn-ghost" id="cancelAddReview">Cancel</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Review List -->
+        <div id="reviewList"></div>
+      </section>
+
       <!-- Settings -->
       <section id="page-settings" class="page">
         <div class="card mb-2">
@@ -2129,6 +2265,27 @@
           <div id="webhookList" class="mt-1"></div>
         </div>
         <div class="card mt-1"><h3>Cron Log</h3><p class="text-small text-muted mb-1">Recent background task execution history.</p><div id="cronLog"></div></div>
+        <div class="card mt-2">
+          <h3>&#128274; Compliance & Privacy</h3>
+          <div class="form-grid">
+            <div>
+              <label>GDPR Consent Required</label>
+              <select id="settingGdpr" class="input">
+                <option value="0">Disabled</option>
+                <option value="1">Enabled</option>
+              </select>
+            </div>
+            <div>
+              <label>Cookie Consent Banner</label>
+              <select id="settingCookieBanner" class="input">
+                <option value="0">Disabled</option>
+                <option value="1">Enabled</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-ai mt-1" id="aiComplianceCheck"><span class="btn-ai-icon">&#9733;</span> AI Compliance Audit</button>
+          <div id="complianceResults" class="mt-1"></div>
+        </div>
       </section>
 
     </div><!-- content-area -->

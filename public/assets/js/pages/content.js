@@ -146,23 +146,93 @@ async function handlePostAction(action, id, btn) {
     } else if (action === 'repurpose') {
       const body = btn?.dataset.body || '';
       if (!body) { error('Post has no content to repurpose'); return; }
-      // Navigate to AI Studio repurpose tool with content pre-filled
-      sessionStorage.setItem('repurpose_content', body);
-      window.location.hash = '#ai';
-      setTimeout(() => {
-        document.querySelector('.ai-cat-btn[data-ai-cat="creation"]')?.click();
-        const repurposeField = document.getElementById('aiRepurposeContent');
-        if (repurposeField) {
-          repurposeField.value = body;
-          repurposeField.scrollIntoView({ behavior: 'smooth' });
-          success('Content loaded — select formats and click Repurpose');
-        }
-      }, 200);
+      await runRepurposeChain(body, btn?.closest('tr')?.querySelector('td:5')?.textContent || '');
       return;
     }
     refreshPosts();
   } catch (err) {
     error(err.message);
+  }
+}
+
+async function runRepurposeChain(content, originalTitle) {
+  const panel = $('repurposeChainPanel');
+  const results = $('repurposeChainResults');
+  const actions = $('repurposeChainActions');
+  if (!panel || !results) return;
+
+  panel.classList.remove('hidden');
+  panel.scrollIntoView({ behavior: 'smooth' });
+  results.innerHTML = '<div class="flex gap-1"><div class="loading-spinner"></div> <span class="text-muted">Generating platform variants...</span></div>';
+  if (actions) actions.style.display = 'none';
+
+  try {
+    const { item } = await api('/api/ai/repurpose-chain', {
+      method: 'POST',
+      body: JSON.stringify({ content, title: originalTitle, platforms: ['twitter', 'instagram', 'linkedin', 'facebook', 'email'] }),
+    });
+
+    const variants = item?.variants || [];
+    if (variants.length === 0) {
+      results.innerHTML = item?.raw
+        ? `<pre class="ai-output">${escapeHtml(item.raw)}</pre>`
+        : '<p class="text-muted">No variants generated.</p>';
+      return;
+    }
+
+    results.innerHTML = variants.map((v, i) => `
+      <div class="card mb-1 repurpose-variant" data-idx="${i}">
+        <div class="flex-between">
+          <span class="badge badge-${escapeHtml(v.platform)}">${escapeHtml(v.platform)}</span>
+          <span class="text-small text-muted">${(v.content || '').length} chars</span>
+        </div>
+        <div class="mt-1 text-small">${escapeHtml(v.content || '')}</div>
+        ${v.hashtags ? `<div class="text-small text-muted mt-1">${escapeHtml(v.hashtags)}</div>` : ''}
+        <div class="flex gap-1 mt-1">
+          <button class="btn btn-sm btn-outline save-variant-btn" data-idx="${i}">Save as Draft</button>
+          <button class="btn btn-sm btn-ghost copy-variant-btn" data-idx="${i}">Copy</button>
+        </div>
+      </div>
+    `).join('');
+
+    // Store variants for queue/save actions
+    panel.dataset.variants = JSON.stringify(variants);
+    if (actions) actions.style.display = '';
+
+    // Wire individual buttons
+    results.querySelectorAll('.save-variant-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const idx = parseInt(btn.dataset.idx);
+        const v = variants[idx];
+        if (!v) return;
+        btn.classList.add('loading'); btn.disabled = true;
+        try {
+          await api('/api/posts', {
+            method: 'POST',
+            body: JSON.stringify({ title: originalTitle || 'Repurposed Post', body: v.content, platform: v.platform, status: 'draft', tags: v.hashtags || '' }),
+          });
+          success(`Draft saved for ${v.platform}`);
+          btn.textContent = 'Saved';
+        } catch (e) { error(e.message); }
+        finally { btn.classList.remove('loading'); btn.disabled = false; }
+      });
+    });
+
+    results.querySelectorAll('.copy-variant-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.idx);
+        const v = variants[idx];
+        if (v?.content) {
+          copyToClipboard(v.content);
+          success('Copied to clipboard');
+        }
+      });
+    });
+
+    success(`${variants.length} platform variants generated`);
+  } catch (err) {
+    results.innerHTML = `<p class="text-danger">${escapeHtml(err.message)}</p>`;
+    error('Repurpose failed: ' + err.message);
   }
 }
 
@@ -343,6 +413,82 @@ export function init() {
   onClick('calNext', () => {
     calendarDate.setMonth(calendarDate.getMonth() + 1);
     refresh();
+  });
+
+  // Calendar Auto-Fill
+  onClick('calAutoFill', async () => {
+    const btn = $('calAutoFill');
+    if (btn) { btn.classList.add('loading'); btn.disabled = true; }
+    try {
+      const year = calendarDate.getFullYear();
+      const month = calendarDate.getMonth();
+      const startDate = new Date(year, month, 1).toISOString().split('T')[0];
+      const { item } = await api('/api/ai/calendar-autofill', {
+        method: 'POST',
+        body: JSON.stringify({ period: 'month', start_date: startDate }),
+      });
+      const created = item?.posts_created || 0;
+      if (created > 0) {
+        success(`${created} draft posts created for the calendar. Review them in the List tab.`);
+        await refresh();
+      } else {
+        success('Calendar auto-fill complete. Check the List tab for new drafts.');
+        await refresh();
+      }
+    } catch (err) {
+      error('Calendar auto-fill failed: ' + err.message);
+    } finally {
+      if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
+    }
+  });
+
+  // Repurpose chain panel
+  onClick('closeRepurposeChain', () => {
+    $('repurposeChainPanel')?.classList.add('hidden');
+  });
+
+  onClick('queueAllRepurposed', async () => {
+    const panel = $('repurposeChainPanel');
+    const variants = JSON.parse(panel?.dataset.variants || '[]');
+    if (variants.length === 0) { error('No variants to queue'); return; }
+    const btn = $('queueAllRepurposed');
+    if (btn) { btn.classList.add('loading'); btn.disabled = true; }
+    let queued = 0;
+    for (const v of variants) {
+      try {
+        await api('/api/posts', {
+          method: 'POST',
+          body: JSON.stringify({ title: 'Repurposed Post', body: v.content, platform: v.platform, status: 'scheduled', tags: v.hashtags || '' }),
+        });
+        queued++;
+      } catch (_) {}
+    }
+    success(`${queued} posts queued for publishing`);
+    if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
+    panel?.classList.add('hidden');
+    refreshPosts();
+  });
+
+  onClick('saveAllRepurposed', async () => {
+    const panel = $('repurposeChainPanel');
+    const variants = JSON.parse(panel?.dataset.variants || '[]');
+    if (variants.length === 0) { error('No variants to save'); return; }
+    const btn = $('saveAllRepurposed');
+    if (btn) { btn.classList.add('loading'); btn.disabled = true; }
+    let saved = 0;
+    for (const v of variants) {
+      try {
+        await api('/api/posts', {
+          method: 'POST',
+          body: JSON.stringify({ title: 'Repurposed Post', body: v.content, platform: v.platform, status: 'draft', tags: v.hashtags || '' }),
+        });
+        saved++;
+      } catch (_) {}
+    }
+    success(`${saved} drafts saved`);
+    if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
+    panel?.classList.add('hidden');
+    refreshPosts();
   });
 
   // AI generate body button

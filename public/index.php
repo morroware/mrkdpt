@@ -364,6 +364,7 @@ if (str_starts_with($path, '/api/')) {
     require APP_ROOT . '/src/routes/wordpress_plugin.php';
     require APP_ROOT . '/src/routes/onboarding.php';
     require APP_ROOT . '/src/routes/autopilot.php';
+    require APP_ROOT . '/src/routes/reviews.php';
 
     // Register public routes (before middleware)
     register_auth_routes($router, $auth);
@@ -424,7 +425,7 @@ if (str_starts_with($path, '/api/')) {
 
     // Register protected routes
     register_settings_routes($router, $ai, $scheduler, $dataDir, $pdo);
-    register_dashboard_routes($router, $posts, $campaigns, $kpis, $aiLogs);
+    register_dashboard_routes($router, $posts, $campaigns, $kpis, $aiLogs, $pdo);
     register_campaign_routes($router, $campaigns, $webhooks);
     register_post_routes($router, $posts, $analytics, $webhooks, $pdo, $automations);
     register_competitor_routes($router, $competitors);
@@ -453,6 +454,7 @@ if (str_starts_with($path, '/api/')) {
     register_wordpress_plugin_routes($router, $posts, $campaigns, $contactRepo, $pdo);
     register_onboarding_routes($router, $autopilot);
     register_autopilot_routes($router, $autopilot);
+    register_review_routes($router, $pdo, $ai);
 
     // Dispatch using the base-path-stripped path
     $query = parse_url($uri, PHP_URL_QUERY);

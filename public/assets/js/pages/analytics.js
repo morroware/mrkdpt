@@ -64,6 +64,32 @@ function renderChart(container, data, label) {
   container.innerHTML = svg;
 }
 
+async function loadChannelAttribution() {
+  const el = $('channelAttribution');
+  if (!el) return;
+  try {
+    const overview = await api('/api/analytics/overview?days=30');
+    const platforms = overview.by_platform || [];
+    if (platforms.length === 0) {
+      el.innerHTML = '<p class="text-muted text-small">No platform data yet. Publish content to see attribution.</p>';
+      return;
+    }
+    const total = platforms.reduce((sum, p) => sum + p.count, 0);
+    el.innerHTML = `<div class="activity-bar-chart">${platforms.map(p => {
+      const pct = Math.round((p.count / total) * 100);
+      return `<div class="activity-bar-row">
+        <span class="activity-bar-label">${escapeHtml(p.platform)}</span>
+        <div class="activity-bar-track">
+          <div class="activity-bar-fill" style="width:${pct}%"></div>
+        </div>
+        <span class="activity-bar-count">${pct}% (${p.count})</span>
+      </div>`;
+    }).join('')}</div>`;
+  } catch (_) {
+    el.innerHTML = '<p class="text-muted text-small">Attribution data unavailable.</p>';
+  }
+}
+
 function renderPlatformBreakdown(data) {
   const posts = data.by_platform || [];
   const el = $('analyticsCharts');
@@ -121,6 +147,9 @@ export async function refresh() {
   } catch (err) {
     error('Failed to load analytics: ' + err.message);
   }
+
+  // Channel attribution
+  loadChannelAttribution();
 }
 
 export function init() {
@@ -145,4 +174,29 @@ export function init() {
       error('Export failed: ' + err.message);
     }
   };
+
+  // AI Analytics Summary
+  onClick('aiAnalyticsSummary', async () => {
+    const btn = $('aiAnalyticsSummary');
+    const results = $('aiAnalyticsResults');
+    if (btn) { btn.classList.add('loading'); btn.disabled = true; }
+    if (results) results.innerHTML = '<span class="text-muted">Generating AI analysis...</span>';
+    try {
+      const days = parseInt($('analyticsPeriod')?.value || '30');
+      const { item } = await api('/api/ai/monthly-review', {
+        method: 'POST',
+        body: JSON.stringify({ days }),
+      });
+      if (results) {
+        const review = item?.review || item?.raw || 'No analysis available';
+        results.innerHTML = `<div class="ai-output text-small">${escapeHtml(typeof review === 'string' ? review : JSON.stringify(review, null, 2))}</div>`;
+      }
+      success('Analytics summary generated');
+    } catch (err) {
+      error(err.message);
+      if (results) results.innerHTML = '<p class="text-muted">Configure an AI provider to generate analytics summaries.</p>';
+    } finally {
+      if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
+    }
+  });
 }

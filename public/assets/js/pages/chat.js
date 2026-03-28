@@ -89,6 +89,40 @@ async function sendMessage() {
   const sendBtn = $('chatSendBtn');
   if (sendBtn) { sendBtn.disabled = true; sendBtn.classList.add('loading'); }
 
+  // Detect slash commands
+  const slashMatch = message.match(/^\/(create-post|schedule-posts|check-analytics|optimize-campaign)\s*(.*)/i);
+
+  if (slashMatch) {
+    const command = slashMatch[1].toLowerCase();
+    const args = slashMatch[2].trim();
+
+    try {
+      const { item } = await api('/api/ai/chat-execute', {
+        method: 'POST',
+        body: JSON.stringify({ command, args, conversation_id: currentConversationId || undefined }),
+      });
+
+      hideTyping();
+      let response = item?.message || item?.reply || 'Command executed.';
+      if (item?.created_ids?.length) {
+        response += `\n\n**Created:** ${item.created_ids.length} item(s) with IDs: ${item.created_ids.join(', ')}`;
+      }
+      if (item?.data) {
+        response += '\n\n' + (typeof item.data === 'string' ? item.data : JSON.stringify(item.data, null, 2));
+      }
+      appendMessage('assistant', response);
+      currentConversationId = item?.conversation_id || currentConversationId;
+      refreshConversations();
+    } catch (err) {
+      hideTyping();
+      appendMessage('assistant', 'Command failed: ' + err.message);
+      error(err.message);
+    } finally {
+      if (sendBtn) { sendBtn.disabled = false; sendBtn.classList.remove('loading'); }
+    }
+    return;
+  }
+
   try {
     const payload = { message, conversation_id: currentConversationId || undefined };
     const provider = $('chatProviderSelect')?.value || undefined;
@@ -237,6 +271,32 @@ function wiresuggestions() {
   });
 }
 
+async function loadProactiveNudges() {
+  try {
+    const data = await api('/api/dashboard');
+    const metrics = data.metrics || {};
+    const nudges = [];
+
+    if ((metrics.drafts || 0) > 3) {
+      nudges.push({ text: `You have ${metrics.drafts} draft posts. Want me to review and schedule them?`, suggest: 'Review my draft posts and suggest which ones to publish this week' });
+    }
+    if ((metrics.scheduled || 0) === 0) {
+      nudges.push({ text: 'Nothing scheduled this week. Want me to create some posts?', suggest: '/schedule-posts Create 5 engaging posts for this week across my top platforms' });
+    }
+
+    if (nudges.length > 0) {
+      const welcome = document.querySelector('.chat-welcome .chat-suggestions');
+      if (welcome) {
+        const nudgeHtml = nudges.map(n =>
+          `<button class="chat-suggest-btn" data-suggest="${escapeHtml(n.suggest)}" style="border-color:var(--accent);color:var(--accent)">${escapeHtml(n.text)}</button>`
+        ).join('');
+        welcome.insertAdjacentHTML('afterbegin', nudgeHtml);
+        wiresuggestions();
+      }
+    }
+  } catch (_) {}
+}
+
 async function loadProviderModels() {
   try {
     const data = await api('/api/ai/providers');
@@ -355,6 +415,11 @@ export async function refresh() {
     refreshSharedMemory(),
     loadProviderModels(),
   ]);
+
+  // Load proactive nudges in welcome screen
+  if (!currentConversationId) {
+    loadProactiveNudges();
+  }
 }
 
 export function init() {

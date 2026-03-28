@@ -25,7 +25,20 @@
             btn.data('original-text', btn.text());
         } else {
             btn.removeClass('msc-loading-btn').prop('disabled', false);
+            const originalText = btn.data('original-text');
+            if (originalText) {
+                btn.text(originalText);
+            }
         }
+    }
+
+    function getErrorMessage(xhr, fallback) {
+        return (
+            xhr?.responseJSON?.message
+            || xhr?.responseJSON?.error
+            || xhr?.responseJSON?.data?.message
+            || fallback
+        );
     }
 
     function showNotice(container, message, type) {
@@ -57,7 +70,7 @@
                 result.css('color', '#166534').text(data.message || 'Connected!');
             })
             .fail(function (xhr) {
-                const msg = xhr.responseJSON?.message || xhr.responseJSON?.error || 'Connection failed.';
+                const msg = getErrorMessage(xhr, 'Connection failed.');
                 result.css('color', '#991b1b').text(msg);
             })
             .always(function () {
@@ -132,7 +145,7 @@
                 }
             })
             .fail(function (xhr) {
-                const msg = xhr.responseJSON?.error || 'Failed to load dashboard data.';
+                const msg = getErrorMessage(xhr, 'Failed to load dashboard data.');
                 grid.html(`<p class="msc-error">${escHtml(msg)}</p>`);
                 recent.html('');
                 campaigns.html('');
@@ -191,7 +204,7 @@
                 container.html(html);
             })
             .fail(function (xhr) {
-                const msg = xhr.responseJSON?.error || 'Failed to fetch content.';
+                const msg = getErrorMessage(xhr, 'Failed to fetch content.');
                 container.html(`<p class="msc-error">${escHtml(msg)}</p>`);
             })
             .always(function () {
@@ -221,7 +234,7 @@
                 }
             })
             .fail(function (xhr) {
-                const msg = xhr.responseJSON?.error || 'Import failed.';
+                const msg = getErrorMessage(xhr, 'Import failed.');
                 alert(msg);
                 setLoading(btn, false);
             });
@@ -255,7 +268,7 @@
                 }
             })
             .fail(function (xhr) {
-                const msg = xhr.responseJSON?.error || 'Push failed.';
+                const msg = getErrorMessage(xhr, 'Push failed.');
                 alert(msg);
             })
             .always(function () {
@@ -291,7 +304,7 @@
                 $('#msc-ai-result').show();
             })
             .fail(function (xhr) {
-                const msg = xhr.responseJSON?.error || 'AI generation failed.';
+                const msg = getErrorMessage(xhr, 'AI generation failed.');
                 alert(msg);
             })
             .always(function () {
@@ -381,7 +394,7 @@
 
         if (action === 'improve' || action === 'seo') {
             endpoint = 'ai-refine';
-            body = { content: content, action: action === 'seo' ? 'improve' : action };
+            body = { content: content, action: action };
         } else if (action === 'headlines') {
             endpoint = 'ai-generate';
             body = { topic: content.substring(0, 500), content_type: 'headlines', tone: 'professional' };
@@ -399,7 +412,7 @@
                 resultBox.text(output).show();
             })
             .fail(function (xhr) {
-                const msg = xhr.responseJSON?.error || 'AI action failed.';
+                const msg = getErrorMessage(xhr, 'AI action failed.');
                 resultBox.css('color', '#991b1b').text(msg).show();
             })
             .always(function () {

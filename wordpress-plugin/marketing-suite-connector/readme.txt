@@ -4,7 +4,7 @@ Tags: marketing, content, ai, sync, automation
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 8.0
-Stable tag: 1.0.0
+Stable tag: 1.1.0
 License: GPLv2 or later
 
 Connect your WordPress site to Marketing Suite for content sync, AI writing, and campaign management.
@@ -47,6 +47,13 @@ The plugin proxies AI requests through your Marketing Suite, which supports Open
 Yes. The metabox and AI tools work with both the Block Editor (Gutenberg) and Classic Editor.
 
 == Changelog ==
+
+= 1.1.0 =
+* Added secure AI draft creation endpoint for generated content.
+* Added optional auto-push setting to sync posts automatically on save/publish.
+* Improved import logic to prevent duplicate WordPress posts for the same remote item.
+* Improved API error handling and REST argument validation.
+* Polished admin UX and fixed AI SEO action behavior in the editor metabox.
 
 = 1.0.0 =
 * Initial release.

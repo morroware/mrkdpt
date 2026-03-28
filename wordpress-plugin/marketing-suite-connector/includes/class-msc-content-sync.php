@@ -14,6 +14,7 @@ class MSC_Content_Sync {
 
     public function __construct(MSC_API_Client $api) {
         $this->api = $api;
+        add_action('save_post_post', [$this, 'maybe_auto_push_post'], 20, 3);
     }
 
     // -------------------------------------------------------------------------
@@ -140,6 +141,7 @@ class MSC_Content_Sync {
     private function render_local_posts(): void {
         $posts = get_posts([
             'numberposts' => 20,
+            'post_type'   => 'post',
             'post_status' => ['publish', 'draft'],
             'orderby'     => 'modified',
             'order'       => 'DESC',
@@ -160,6 +162,7 @@ class MSC_Content_Sync {
 
         foreach ($posts as $p) {
             $synced_id = get_post_meta($p->ID, '_msc_remote_id', true);
+            $synced_at = get_post_meta($p->ID, '_msc_synced_at', true);
             echo '<tr>';
             printf('<td><a href="%s">%s</a></td>',
                 esc_url(get_edit_post_link($p->ID)),
@@ -171,7 +174,8 @@ class MSC_Content_Sync {
             );
             printf('<td>%s</td>',
                 $synced_id
-                    ? '<span class="dashicons dashicons-yes-alt" style="color:#46b450;"></span> ID: ' . esc_html($synced_id)
+                    ? '<span class="dashicons dashicons-yes-alt" style="color:#46b450;"></span> ID: ' . esc_html($synced_id) .
+                      ($synced_at ? '<br><small>' . esc_html($synced_at) . '</small>' : '')
                     : '<span class="dashicons dashicons-minus" style="color:#999;"></span>'
             );
             printf(
@@ -221,6 +225,8 @@ class MSC_Content_Sync {
         $payload = [
             'title'       => $post->post_title,
             'body'        => $post->post_content,
+            'excerpt'     => $post->post_excerpt,
+            'slug'        => $post->post_name,
             'status'      => $post->post_status === 'publish' ? 'published' : 'draft',
             'platform'    => 'wordpress',
             'wp_post_id'  => $post_id,
@@ -275,12 +281,24 @@ class MSC_Content_Sync {
 
         $item = $data['item'] ?? $data;
         $default_status = get_option('msc_default_status', 'draft');
+        $existing_post_id = (int) $this->find_existing_post_for_remote_id($remote_id);
+
+        if ($existing_post_id > 0) {
+            return new \WP_REST_Response([
+                'success'    => true,
+                'wp_post_id' => $existing_post_id,
+                'edit_url'   => get_edit_post_link($existing_post_id, 'raw'),
+                'message'    => 'This post was already imported.',
+                'existing'   => true,
+            ]);
+        }
 
         $wp_post_id = wp_insert_post([
             'post_title'   => sanitize_text_field($item['title'] ?? 'Imported Post'),
             'post_content' => wp_kses_post($item['body'] ?? $item['content'] ?? ''),
             'post_status'  => $default_status,
             'post_type'    => 'post',
+            'post_excerpt' => sanitize_text_field($item['excerpt'] ?? ''),
         ], true);
 
         if (is_wp_error($wp_post_id)) {
@@ -359,5 +377,45 @@ class MSC_Content_Sync {
         }
 
         return new \WP_REST_Response($result);
+    }
+
+    private function find_existing_post_for_remote_id(int $remote_id): int {
+        $posts = get_posts([
+            'post_type'      => 'post',
+            'post_status'    => 'any',
+            'fields'         => 'ids',
+            'posts_per_page' => 1,
+            'meta_key'       => '_msc_remote_id',
+            'meta_value'     => (string) $remote_id,
+        ]);
+
+        if (!empty($posts)) {
+            return (int) $posts[0];
+        }
+
+        return 0;
+    }
+
+    public function maybe_auto_push_post(int $post_id, \WP_Post $post, bool $update): void {
+        if (!get_option('msc_auto_push', false) || !$this->api->is_configured()) {
+            return;
+        }
+
+        if (wp_is_post_revision($post_id) || wp_is_post_autosave($post_id)) {
+            return;
+        }
+
+        if (!in_array($post->post_status, ['publish', 'draft'], true)) {
+            return;
+        }
+
+        // Do not auto-push auto-drafts created by editor.
+        if ($post->post_status === 'draft' && !$update) {
+            return;
+        }
+
+        $request = new \WP_REST_Request('POST', '/msc/v1/push-post');
+        $request->set_param('post_id', $post_id);
+        $this->rest_push_post($request);
     }
 }

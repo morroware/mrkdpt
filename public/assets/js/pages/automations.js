@@ -158,24 +158,30 @@ function initCanvasEvents() {
   if (!canvas) return;
 
   canvas.addEventListener('click', (e) => {
-    // Block selection
-    const block = e.target.closest('.workflow-block');
-    if (block) {
-      const idx = parseInt(block.dataset.idx);
-      selectedBlockIdx = idx;
-      renderCanvas();
-      return;
-    }
-
-    // Remove button
-    if (e.target.closest('.workflow-block-remove')) {
-      const block = e.target.closest('.workflow-block');
+    // Remove button (handle first so block selection doesn't swallow it)
+    const removeBtn = e.target.closest('.workflow-block-remove');
+    if (removeBtn) {
+      const block = removeBtn.closest('.workflow-block');
       if (block) {
         const idx = parseInt(block.dataset.idx);
         workflowBlocks.splice(idx, 1);
         selectedBlockIdx = -1;
         renderCanvas();
       }
+      return;
+    }
+
+    // Keep interactive controls usable without forcing a rerender first
+    if (e.target.closest('input, select, textarea, button, label')) {
+      return;
+    }
+
+    // Block selection
+    const block = e.target.closest('.workflow-block');
+    if (block) {
+      const idx = parseInt(block.dataset.idx);
+      selectedBlockIdx = idx;
+      renderCanvas();
       return;
     }
 

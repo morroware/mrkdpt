@@ -643,7 +643,7 @@ export function init() {
   // ---- Output Actions ----
   onClick('aiCopyOutput', () => {
     if (!lastOutput) { error('Nothing to copy'); return; }
-    copyToClipboard(lastOutput, $('aiCopyBtn'));
+    copyToClipboard(lastOutput, $('aiCopyOutput'));
   });
 
   onClick('aiUseInPost', () => {

@@ -98,11 +98,12 @@ class MSC_API_Client {
 
         $args = [
             'method'  => $method,
-            'timeout' => 30,
+            'timeout' => max(5, (int) apply_filters('msc_api_timeout', 30)),
             'headers' => [
                 'Authorization' => 'Bearer ' . $token,
                 'Content-Type'  => 'application/json',
                 'Accept'        => 'application/json',
+                'X-Requested-By'=> 'wordpress-plugin',
             ],
         ];
 
@@ -122,12 +123,21 @@ class MSC_API_Client {
         $body = wp_remote_retrieve_body($response);
         $decoded = json_decode($body, true);
 
-        if (!is_array($decoded)) {
-            return ['error' => "Invalid response (HTTP {$code}): " . substr($body, 0, 200)];
+        if (!is_array($decoded) && $code < 400) {
+            return [
+                'success' => true,
+                'raw'     => $body,
+            ];
         }
 
         if ($code >= 400) {
-            return ['error' => $decoded['error'] ?? "HTTP {$code}: " . substr($body, 0, 200)];
+            return [
+                'error' => $decoded['message'] ?? $decoded['error'] ?? "HTTP {$code}: " . substr($body, 0, 200),
+            ];
+        }
+
+        if (!is_array($decoded)) {
+            return ['error' => "Invalid response (HTTP {$code}): " . substr($body, 0, 200)];
         }
 
         return $decoded;

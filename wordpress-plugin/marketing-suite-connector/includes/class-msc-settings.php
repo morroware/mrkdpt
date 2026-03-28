@@ -39,6 +39,11 @@ class MSC_Settings {
             'sanitize_callback' => 'rest_sanitize_boolean',
             'default'           => true,
         ]);
+        register_setting('msc_settings', 'msc_auto_push', [
+            'type'              => 'boolean',
+            'sanitize_callback' => 'rest_sanitize_boolean',
+            'default'           => false,
+        ]);
     }
 
     public function render_page(): void {
@@ -131,6 +136,16 @@ class MSC_Settings {
                                 <input type="checkbox" name="msc_ai_enabled" value="1"
                                     <?php checked(get_option('msc_ai_enabled', true)); ?> />
                                 <?php esc_html_e('Enable AI content generation and refinement via Marketing Suite', 'msc'); ?>
+                            </label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><?php esc_html_e('Auto Push', 'msc'); ?></th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="msc_auto_push" value="1"
+                                    <?php checked(get_option('msc_auto_push', false)); ?> />
+                                <?php esc_html_e('Automatically push posts to Marketing Suite when they are published or updated', 'msc'); ?>
                             </label>
                         </td>
                     </tr>

@@ -165,9 +165,13 @@ function register_contact_routes(Router $router, ContactRepository $contacts, Au
             $row = str_getcsv($line);
 
             if ($headers === null) {
-                $headers = array_map(fn($h) => strtolower(trim($h)), $row);
-                if (in_array('email', $headers)) continue;
-                // If first row doesn't look like headers, treat as data
+                $firstRow = array_map(fn($h) => strtolower(trim($h)), $row);
+                if (in_array('email', $firstRow)) {
+                    // First row contains header names — use them and skip this row
+                    $headers = $firstRow;
+                    continue;
+                }
+                // First row doesn't look like headers — use defaults and process as data
                 $headers = ['email', 'first_name', 'last_name', 'company', 'phone', 'stage', 'tags'];
             }
 

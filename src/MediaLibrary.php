@@ -94,7 +94,9 @@ final class MediaLibrary
 
         if (!empty($file['tmp_name'])) {
             if (is_uploaded_file($file['tmp_name'])) {
-                move_uploaded_file($file['tmp_name'], $destPath);
+                if (!move_uploaded_file($file['tmp_name'], $destPath)) {
+                    return 'Failed to move uploaded file';
+                }
             } else {
                 // For programmatic uploads, verify source is within uploads or temp dir
                 $realSrc = realpath($file['tmp_name']);

@@ -1368,6 +1368,12 @@
               <div class="row2"><div><label>Publish Status</label><select data-meta="publish_status"><option value="draft">Draft</option><option value="public">Public</option></select></div><div><label>Tags <small>(comma-separated, max 5)</small></label><input data-meta="tags" placeholder="marketing, social, tips" /></div></div>
               <small class="text-muted" style="color: var(--warning, #f59e0b)">Medium stopped issuing new integration tokens in 2023. This only works with existing tokens.</small>
             </div>
+            <div data-platform="discord" class="social-fields" style="display:none">
+              <small class="text-muted">Paste your Discord webhook URL in the Webhook URL field above. Create one in Server Settings &rarr; Integrations &rarr; Webhooks.</small>
+            </div>
+            <div data-platform="slack" class="social-fields" style="display:none">
+              <small class="text-muted">Paste your Slack incoming webhook URL in the Webhook URL field above. Create one at <code>api.slack.com/apps</code> &rarr; Incoming Webhooks.</small>
+            </div>
             <div data-platform="twitter" class="social-fields" style="display:none">
               <div><label>Client ID <small>(for token refresh)</small></label><input data-meta="client_id" placeholder="Optional — enables OAuth 2.0 PKCE refresh" /></div>
             </div>

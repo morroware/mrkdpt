@@ -138,6 +138,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($written === false) {
                 $errors[] = 'Unable to write .env file. Check directory permissions.';
             } else {
+                // Restrict .env to owner-only (contains API keys and credentials)
+                @chmod($envPath, 0600);
                 try {
                     $db = new Database($dbPath);
                     $status[] = 'Database initialized successfully.';

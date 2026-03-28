@@ -83,14 +83,21 @@ final class AiMemoryEngine
     {
         $since = gmdate('Y-m-d\TH:i:s\Z', strtotime("-{$days} days"));
 
-        $total = (int)$this->pdo->prepare("SELECT COUNT(*) FROM ai_activity_log WHERE created_at >= :since")
-            ->execute([':since' => $since]) ? (int)$this->pdo->query("SELECT COUNT(*) FROM ai_activity_log WHERE created_at >= '{$since}'")->fetchColumn() : 0;
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM ai_activity_log WHERE created_at >= :since");
+        $stmt->execute([':since' => $since]);
+        $total = (int)$stmt->fetchColumn();
 
-        $byTool = $this->pdo->query("SELECT tool_name, COUNT(*) as count FROM ai_activity_log WHERE created_at >= '{$since}' GROUP BY tool_name ORDER BY count DESC LIMIT 10")->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $this->pdo->prepare("SELECT tool_name, COUNT(*) as count FROM ai_activity_log WHERE created_at >= :since GROUP BY tool_name ORDER BY count DESC LIMIT 10");
+        $stmt->execute([':since' => $since]);
+        $byTool = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $byCategory = $this->pdo->query("SELECT tool_category, COUNT(*) as count FROM ai_activity_log WHERE created_at >= '{$since}' GROUP BY tool_category ORDER BY count DESC")->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $this->pdo->prepare("SELECT tool_category, COUNT(*) as count FROM ai_activity_log WHERE created_at >= :since GROUP BY tool_category ORDER BY count DESC");
+        $stmt->execute([':since' => $since]);
+        $byCategory = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $providers = $this->pdo->query("SELECT provider, COUNT(*) as count FROM ai_activity_log WHERE created_at >= '{$since}' AND provider != '' GROUP BY provider ORDER BY count DESC")->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $this->pdo->prepare("SELECT provider, COUNT(*) as count FROM ai_activity_log WHERE created_at >= :since AND provider != '' GROUP BY provider ORDER BY count DESC");
+        $stmt->execute([':since' => $since]);
+        $providers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         return [
             'total_calls'  => $total,

@@ -217,7 +217,7 @@ final class AiOrchestrator
     {
         $template = self::PIPELINE_TEMPLATES[$templateId] ?? null;
         $steps = $template !== null ? $template['steps'] : $customSteps;
-        $pipelineName = $template['name'] ?? 'Custom Pipeline';
+        $pipelineName = $template !== null ? $template['name'] : 'Custom Pipeline';
 
         if (empty($steps)) {
             return ['error' => 'No pipeline steps defined'];
@@ -292,7 +292,8 @@ final class AiOrchestrator
                     'error'  => $e->getMessage(),
                 ];
 
-                // Continue pipeline despite errors
+                // Continue pipeline despite errors — reset prevOutput so next step doesn't get stale data
+                $prevOutput = '';
                 $prevSummary = "Step {$label} failed: {$e->getMessage()}";
             }
         }

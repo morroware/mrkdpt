@@ -8,7 +8,6 @@ import { toast } from '../core/toast.js';
 export function init() {
   $('abTestForm')?.addEventListener('submit', handleCreate);
 
-  // AI Analyze button in the form area
   const aiAnalyzeBtn = document.getElementById('aiAnalyzeAb');
   if (aiAnalyzeBtn) {
     aiAnalyzeBtn.addEventListener('click', () => {
@@ -37,7 +36,6 @@ export function init() {
           }),
         });
         if (item?.variations) {
-          // Fill variant B with the first AI variation
           const varBContent = form.querySelector('[name="variant_b_content"]');
           const varBName = form.querySelector('[name="variant_b_name"]');
           if (varBContent) varBContent.value = item.variations.slice(0, 500);
@@ -47,6 +45,12 @@ export function init() {
       } catch (err) { toast(err.message, 'error'); }
       finally { aiBtn.classList.remove('loading'); aiBtn.disabled = false; }
     });
+  }
+
+  // Event delegation for test list actions
+  const testList = $('abTestList');
+  if (testList) {
+    testList.addEventListener('click', handleTestListClick);
   }
 }
 
@@ -75,24 +79,127 @@ async function loadTests() {
             const pct = maxConv > 0 ? Math.round((v.conversion_rate / maxConv) * 100) : 0;
             return `<div class="mb-1">
               <div class="flex-between"><span><strong>${escapeHtml(v.variant_name)}</strong></span><span>${v.conversions}/${v.impressions} (${v.conversion_rate}%)</span></div>
-              <div style="background:var(--bg-tertiary);border-radius:4px;height:8px;margin-top:4px"><div style="background:var(--accent);height:100%;border-radius:4px;width:${pct}%;transition:width .3s"></div></div>
+              <div class="progress"><div class="progress-bar" style="width:${pct}%"></div></div>
               ${v.content ? `<p class="text-small text-muted mt-1" style="max-height:60px;overflow:hidden">${escapeHtml(v.content)}</p>` : ''}
               <div class="btn-group mt-1">
-                <button class="btn btn-sm btn-outline" onclick="window._abImpression(${v.id})">+Impression</button>
-                <button class="btn btn-sm btn-success" onclick="window._abConversion(${v.id})">+Conversion</button>
+                <button class="btn btn-sm btn-outline" data-ab-impression="${v.id}">+Impression</button>
+                <button class="btn btn-sm btn-success" data-ab-conversion="${v.id}">+Conversion</button>
               </div>
             </div>`;
           }).join('')}
         </div>
         <div class="btn-group mt-1">
-          ${t.status === 'running' ? `<button class="btn btn-sm btn-outline" onclick="window._completeTest(${t.id})">Complete Test</button>` : ''}
-          <button class="btn btn-sm btn-ai" onclick="window._aiAnalyzeTest(${t.id})"><span class="btn-ai-icon">&#9733;</span> AI Analyze</button>
-          <button class="btn btn-sm btn-danger" onclick="window._deleteTest(${t.id})">Delete</button>
+          ${t.status === 'running' ? `<button class="btn btn-sm btn-outline" data-ab-complete="${t.id}">Complete Test</button>` : ''}
+          <button class="btn btn-sm btn-ai" data-ab-analyze="${t.id}"><span class="btn-ai-icon">&#9733;</span> AI Analyze</button>
+          <button class="btn btn-sm btn-danger" data-ab-delete="${t.id}">Delete</button>
         </div>
       </div>`;
     }).join('') || emptyState('&#9878;', 'No A/B tests yet', 'Create your first test to compare content variants and optimize performance.');
   } catch (err) {
     toast('Failed to load A/B tests: ' + err.message, 'error');
+  }
+}
+
+async function handleTestListClick(e) {
+  const impressionBtn = e.target.closest('[data-ab-impression]');
+  if (impressionBtn) {
+    try {
+      await api(`/api/ab-tests/variants/${impressionBtn.dataset.abImpression}/impression`, { method: 'POST' });
+      refresh();
+    } catch (err) { toast('Failed to record impression: ' + err.message, 'error'); }
+    return;
+  }
+
+  const conversionBtn = e.target.closest('[data-ab-conversion]');
+  if (conversionBtn) {
+    try {
+      await api(`/api/ab-tests/variants/${conversionBtn.dataset.abConversion}/conversion`, { method: 'POST' });
+      toast('Conversion recorded', 'success');
+      refresh();
+    } catch (err) { toast('Failed to record conversion: ' + err.message, 'error'); }
+    return;
+  }
+
+  const completeBtn = e.target.closest('[data-ab-complete]');
+  if (completeBtn) {
+    const id = completeBtn.dataset.abComplete;
+    let variantNames = [];
+    try {
+      const resp = await api(`/api/ab-tests/${id}`);
+      const test = resp.item || resp;
+      variantNames = (test.variants || []).map(v => v.variant_name);
+    } catch (err) { toast('Could not load variant details: ' + err.message, 'error'); }
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay visible';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-label', 'Complete A/B Test');
+    overlay.innerHTML = `<div class="modal-content">
+      <div class="modal-header"><h3>Complete A/B Test</h3><button class="modal-close" aria-label="Close">&times;</button></div>
+      <div class="modal-body">
+        <label>Winner (optional)</label>
+        ${variantNames.length ? `<select id="completeTestWinner">
+          <option value="">No winner / Inconclusive</option>
+          ${variantNames.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('')}
+        </select>` : `<input type="text" id="completeTestWinner" placeholder="Enter winning variant name (or leave empty)">`}
+        <div class="btn-group mt-1" style="justify-content:flex-end">
+          <button class="btn btn-outline" id="cancelCompleteTest">Cancel</button>
+          <button class="btn btn-success" id="confirmCompleteTest">Complete Test</button>
+        </div>
+      </div>
+    </div>`;
+    document.body.appendChild(overlay);
+
+    const cleanup = () => overlay.remove();
+    overlay.querySelector('.modal-close').addEventListener('click', cleanup);
+    overlay.querySelector('#cancelCompleteTest').addEventListener('click', cleanup);
+    overlay.addEventListener('click', (ev) => { if (ev.target === overlay) cleanup(); });
+    overlay.querySelector('#confirmCompleteTest').addEventListener('click', async () => {
+      const winner = document.getElementById('completeTestWinner')?.value || '';
+      cleanup();
+      try {
+        await api(`/api/ab-tests/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'completed', winner_variant: winner }) });
+        toast('Test completed', 'success');
+        refresh();
+      } catch (err) { toast(err.message, 'error'); }
+    });
+    return;
+  }
+
+  const analyzeBtn = e.target.closest('[data-ab-analyze]');
+  if (analyzeBtn) {
+    const id = analyzeBtn.dataset.abAnalyze;
+    const card = document.getElementById('abAnalysisCard');
+    const output = document.getElementById('abAnalysisOutput');
+    if (card) card.classList.remove('hidden');
+    if (output) output.textContent = 'Analyzing test... please wait.';
+    analyzeBtn.classList.add('loading');
+    analyzeBtn.disabled = true;
+    try {
+      const { item } = await api('/api/ai/ab-analyze', { method: 'POST', body: JSON.stringify({ test_id: id }) });
+      if (item?.analysis) {
+        if (output) { output.textContent = item.analysis; card?.scrollIntoView({ behavior: 'smooth' }); }
+      } else {
+        if (output) output.textContent = 'No analysis available.';
+      }
+    } catch (err) {
+      if (output) output.textContent = 'Error: ' + err.message;
+      toast(err.message, 'error');
+    } finally {
+      analyzeBtn.classList.remove('loading');
+      analyzeBtn.disabled = false;
+    }
+    return;
+  }
+
+  const deleteBtn = e.target.closest('[data-ab-delete]');
+  if (deleteBtn) {
+    if (!await confirm('Delete Test', 'Are you sure you want to delete this A/B test? This cannot be undone.')) return;
+    try {
+      await api(`/api/ab-tests/${deleteBtn.dataset.abDelete}`, { method: 'DELETE' });
+      toast('Deleted', 'success');
+      refresh();
+    } catch (err) { toast(err.message, 'error'); }
   }
 }
 
@@ -117,92 +224,3 @@ async function handleCreate(e) {
     toast(err.message, 'error');
   }
 }
-
-window._abImpression = async (variantId) => {
-  try {
-    await api(`/api/ab-tests/variants/${variantId}/impression`, { method: 'POST' });
-    refresh();
-  } catch (err) {
-    toast('Failed to record impression: ' + err.message, 'error');
-  }
-};
-
-window._abConversion = async (variantId) => {
-  try {
-    await api(`/api/ab-tests/variants/${variantId}/conversion`, { method: 'POST' });
-    toast('Conversion recorded', 'success');
-    refresh();
-  } catch (err) {
-    toast('Failed to record conversion: ' + err.message, 'error');
-  }
-};
-
-window._completeTest = async (id) => {
-  // Fetch test to get variant names for selection
-  let variantNames = [];
-  try {
-    const resp = await api(`/api/ab-tests/${id}`);
-    const test = resp.item || resp;
-    variantNames = (test.variants || []).map(v => v.variant_name);
-  } catch (err) { toast('Could not load variant details: ' + err.message, 'error'); }
-
-  const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay visible';
-  overlay.innerHTML = `<div class="modal" role="dialog">
-    <div class="modal-header"><h2>Complete A/B Test</h2><button class="modal-close" id="closeCompleteTest">&times;</button></div>
-    <div class="modal-body">
-      <label class="form-label">Winner (optional)</label>
-      ${variantNames.length ? `<select id="completeTestWinner" class="form-input w-full">
-        <option value="">No winner / Inconclusive</option>
-        ${variantNames.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('')}
-      </select>` : `<input type="text" id="completeTestWinner" class="form-input w-full" placeholder="Enter winning variant name (or leave empty)">`}
-    </div>
-    <div class="modal-footer flex-end gap-1">
-      <button class="btn btn-outline" id="cancelCompleteTest">Cancel</button>
-      <button class="btn btn-success" id="confirmCompleteTest">Complete Test</button>
-    </div>
-  </div>`;
-  document.body.appendChild(overlay);
-
-  const cleanup = () => overlay.remove();
-  overlay.querySelector('#closeCompleteTest').addEventListener('click', cleanup);
-  overlay.querySelector('#cancelCompleteTest').addEventListener('click', cleanup);
-  overlay.querySelector('#confirmCompleteTest').addEventListener('click', async () => {
-    const winner = document.getElementById('completeTestWinner')?.value || '';
-    cleanup();
-    try {
-      await api(`/api/ab-tests/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'completed', winner_variant: winner }) });
-      toast('Test completed', 'success');
-      refresh();
-    } catch (err) { toast(err.message, 'error'); }
-  });
-};
-
-window._deleteTest = async (id) => {
-  if (!await confirm('Delete Test', 'Are you sure you want to delete this A/B test? This cannot be undone.')) return;
-  try { await api(`/api/ab-tests/${id}`, { method: 'DELETE' }); toast('Deleted', 'success'); refresh(); } catch (e) { toast(e.message, 'error'); }
-};
-
-window._aiAnalyzeTest = async (id) => {
-  const card = document.getElementById('abAnalysisCard');
-  const output = document.getElementById('abAnalysisOutput');
-  if (card) card.classList.remove('hidden');
-  if (output) output.textContent = 'Analyzing test... please wait.';
-  try {
-    const { item } = await api('/api/ai/ab-analyze', { method: 'POST', body: JSON.stringify({ test_id: id }) });
-    if (item?.analysis) {
-      if (output) {
-        output.textContent = item.analysis;
-        card?.scrollIntoView({ behavior: 'smooth' });
-      }
-    } else {
-      if (output) output.textContent = 'No analysis available.';
-    }
-  } catch (e) {
-    if (output) output.textContent = 'Error: ' + e.message;
-    toast(e.message, 'error');
-  }
-};
-
-// AI Analyze button - wired in init() via event delegation
-

@@ -12,6 +12,7 @@ let lastOutput = '';
 let lastProvider = '';
 let lastTool = '';
 let lastBrandProfile = null;
+let outputView = 'rendered'; // 'rendered' or 'raw'
 
 function setOutputMeta(provider, tool) {
   lastProvider = provider || '';
@@ -26,21 +27,78 @@ function setOutputMeta(provider, tool) {
   }
 }
 
+/** Simple markdown-to-HTML renderer */
+function renderMarkdown(text) {
+  if (!text) return '';
+  let html = text
+    // Code blocks
+    .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+    // Inline code
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    // Headers
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    // Bold + italic
+    .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    // Blockquotes
+    .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+    // Horizontal rules
+    .replace(/^---$/gm, '<hr>')
+    // Unordered lists
+    .replace(/^[*-] (.+)$/gm, '<li>$1</li>')
+    // Ordered lists
+    .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+    // Wrap consecutive <li> in <ul>
+    .replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>')
+    // Line breaks (paragraphs)
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/\n/g, '<br>');
+
+  // Wrap in paragraph if not already wrapped
+  if (!html.startsWith('<')) html = '<p>' + html + '</p>';
+  return html;
+}
+
 function output(text, provider, tool) {
   const el = $('aiOutput');
+  const richEl = $('aiOutputRich');
   const raw = typeof text === 'string' ? text : JSON.stringify(text, null, 2);
   lastOutput = raw;
   if (el) el.textContent = raw;
+  if (richEl) richEl.innerHTML = renderMarkdown(raw);
   setOutputMeta(provider, tool);
+  // Show the active view
+  showOutputView(outputView);
   const panel = $('aiOutputPanel');
   if (panel && window.innerWidth <= 1024) {
     panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 }
 
+function showOutputView(view) {
+  outputView = view;
+  const raw = $('aiOutput');
+  const rich = $('aiOutputRich');
+  if (view === 'rendered') {
+    if (raw) raw.classList.add('hidden');
+    if (rich) rich.classList.remove('hidden');
+  } else {
+    if (raw) raw.classList.remove('hidden');
+    if (rich) rich.classList.add('hidden');
+  }
+  document.querySelectorAll('.ai-output-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.outputView === view);
+  });
+}
+
 function loading(toolName) {
   const el = $('aiOutput');
+  const richEl = $('aiOutputRich');
   if (el) el.textContent = `Generating ${toolName || ''}... please wait.`;
+  if (richEl) richEl.innerHTML = `<p class="text-muted" style="animation: subtlePulse 1.5s infinite">Generating ${toolName || ''}... please wait.</p>`;
   const meta = $('aiOutputMeta');
   if (meta) meta.textContent = 'Processing...';
 }
@@ -80,9 +138,117 @@ function initCategoryTabs() {
       document.querySelectorAll('.ai-cat-btn').forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
       const cat = btn.dataset.aiCat;
+      const searchVal = $('aiToolSearch')?.value?.toLowerCase() || '';
       document.querySelectorAll('.ai-tool-card').forEach((card) => {
-        card.style.display = (cat === 'all' || card.dataset.aiCat === cat) ? '' : 'none';
+        const matchesCat = cat === 'all' || card.dataset.aiCat === cat;
+        const matchesSearch = !searchVal || cardMatchesSearch(card, searchVal);
+        card.style.display = (matchesCat && matchesSearch) ? '' : 'none';
       });
+      updateToolCount();
+    });
+  });
+}
+
+/** Tool search functionality */
+function initToolSearch() {
+  const searchInput = $('aiToolSearch');
+  if (!searchInput) return;
+
+  searchInput.addEventListener('input', () => {
+    const val = searchInput.value.toLowerCase().trim();
+    const activeCat = document.querySelector('.ai-cat-btn.active')?.dataset.aiCat || 'all';
+
+    document.querySelectorAll('.ai-tool-card').forEach((card) => {
+      const matchesCat = activeCat === 'all' || card.dataset.aiCat === activeCat;
+      const matchesSearch = !val || cardMatchesSearch(card, val);
+      card.style.display = (matchesCat && matchesSearch) ? '' : 'none';
+    });
+    updateToolCount();
+  });
+
+  // Keyboard shortcut: / to focus search
+  document.addEventListener('keydown', (e) => {
+    if (e.key === '/' && !e.ctrlKey && !e.metaKey) {
+      const active = document.activeElement;
+      if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT')) return;
+      const page = document.querySelector('#page-ai.active');
+      if (!page) return;
+      e.preventDefault();
+      searchInput.focus();
+    }
+  });
+}
+
+function cardMatchesSearch(card, query) {
+  const title = card.querySelector('h3')?.textContent?.toLowerCase() || '';
+  const desc = card.querySelector('.ai-tool-desc')?.textContent?.toLowerCase() || '';
+  return title.includes(query) || desc.includes(query);
+}
+
+function updateToolCount() {
+  const countEl = $('aiToolCount');
+  if (!countEl) return;
+  const visible = document.querySelectorAll('.ai-tool-card:not([style*="display: none"])').length;
+  const total = document.querySelectorAll('.ai-tool-card').length;
+  countEl.textContent = visible < total ? `${visible}/${total}` : `${total} tools`;
+}
+
+/** Collapsible tool cards */
+function initCollapsibleCards() {
+  document.querySelectorAll('.ai-tool-card').forEach((card) => {
+    const header = card.querySelector('.ai-tool-header');
+    if (!header) return;
+
+    // Add chevron indicator
+    if (!header.querySelector('.ai-tool-chevron')) {
+      const chevron = document.createElement('span');
+      chevron.className = 'ai-tool-chevron';
+      chevron.innerHTML = '&#9660;';
+      header.appendChild(chevron);
+    }
+
+    // Wrap body content if not already wrapped
+    const body = card.querySelector('.ai-tool-card-body');
+    if (!body) {
+      const desc = card.querySelector('.ai-tool-desc');
+      const bodyContent = [];
+      let sibling = desc?.nextElementSibling;
+      while (sibling) {
+        bodyContent.push(sibling);
+        sibling = sibling.nextElementSibling;
+      }
+      if (bodyContent.length > 0) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'ai-tool-card-body';
+        // Measure natural height for animation
+        bodyContent.forEach(el => wrapper.appendChild(el));
+        card.appendChild(wrapper);
+        wrapper.style.maxHeight = wrapper.scrollHeight + 'px';
+      }
+    }
+
+    // Toggle collapse on header click
+    header.addEventListener('click', (e) => {
+      // Don't collapse if clicking a button/input inside header
+      if (e.target.closest('button') || e.target.closest('input') || e.target.closest('select')) return;
+      card.classList.toggle('collapsed');
+      const bodyEl = card.querySelector('.ai-tool-card-body');
+      if (bodyEl) {
+        if (card.classList.contains('collapsed')) {
+          bodyEl.style.maxHeight = '0';
+        } else {
+          bodyEl.style.maxHeight = bodyEl.scrollHeight + 'px';
+        }
+      }
+    });
+  });
+}
+
+/** Output view tabs */
+function initOutputTabs() {
+  document.querySelectorAll('.ai-output-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      showOutputView(tab.dataset.outputView);
     });
   });
 }
@@ -109,6 +275,10 @@ export function refresh() {
 
 export function init() {
   initCategoryTabs();
+  initToolSearch();
+  initCollapsibleCards();
+  initOutputTabs();
+  updateToolCount();
 
   // ---- Original Content Creation Tools ----
   onClick('runContent', () => {
@@ -454,6 +624,8 @@ export function init() {
   onClick('aiClearOutput', () => {
     const el = $('aiOutput');
     if (el) el.textContent = 'Select a tool and click generate to see AI output here.';
+    const richEl = $('aiOutputRich');
+    if (richEl) richEl.innerHTML = '<p class="text-muted">Select a tool and click generate to see AI output here.</p>';
     const meta = $('aiOutputMeta');
     if (meta) meta.textContent = '';
     lastOutput = '';

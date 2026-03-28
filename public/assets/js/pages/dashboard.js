@@ -64,7 +64,7 @@ export async function refresh() {
         ? posts.map((p) =>
             `<div class="list-item"><strong>${escapeHtml(p.title)}</strong> <span class="badge badge-${escapeHtml(p.platform)}">${escapeHtml(p.platform)}</span> ${statusBadge(p.status)}<div class="text-small text-muted">${formatDateTime(p.scheduled_for || p.created_at)}</div></div>`
           ).join('')
-        : emptyState('&#9998;', 'No posts yet', 'Create your first post to start building your content library.', '<button class="btn btn-sm" onclick="navigate(\'content\')">Create Post</button>');
+        : emptyState('&#9998;', 'No posts yet', 'Create your first post to start building your content library.', '<a href="#content" class="btn btn-sm">Create Post</a>');
     }
 
     // Recent ideas
@@ -75,7 +75,7 @@ export async function refresh() {
         ? ideas.map((i) =>
             `<div class="list-item"><strong>${escapeHtml(i.topic)}</strong> <span class="badge">${escapeHtml(i.platform)}</span><div class="text-small text-muted">${escapeHtml(truncate(i.output, 120))}</div></div>`
           ).join('')
-        : emptyState('&#128161;', 'No ideas yet', 'Use AI Studio to brainstorm content ideas for your marketing.', '<button class="btn btn-sm btn-ai" onclick="navigate(\'ai\')"><span class="btn-ai-icon">&#9733;</span> Open AI Studio</button>');
+        : emptyState('&#128161;', 'No ideas yet', 'Use AI Studio to brainstorm content ideas for your marketing.', '<a href="#ai" class="btn btn-sm btn-ai"><span class="btn-ai-icon">&#9733;</span> Open AI Studio</a>');
     }
   } catch (err) {
     error('Failed to load dashboard: ' + err.message);

@@ -3,7 +3,7 @@
  */
 
 import { api } from '../core/api.js';
-import { $, escapeHtml, formatDateTime, onSubmit, formData, statusBadge, onClick, tableEmpty, emptyState, confirm } from '../core/utils.js';
+import { $, escapeHtml, formatDateTime, onSubmit, formData, statusBadge, onClick, tableEmpty, emptyState, confirm, promptInput } from '../core/utils.js';
 import { success, error } from '../core/toast.js';
 
 async function refreshLists() {
@@ -250,7 +250,7 @@ export function init() {
 
   // Send test email
   onClick('sendTestEmail', async () => {
-    const to = prompt('Send test to email address:');
+    const to = await promptInput('Send Test Email', 'Recipient email address', { placeholder: 'test@example.com', inputType: 'email' });
     if (!to) return;
     const form = $('emailComposeForm');
     if (!form) return;

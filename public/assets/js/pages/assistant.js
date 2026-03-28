@@ -1,6 +1,6 @@
 /**
- * AI Writing Assistant — floating panel for content refinement.
- * Accessible from any page via the floating action button.
+ * AI Writing Assistant v2 — floating panel with diff preview, undo history,
+ * keyboard shortcuts, and better UX.
  */
 
 import { api } from '../core/api.js';
@@ -9,6 +9,10 @@ import { success, error } from '../core/toast.js';
 
 let activeTextarea = null;
 let lastResult = '';
+let lastOriginal = '';
+let assistView = 'diff'; // 'diff' or 'result'
+let history = []; // { action, original, result, time }
+const MAX_HISTORY = 10;
 
 export function init() {
   const panel = $('aiAssistantPanel');
@@ -94,10 +98,57 @@ export function init() {
       }
     });
   }
+
+  // Undo button
+  const undoBtn = $('aiAssistUndo');
+  if (undoBtn) {
+    undoBtn.addEventListener('click', () => {
+      if (!lastOriginal || !activeTextarea) {
+        error('Nothing to undo');
+        return;
+      }
+      activeTextarea.value = lastOriginal;
+      activeTextarea.dispatchEvent(new Event('input'));
+      success('Reverted to original');
+    });
+  }
+
+  // View toggle (diff vs result)
+  panel.querySelectorAll('.ai-assist-view-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      assistView = btn.dataset.assistView;
+      panel.querySelectorAll('.ai-assist-view-btn').forEach(b => b.classList.toggle('active', b === btn));
+      updateOutputView();
+    });
+  });
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    // Alt+A: toggle assistant
+    if (e.altKey && e.key === 'a') {
+      e.preventDefault();
+      panel.classList.toggle('open');
+      if (panel.classList.contains('open')) detectActiveTextarea();
+      return;
+    }
+    // Only handle shortcuts when panel is open
+    if (!panel.classList.contains('open')) return;
+
+    if (e.altKey) {
+      const shortcutMap = {
+        'i': 'improve', 'e': 'expand', 's': 'shorten',
+        'f': 'formal', 'c': 'casual', 'p': 'persuasive',
+      };
+      const action = shortcutMap[e.key];
+      if (action) {
+        e.preventDefault();
+        runRefine(action);
+      }
+    }
+  });
 }
 
 function detectActiveTextarea() {
-  // Try to find the most recently focused textarea
   if (!activeTextarea) {
     const textareas = document.querySelectorAll('.page.active textarea');
     if (textareas.length > 0) {
@@ -122,7 +173,6 @@ function updateContext() {
 }
 
 function detectPlatform() {
-  // Detect platform from current page context
   const activePage = document.querySelector('.page.active');
   if (!activePage) return 'general';
   const pageId = activePage.id || '';
@@ -143,6 +193,53 @@ function getContent() {
   return null;
 }
 
+/** Build diff view comparing original and result */
+function buildDiffView(original, result) {
+  const diffEl = $('aiAssistantDiff');
+  if (!diffEl) return;
+
+  const origLines = (original || '').split('\n');
+  const resultLines = (result || '').split('\n');
+
+  let html = '';
+
+  // Simple line-by-line diff
+  const maxLen = Math.max(origLines.length, resultLines.length);
+  for (let i = 0; i < maxLen; i++) {
+    const origLine = origLines[i];
+    const newLine = resultLines[i];
+
+    if (origLine === undefined) {
+      // Added line
+      html += `<div class="ai-assist-diff-line ai-assist-diff-added">+ ${escapeHtml(newLine)}</div>`;
+    } else if (newLine === undefined) {
+      // Removed line
+      html += `<div class="ai-assist-diff-line ai-assist-diff-removed">- ${escapeHtml(origLine)}</div>`;
+    } else if (origLine !== newLine) {
+      // Changed line
+      html += `<div class="ai-assist-diff-line ai-assist-diff-removed">- ${escapeHtml(origLine)}</div>`;
+      html += `<div class="ai-assist-diff-line ai-assist-diff-added">+ ${escapeHtml(newLine)}</div>`;
+    } else {
+      // Unchanged
+      html += `<div class="ai-assist-diff-line ai-assist-diff-unchanged">  ${escapeHtml(origLine)}</div>`;
+    }
+  }
+
+  diffEl.innerHTML = html || '<div class="text-muted text-small p-1">No changes detected</div>';
+}
+
+function updateOutputView() {
+  const diffEl = $('aiAssistantDiff');
+  const resultEl = $('aiAssistantResult');
+  if (assistView === 'diff') {
+    if (diffEl) diffEl.classList.remove('hidden');
+    if (resultEl) resultEl.classList.add('hidden');
+  } else {
+    if (diffEl) diffEl.classList.add('hidden');
+    if (resultEl) resultEl.classList.remove('hidden');
+  }
+}
+
 function showOutput(text, meta) {
   const output = $('aiAssistantOutput');
   const result = $('aiAssistantResult');
@@ -151,6 +248,51 @@ function showOutput(text, meta) {
   if (result) result.textContent = text;
   if (metaEl) metaEl.textContent = meta;
   lastResult = text;
+
+  // Build diff from original
+  buildDiffView(lastOriginal, text);
+  updateOutputView();
+}
+
+function addToHistory(action, original, result) {
+  history.unshift({
+    action,
+    original,
+    result,
+    time: new Date().toLocaleTimeString(),
+  });
+  if (history.length > MAX_HISTORY) history.pop();
+  renderHistory();
+}
+
+function renderHistory() {
+  const list = $('aiAssistHistoryList');
+  if (!list) return;
+
+  if (history.length === 0) {
+    list.innerHTML = '<span class="text-small text-muted">No actions yet</span>';
+    return;
+  }
+
+  list.innerHTML = history.map((h, i) => `
+    <div class="ai-assist-history-item" data-history-idx="${i}">
+      <span class="action-name">${escapeHtml(h.action)}</span>
+      <span class="action-time">${h.time}</span>
+    </div>
+  `).join('');
+
+  // Click to restore a past result
+  list.querySelectorAll('.ai-assist-history-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const idx = parseInt(item.dataset.historyIdx);
+      const entry = history[idx];
+      if (entry) {
+        lastResult = entry.result;
+        lastOriginal = entry.original;
+        showOutput(entry.result, `Restored: ${entry.action} (${entry.time})`);
+      }
+    });
+  });
 }
 
 function setLoading(btn, loading) {
@@ -171,6 +313,8 @@ async function runRefine(action, customContext) {
     return;
   }
 
+  lastOriginal = content;
+
   const panel = $('aiAssistantPanel');
   if (panel && !panel.classList.contains('open')) panel.classList.add('open');
 
@@ -185,6 +329,7 @@ async function runRefine(action, customContext) {
     });
     if (item?.content) {
       showOutput(item.content, `${action} | Provider: ${item.provider || 'default'} | ${new Date().toLocaleTimeString()}`);
+      addToHistory(action, content, item.content);
     }
   } catch (err) {
     showOutput('Error: ' + err.message, 'Failed');
@@ -198,6 +343,7 @@ async function runToneAnalysis() {
   const content = getContent();
   if (!content) { error('Select a text field with content first'); return; }
 
+  lastOriginal = content;
   const btn = $('aiAssistTone');
   setLoading(btn, true);
   showOutput('Analyzing tone...', 'Tone Analysis');
@@ -209,6 +355,7 @@ async function runToneAnalysis() {
     });
     if (item?.analysis) {
       showOutput(item.analysis, `Tone Analysis | Provider: ${item.provider || 'default'}`);
+      addToHistory('Tone Analysis', content, item.analysis);
     }
   } catch (err) {
     showOutput('Error: ' + err.message, 'Failed');
@@ -221,6 +368,7 @@ async function runScoreContent() {
   const content = getContent();
   if (!content) { error('Select a text field with content first'); return; }
 
+  lastOriginal = content;
   const btn = $('aiAssistScore');
   setLoading(btn, true);
   showOutput('Scoring content...', 'Content Score');
@@ -232,6 +380,7 @@ async function runScoreContent() {
     });
     if (item?.score) {
       showOutput(item.score, `Content Score | Provider: ${item.provider || 'default'}`);
+      addToHistory('Content Score', content, item.score);
     }
   } catch (err) {
     showOutput('Error: ' + err.message, 'Failed');
@@ -244,7 +393,7 @@ async function runHeadlines() {
   const content = getContent();
   if (!content) { error('Select a text field with content first'); return; }
 
-  // Use first line as the headline to optimize
+  lastOriginal = content;
   const headline = content.split('\n')[0].slice(0, 200);
   const btn = $('aiAssistHeadlines');
   setLoading(btn, true);
@@ -257,6 +406,7 @@ async function runHeadlines() {
     });
     if (item?.headlines) {
       showOutput(item.headlines, `Headlines | Provider: ${item.provider || 'default'}`);
+      addToHistory('Headlines', content, item.headlines);
     }
   } catch (err) {
     showOutput('Error: ' + err.message, 'Failed');

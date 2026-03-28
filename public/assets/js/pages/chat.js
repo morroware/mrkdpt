@@ -3,7 +3,7 @@
  */
 
 import { api } from '../core/api.js';
-import { $, escapeHtml, onClick, confirm } from '../core/utils.js';
+import { $, escapeHtml, onClick, confirm, promptInput } from '../core/utils.js';
 import { success, error } from '../core/toast.js';
 
 let currentConversationId = 0;
@@ -115,7 +115,7 @@ async function loadConversation(id) {
 }
 
 async function renameConversation(id, currentTitle) {
-  const newTitle = prompt('Rename conversation:', currentTitle || 'Chat');
+  const newTitle = await promptInput('Rename Conversation', 'Conversation name', { defaultValue: currentTitle || 'Chat' });
   if (!newTitle || newTitle.trim() === '' || newTitle === currentTitle) return;
   try {
     await api(`/api/ai/conversations/${id}`, {

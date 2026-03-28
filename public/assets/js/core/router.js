@@ -78,9 +78,11 @@ export function initRouter() {
       const section = btn.closest('.nav-section');
       if (section) {
         section.classList.toggle('collapsed');
+        const isCollapsed = section.classList.contains('collapsed');
+        btn.setAttribute('aria-expanded', !isCollapsed);
         // Save state
         const key = 'nav_' + btn.dataset.section;
-        localStorage.setItem(key, section.classList.contains('collapsed') ? '1' : '0');
+        localStorage.setItem(key, isCollapsed ? '1' : '0');
       }
     });
     // Restore saved state
@@ -88,7 +90,10 @@ export function initRouter() {
     const saved = localStorage.getItem(key);
     if (saved === '1') {
       const section = btn.closest('.nav-section');
-      if (section) section.classList.add('collapsed');
+      if (section) {
+        section.classList.add('collapsed');
+        btn.setAttribute('aria-expanded', 'false');
+      }
     }
   });
 

@@ -3,7 +3,7 @@
  */
 
 import { api } from '../core/api.js';
-import { $, $$, escapeHtml, formatDateTime, onSubmit, formData, statusBadge, onClick, tableEmpty, emptyState, debounce, copyToClipboard, confirm } from '../core/utils.js';
+import { $, $$, escapeHtml, formatDateTime, onSubmit, formData, statusBadge, onClick, tableEmpty, emptyState, debounce, copyToClipboard, confirm, infoModal } from '../core/utils.js';
 import { success, error } from '../core/toast.js';
 
 let selectedIds = new Set();
@@ -397,7 +397,7 @@ export function init() {
       if (review) {
         const statusEmoji = review.status === 'approved' ? '✅' : review.status === 'needs_revision' ? '⚠️' : '❌';
         success(`Pre-Flight: ${statusEmoji} ${review.status} (Score: ${review.overall_score}/100)`);
-        if (review.summary) alert(`Pre-Flight Check: ${review.status}\nScore: ${review.overall_score}/100\n\n${review.summary}`);
+        if (review.summary) infoModal('Pre-Flight Check', `Status: ${review.status}\nScore: ${review.overall_score}/100\n\n${review.summary}`, { icon: statusEmoji });
       } else {
         success('Pre-flight check complete — see AI Studio for details');
       }
@@ -433,13 +433,16 @@ export function init() {
           '',
           'Tips: ' + (pred.optimization_tips || []).join('; '),
         ].filter(Boolean).join('\n');
-        alert(details);
+        infoModal('Performance Prediction', details, { icon: '&#128200;' });
       } else {
         success('Prediction complete');
       }
     } catch (err) { error(err.message); }
     finally { if (btn) { btn.classList.remove('loading'); btn.disabled = false; } }
   });
+
+  // ---- Live Platform Preview & Character Counter ----
+  initLivePreview();
 
   // Check for AI-generated content from AI Studio "Use in Post"
   const stored = sessionStorage.getItem('ai_generated_content');
@@ -454,4 +457,78 @@ export function init() {
       bodyField.dispatchEvent(new Event('input'));
     }
   }
+}
+
+/* ---- Live Platform Preview ---- */
+const PLATFORM_LIMITS = {
+  twitter: 280, threads: 500, mastodon: 500, bluesky: 300,
+  instagram: 2200, facebook: 63206, linkedin: 3000,
+  tiktok: 2200, pinterest: 500, reddit: 40000,
+  telegram: 4096, discord: 2000, slack: 40000,
+  youtube: 5000, wordpress: 100000, medium: 100000,
+};
+
+function initLivePreview() {
+  const bodyField = $('postBodyTextarea');
+  const titleField = $('postTitleInput');
+  const platformSelect = $('postPlatformSelect');
+  if (!bodyField) return;
+
+  function updatePreview() {
+    const body = bodyField.value || '';
+    const title = titleField?.value || '';
+    const platform = platformSelect?.value || 'instagram';
+
+    // Character counter
+    const counterEl = $('postCharCounter');
+    const limit = PLATFORM_LIMITS[platform];
+    if (counterEl) {
+      const len = body.length;
+      counterEl.textContent = limit
+        ? `${len} / ${limit} characters`
+        : `${len} characters`;
+      counterEl.className = 'char-counter';
+      if (limit) {
+        if (len > limit) counterEl.classList.add('danger');
+        else if (len > limit * 0.9) counterEl.classList.add('warn');
+      }
+    }
+
+    // Platform badge
+    const badge = $('previewPlatformBadge');
+    if (badge) badge.textContent = platform;
+
+    // Preview body
+    const previewBody = $('previewBody');
+    if (previewBody) {
+      if (!body && !title) {
+        previewBody.innerHTML = '<span class="text-muted">Start typing to see a preview...</span>';
+      } else {
+        let html = '';
+        if (title) html += `<strong>${escapeHtml(title)}</strong><br><br>`;
+        html += escapeHtml(body).replace(/\n/g, '<br>');
+        previewBody.innerHTML = html;
+      }
+    }
+
+    // Character limit indicator in preview
+    const limitEl = $('previewCharLimit');
+    if (limitEl && limit) {
+      const remaining = limit - body.length;
+      if (remaining < 0) {
+        limitEl.innerHTML = `<span class="text-danger">${Math.abs(remaining)} characters over limit for ${platform}</span>`;
+      } else if (remaining < limit * 0.1) {
+        limitEl.innerHTML = `<span class="text-warning">${remaining} characters remaining</span>`;
+      } else {
+        limitEl.textContent = '';
+      }
+    }
+  }
+
+  bodyField.addEventListener('input', updatePreview);
+  if (titleField) titleField.addEventListener('input', updatePreview);
+  if (platformSelect) platformSelect.addEventListener('change', updatePreview);
+
+  // Initial render
+  updatePreview();
 }

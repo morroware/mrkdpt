@@ -2,7 +2,7 @@
  * Landing Pages page module.
  */
 import { api, getBasePath } from '../core/api.js';
-import { $, escapeHtml, formatDate, emptyState, confirm } from '../core/utils.js';
+import { $, escapeHtml, formatDate, emptyState, confirm, copyToClipboard } from '../core/utils.js';
 import { toast } from '../core/toast.js';
 
 export function init() {
@@ -32,7 +32,6 @@ export function init() {
         });
         if (resp?.item?.content) {
           const content = resp.item.content;
-          // Try to fill in the form fields
           const headingField = form.querySelector('[name="hero_heading"]');
           const subField = form.querySelector('[name="hero_subheading"]');
           const bodyField = form.querySelector('[name="body_html"]');
@@ -81,15 +80,49 @@ async function loadPages() {
           <div><strong>${rate}%</strong><br><span class="text-muted text-small">Conv. Rate</span></div>
         </div>
         <div class="btn-group mt-1">
-          ${p.status === 'published' ? `<a href="${url}" target="_blank" class="btn btn-sm btn-outline">View</a>` : ''}
-          ${p.status === 'draft' ? `<button class="btn btn-sm btn-success" onclick="window._publishLanding(${p.id})">Publish</button>` : ''}
-          <button class="btn btn-sm btn-outline" onclick="window._copyText('${url}')">Copy URL</button>
-          <button class="btn btn-sm btn-danger" onclick="window._deleteLanding(${p.id})">Delete</button>
+          ${p.status === 'published' ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="btn btn-sm btn-outline">View</a>` : ''}
+          ${p.status === 'draft' ? `<button class="btn btn-sm btn-success" data-publish-landing="${p.id}">Publish</button>` : ''}
+          <button class="btn btn-sm btn-outline" data-copy-url="${escapeHtml(url)}">Copy URL</button>
+          <button class="btn btn-sm btn-danger" data-delete-landing="${p.id}">Delete</button>
         </div>
       </div>`;
     }).join('') || emptyState('&#128196;', 'No landing pages yet', 'Create your first landing page to capture leads and drive conversions.');
+
+    // Event delegation
+    el.addEventListener('click', handlePageListClick);
   } catch (err) {
     toast('Failed to load landing pages: ' + err.message, 'error');
+  }
+}
+
+async function handlePageListClick(e) {
+  const publishBtn = e.target.closest('[data-publish-landing]');
+  if (publishBtn) {
+    publishBtn.classList.add('loading');
+    publishBtn.disabled = true;
+    try {
+      await api(`/api/landing-pages/${publishBtn.dataset.publishLanding}`, { method: 'PATCH', body: JSON.stringify({ status: 'published' }) });
+      toast('Page published', 'success');
+      refresh();
+    } catch (err) { toast(err.message, 'error'); }
+    finally { publishBtn.classList.remove('loading'); publishBtn.disabled = false; }
+    return;
+  }
+
+  const copyBtn = e.target.closest('[data-copy-url]');
+  if (copyBtn) {
+    await copyToClipboard(copyBtn.dataset.copyUrl, copyBtn);
+    return;
+  }
+
+  const deleteBtn = e.target.closest('[data-delete-landing]');
+  if (deleteBtn) {
+    if (!await confirm('Delete Landing Page', 'Are you sure you want to delete this landing page? This cannot be undone.')) return;
+    try {
+      await api(`/api/landing-pages/${deleteBtn.dataset.deleteLanding}`, { method: 'DELETE' });
+      toast('Deleted', 'success');
+      refresh();
+    } catch (err) { toast(err.message, 'error'); }
   }
 }
 
@@ -130,21 +163,3 @@ async function handleCreate(e) {
     toast(err.message, 'error');
   }
 }
-
-window._publishLanding = async (id) => {
-  try {
-    await api(`/api/landing-pages/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'published' }) });
-    toast('Page published', 'success');
-    refresh();
-  } catch (err) { toast(err.message, 'error'); }
-};
-
-window._deleteLanding = async (id) => {
-  if (!await confirm('Delete Landing Page', 'Are you sure you want to delete this landing page? This cannot be undone.')) return;
-  try { await api(`/api/landing-pages/${id}`, { method: 'DELETE' }); toast('Deleted', 'success'); refresh(); } catch (e) { toast(e.message, 'error'); }
-};
-
-window._copyText = window._copyText || ((text) => {
-  navigator.clipboard.writeText(text).then(() => toast('Copied', 'info'));
-});
-

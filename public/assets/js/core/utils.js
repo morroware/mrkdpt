@@ -160,6 +160,88 @@ export function confirm(title, message, { icon = '&#9888;', okText = 'Confirm', 
 }
 
 /**
+ * Show a prompt input dialog. Returns a promise that resolves to the input value or null.
+ */
+export function promptInput(title, label, { defaultValue = '', placeholder = '', inputType = 'text' } = {}) {
+  return new Promise((resolve) => {
+    const overlay = $('confirmDialog');
+    if (!overlay) { resolve(window.prompt(label, defaultValue)); return; }
+    $('confirmIcon').innerHTML = '&#9998;';
+    $('confirmTitle').textContent = title;
+    // Replace the message paragraph with an input field
+    const msgEl = $('confirmMessage');
+    msgEl.innerHTML = `<label style="display:block;font-size:0.82rem;color:var(--text-secondary);margin-bottom:0.35rem">${escapeHtml(label)}</label><input type="${inputType}" id="promptDialogInput" value="${escapeHtml(defaultValue)}" placeholder="${escapeHtml(placeholder)}" style="width:100%" />`;
+    const okBtn = $('confirmOk');
+    okBtn.textContent = 'OK';
+    okBtn.className = 'btn';
+    overlay.classList.add('open');
+    const input = $('promptDialogInput');
+    if (input) { input.focus(); input.select(); }
+
+    function cleanup(result) {
+      overlay.classList.remove('open');
+      $('confirmCancel').removeEventListener('click', onCancel);
+      okBtn.removeEventListener('click', onOk);
+      overlay.removeEventListener('click', onBg);
+      if (input) input.removeEventListener('keydown', onKey);
+      msgEl.textContent = '';
+      resolve(result);
+    }
+    function onCancel() { cleanup(null); }
+    function onOk() { cleanup(input ? input.value : null); }
+    function onBg(e) { if (e.target === overlay) cleanup(null); }
+    function onKey(e) { if (e.key === 'Enter') onOk(); if (e.key === 'Escape') onCancel(); }
+
+    $('confirmCancel').addEventListener('click', onCancel);
+    okBtn.addEventListener('click', onOk);
+    overlay.addEventListener('click', onBg);
+    if (input) input.addEventListener('keydown', onKey);
+  });
+}
+
+/**
+ * Show an info modal with rich text content. Returns a promise that resolves when closed.
+ */
+export function infoModal(title, content, { icon = '&#128196;' } = {}) {
+  return new Promise((resolve) => {
+    const overlay = $('confirmDialog');
+    if (!overlay) { window.alert(content); resolve(); return; }
+    $('confirmIcon').innerHTML = icon;
+    $('confirmTitle').textContent = title;
+    const msgEl = $('confirmMessage');
+    msgEl.style.whiteSpace = 'pre-wrap';
+    msgEl.style.textAlign = 'left';
+    msgEl.style.maxHeight = '400px';
+    msgEl.style.overflowY = 'auto';
+    msgEl.style.fontSize = '0.85rem';
+    msgEl.textContent = content;
+    const okBtn = $('confirmOk');
+    okBtn.textContent = 'Close';
+    okBtn.className = 'btn';
+    const cancelBtn = $('confirmCancel');
+    cancelBtn.style.display = 'none';
+    overlay.classList.add('open');
+
+    function cleanup() {
+      overlay.classList.remove('open');
+      okBtn.removeEventListener('click', cleanup);
+      overlay.removeEventListener('click', onBg);
+      cancelBtn.style.display = '';
+      msgEl.style.whiteSpace = '';
+      msgEl.style.textAlign = '';
+      msgEl.style.maxHeight = '';
+      msgEl.style.overflowY = '';
+      msgEl.style.fontSize = '';
+      resolve();
+    }
+    function onBg(e) { if (e.target === overlay) cleanup(); }
+
+    okBtn.addEventListener('click', cleanup);
+    overlay.addEventListener('click', onBg);
+  });
+}
+
+/**
  * Render an empty state placeholder.
  */
 export function emptyState(icon, title, description, actionHtml = '') {

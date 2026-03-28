@@ -41,9 +41,9 @@
       <a href="#dashboard" data-page="dashboard"><span class="nav-icon">&#9632;</span> Dashboard</a>
 
       <div class="nav-section">
-        <button class="nav-section-toggle" data-section="ai-tools">
-          <span class="nav-section-icon">&#9733;</span> AI & Content
-          <span class="nav-chevron">&#9662;</span>
+        <button class="nav-section-toggle" data-section="ai-tools" aria-expanded="true" aria-controls="nav-ai-tools">
+          <span class="nav-section-icon" aria-hidden="true">&#9733;</span> AI & Content
+          <span class="nav-chevron" aria-hidden="true">&#9662;</span>
         </button>
         <div class="nav-section-items" id="nav-ai-tools">
           <a href="#ai" data-page="ai"><span class="nav-icon">&#9733;</span> AI Studio</a>
@@ -55,9 +55,9 @@
       </div>
 
       <div class="nav-section">
-        <button class="nav-section-toggle" data-section="marketing">
-          <span class="nav-section-icon">&#9776;</span> Marketing
-          <span class="nav-chevron">&#9662;</span>
+        <button class="nav-section-toggle" data-section="marketing" aria-expanded="true" aria-controls="nav-marketing">
+          <span class="nav-section-icon" aria-hidden="true">&#9776;</span> Marketing
+          <span class="nav-chevron" aria-hidden="true">&#9662;</span>
         </button>
         <div class="nav-section-items" id="nav-marketing">
           <a href="#campaigns" data-page="campaigns"><span class="nav-icon">&#9776;</span> Campaigns</a>
@@ -69,9 +69,9 @@
       </div>
 
       <div class="nav-section">
-        <button class="nav-section-toggle" data-section="intelligence">
-          <span class="nav-section-icon">&#9670;</span> Intelligence
-          <span class="nav-chevron">&#9662;</span>
+        <button class="nav-section-toggle" data-section="intelligence" aria-expanded="true" aria-controls="nav-intelligence">
+          <span class="nav-section-icon" aria-hidden="true">&#9670;</span> Intelligence
+          <span class="nav-chevron" aria-hidden="true">&#9662;</span>
         </button>
         <div class="nav-section-items" id="nav-intelligence">
           <a href="#analytics" data-page="analytics"><span class="nav-icon">&#9670;</span> Analytics</a>
@@ -82,9 +82,9 @@
       </div>
 
       <div class="nav-section">
-        <button class="nav-section-toggle" data-section="audience">
-          <span class="nav-section-icon">&#9823;</span> Audience
-          <span class="nav-chevron">&#9662;</span>
+        <button class="nav-section-toggle" data-section="audience" aria-expanded="true" aria-controls="nav-audience">
+          <span class="nav-section-icon" aria-hidden="true">&#9823;</span> Audience
+          <span class="nav-chevron" aria-hidden="true">&#9662;</span>
         </button>
         <div class="nav-section-items" id="nav-audience">
           <a href="#contacts" data-page="contacts"><span class="nav-icon">&#9823;</span> Contacts</a>
@@ -94,9 +94,9 @@
       </div>
 
       <div class="nav-section">
-        <button class="nav-section-toggle" data-section="tools">
-          <span class="nav-section-icon">&#9889;</span> Tools
-          <span class="nav-chevron">&#9662;</span>
+        <button class="nav-section-toggle" data-section="tools" aria-expanded="true" aria-controls="nav-tools">
+          <span class="nav-section-icon" aria-hidden="true">&#9889;</span> Tools
+          <span class="nav-chevron" aria-hidden="true">&#9662;</span>
         </button>
         <div class="nav-section-items" id="nav-tools">
           <a href="#links" data-page="links"><span class="nav-icon">&#128279;</span> Links & UTM</a>
@@ -130,7 +130,7 @@
     </header>
 
     <!-- Global AI Command Bar Modal -->
-    <div class="modal-overlay" id="aiCommandModal" role="dialog" aria-label="AI Command Bar">
+    <div class="modal-overlay" id="aiCommandModal" role="dialog" aria-modal="true" aria-label="AI Command Bar">
       <div class="modal-content ai-command-modal">
         <div class="ai-command-search">
           <span class="ai-command-icon">&#9733;</span>
@@ -492,14 +492,15 @@
           </div>
         </div>
         <div id="content-create" class="tab-panel">
+          <div class="content-create-layout">
           <form id="postForm" class="stack card">
             <div class="row2">
               <div><label>Campaign</label><select name="campaign_id" id="campaignSelect"><option value="">None</option></select></div>
-              <div><label>Platform</label><select name="platform"><option>instagram</option><option>facebook</option><option>twitter</option><option>linkedin</option><option>bluesky</option><option>mastodon</option><option>threads</option><option>pinterest</option><option>tiktok</option><option>reddit</option><option>telegram</option><option>discord</option><option>slack</option><option>wordpress</option><option>medium</option><option>youtube</option></select></div>
+              <div><label>Platform</label><select name="platform" id="postPlatformSelect"><option>instagram</option><option>facebook</option><option>twitter</option><option>linkedin</option><option>bluesky</option><option>mastodon</option><option>threads</option><option>pinterest</option><option>tiktok</option><option>reddit</option><option>telegram</option><option>discord</option><option>slack</option><option>wordpress</option><option>medium</option><option>youtube</option></select></div>
             </div>
             <div class="row2">
               <div><label>Content Type</label><select name="content_type"><option value="social_post">Social Post</option><option value="caption">Caption</option><option value="ad_copy">Ad Copy</option><option value="video_script">Video Script</option><option value="email">Email</option><option value="blog_post">Blog Post</option></select></div>
-              <div><label>Title</label><input name="title" placeholder="Post title" required /></div>
+              <div><label>Title</label><input name="title" id="postTitleInput" placeholder="Post title" required /></div>
             </div>
             <div>
               <div class="flex-between"><label>Body</label>
@@ -511,7 +512,8 @@
                   <button type="button" class="ai-inline-btn" data-inline-refine="emoji" title="Add Emojis">&#128515; Emojis</button>
                 </div>
               </div>
-              <textarea name="body" rows="5" placeholder="Post content" required></textarea>
+              <textarea name="body" id="postBodyTextarea" rows="6" placeholder="Post content" required></textarea>
+              <div class="char-counter" id="postCharCounter">0 characters</div>
             </div>
             <div class="row2">
               <div><label>CTA</label><input name="cta" placeholder="Call to action" /></div>
@@ -525,7 +527,7 @@
             <div class="flex">
               <label><input type="checkbox" name="is_evergreen" value="1" /> Evergreen content</label>
             </div>
-            <div class="btn-group">
+            <div class="btn-group flex-wrap">
               <button type="submit">Save Post</button>
               <button type="button" class="btn btn-ai" id="aiGenerateBody"><span class="btn-ai-icon">&#9733;</span> AI Write Content</button>
               <button type="button" class="btn btn-ai btn-sm" id="aiGenerateTitle" title="AI-generate post title"><span class="btn-ai-icon">&#9733;</span> AI Title</button>
@@ -535,6 +537,35 @@
               <button type="button" class="btn btn-ai btn-sm" id="aiPredictPost" title="Predict engagement performance"><span class="btn-ai-icon">&#9733;</span> Predict</button>
             </div>
           </form>
+
+          <!-- Live Platform Preview -->
+          <div class="content-preview-panel" id="contentPreviewPanel">
+            <div class="content-preview-header">
+              <h4>Live Preview</h4>
+              <span class="badge" id="previewPlatformBadge">instagram</span>
+            </div>
+            <div class="content-preview-body">
+              <div class="platform-mockup" id="platformMockup">
+                <div class="platform-mockup-header">
+                  <div class="platform-mockup-avatar">B</div>
+                  <div>
+                    <div style="font-size:0.82rem;font-weight:600;">Your Brand</div>
+                    <div style="font-size:0.72rem;color:var(--text-muted);">Just now</div>
+                  </div>
+                </div>
+                <div class="platform-mockup-body" id="previewBody">
+                  <span class="text-muted">Start typing to see a preview...</span>
+                </div>
+                <div class="platform-mockup-footer">
+                  <span id="previewLikeIcon">&#10084; Like</span>
+                  <span>&#128172; Comment</span>
+                  <span>&#8635; Share</span>
+                </div>
+              </div>
+              <div class="char-counter mt-1" id="previewCharLimit"></div>
+            </div>
+          </div>
+          </div>
         </div>
         <div class="bulk-bar" id="bulkBar">
           <span class="bulk-count"><span id="bulkCount">0</span> selected</span>
@@ -567,6 +598,13 @@
               <option value="multi">All Providers (Compare)</option>
             </select>
           </div>
+        </div>
+
+        <!-- AI Tool Search -->
+        <div class="ai-tool-search">
+          <span class="ai-tool-search-icon">&#128269;</span>
+          <input type="text" id="aiToolSearch" placeholder="Search tools... (e.g. blog, email, seo, headlines)" autocomplete="off" />
+          <span class="ai-tool-count" id="aiToolCount"></span>
         </div>
 
         <!-- AI Category Tabs -->
@@ -976,16 +1014,19 @@
           <div class="ai-output-panel" id="aiOutputPanel">
             <div class="ai-output-header">
               <h3>AI Output</h3>
-              <div class="ai-output-actions">
+              <div class="ai-output-actions flex gap-1">
                 <button class="btn btn-sm btn-outline" id="aiCopyOutput" title="Copy to clipboard">Copy</button>
                 <button class="btn btn-sm btn-outline" id="aiUseInPost" title="Send to Content Studio">Use in Post</button>
                 <button class="btn btn-sm btn-outline" id="aiClearOutput" title="Clear output">Clear</button>
               </div>
             </div>
             <div class="ai-output-meta" id="aiOutputMeta"></div>
-            <pre class="ai-output" id="aiOutput">Select a tool and click generate to see AI output here.
-
-Tip: Use the provider selector above to compare results from different AI models, or select "All Providers" to run them simultaneously.</pre>
+            <div class="ai-output-tabs">
+              <button class="ai-output-tab active" data-output-view="rendered">Rendered</button>
+              <button class="ai-output-tab" data-output-view="raw">Raw</button>
+            </div>
+            <div class="ai-output-rich" id="aiOutputRich"><p class="text-muted">Select a tool and click generate to see AI output here.</p><p class="text-small text-muted">Tip: Use the provider selector above to compare results from different AI models.</p></div>
+            <pre class="ai-output hidden" id="aiOutput">Select a tool and click generate to see AI output here.</pre>
           </div>
         </div>
       </section>
@@ -1203,7 +1244,7 @@ Tip: Use the provider selector above to compare results from different AI models
         </div>
         <div id="email-templates-lib" class="tab-panel">
           <div class="card-grid" id="emailTemplateList"></div>
-          <div class="modal-overlay" id="emailTplModal" role="dialog" aria-labelledby="emailTplModalTitle">
+          <div class="modal-overlay" id="emailTplModal" role="dialog" aria-modal="true" aria-labelledby="emailTplModalTitle">
             <div class="modal-content"><div class="modal-header"><h3 id="emailTplModalTitle">Template Preview</h3><button class="modal-close" aria-label="Close" id="closeEmailTplModal">&times;</button></div><div class="modal-body" id="emailTplModalBody"></div></div>
           </div>
         </div>
@@ -1286,7 +1327,7 @@ Tip: Use the provider selector above to compare results from different AI models
         <div id="rssFeedList" class="mt-1"></div>
         <div class="card mt-1"><h3>Recent Items</h3><div class="table-wrap"><table class="data-table"><thead><tr><th>Title</th><th>Source</th><th>Date</th><th>Actions</th></tr></thead><tbody id="rssItemTable"></tbody></table></div></div>
         <!-- RSS to Post Modal -->
-        <div class="modal-overlay" id="rssPostModal" role="dialog" aria-label="AI: Turn into Post">
+        <div class="modal-overlay" id="rssPostModal" role="dialog" aria-modal="true" aria-label="AI: Turn into Post">
           <div class="modal-content"><div class="modal-header"><h3>AI: Turn into Post</h3><button class="modal-close" aria-label="Close" id="closeRssPostModal">&times;</button></div>
             <div class="modal-body stack">
               <select id="rssPostPlatform"><option>twitter</option><option>linkedin</option><option>instagram</option><option>facebook</option></select>
@@ -1325,7 +1366,7 @@ Tip: Use the provider selector above to compare results from different AI models
           <table class="data-table" aria-label="Contacts"><thead><tr><th>Email</th><th>Name</th><th>Company</th><th>Stage</th><th>Score</th><th>Source</th><th>Last Activity</th><th>Actions</th></tr></thead><tbody id="contactTable"><tr class="table-empty"><td colspan="8">No contacts yet. Add contacts manually or import a CSV file.</td></tr></tbody></table>
         </div>
         <!-- Contact detail modal -->
-        <div class="modal-overlay" id="contactModal" role="dialog" aria-labelledby="contactModalTitle">
+        <div class="modal-overlay" id="contactModal" role="dialog" aria-modal="true" aria-labelledby="contactModalTitle">
           <div class="modal-content"><div class="modal-header"><h3 id="contactModalTitle">Contact</h3><button class="modal-close" aria-label="Close" id="closeContactModal">&times;</button></div><div class="modal-body" id="contactModalBody"></div></div>
         </div>
       </section>
@@ -1449,13 +1490,113 @@ Tip: Use the provider selector above to compare results from different AI models
 
       <!-- Automations -->
       <section id="page-automations" class="page">
-        <form id="automationForm" class="stack card">
-          <div><label>Rule Name</label><input name="name" required placeholder="Tag new form leads" /></div>
-          <div class="row2"><div><label>When (Trigger)</label><select name="trigger_event" id="automationTrigger"><option value="form.submitted">Form Submitted</option><option value="contact.created">Contact Created</option><option value="contact.stage_changed">Contact Stage Changed</option><option value="post.published">Post Published</option><option value="subscriber.added">Subscriber Added</option><option value="email.sent">Email Sent</option><option value="landing_page.conversion">Landing Page Conversion</option><option value="link.clicked">Link Clicked</option></select></div><div><label>Then (Action)</label><select name="action_type" id="automationAction"><option value="tag_contact">Add Tag to Contact</option><option value="update_contact_stage">Update Contact Stage</option><option value="add_score">Add to Contact Score</option><option value="add_to_list">Add to Email List</option><option value="send_webhook">Send Webhook</option><option value="log_activity">Log Activity</option></select></div></div>
-          <div class="row2"><div><label>Conditions (JSON, optional)</label><input name="conditions" placeholder='{"source":"form"}' /><div class="text-muted text-small">Tip: choose a trigger to auto-suggest condition JSON.</div></div><div><label>Action Config (JSON)</label><input name="action_config" required placeholder='{"tag":"new-lead"}' /><div class="text-muted text-small">Tip: choose an action to auto-suggest config JSON.</div></div></div>
-          <button type="submit">Create Automation</button>
-        </form>
-        <div class="table-wrap mt-1"><table class="data-table" aria-label="Automations"><thead><tr><th>Name</th><th>Trigger</th><th>Action</th><th>Runs</th><th>Last Run</th><th>Active</th><th>Actions</th></tr></thead><tbody id="automationTable"><tr class="table-empty"><td colspan="7">No automations yet. Create trigger-action rules to automate your workflows.</td></tr></tbody></table></div>
+        <!-- View toggle tabs -->
+        <div class="flex-between mb-1">
+          <div class="tabs" style="margin-bottom:0; border-bottom:none;">
+            <button class="tab-btn active" data-tab="automations-builder">Visual Builder</button>
+            <button class="tab-btn" data-tab="automations-list">All Automations</button>
+          </div>
+          <button class="btn btn-ai btn-sm" id="automationNewBtn">+ New Automation</button>
+        </div>
+
+        <!-- Visual Builder Tab -->
+        <div class="tab-panel active" id="automations-builder">
+          <div class="automation-builder">
+            <!-- Block Palette -->
+            <div class="automation-palette">
+              <div class="automation-palette-header">Drag blocks to canvas</div>
+              <div class="automation-palette-blocks">
+                <div class="automation-palette-group">
+                  <div class="automation-palette-group-label">Triggers (When...)</div>
+                  <div class="automation-block-template" draggable="true" data-block-type="trigger" data-block-event="form.submitted">
+                    <div class="block-icon block-icon-trigger">&#128196;</div>Form Submitted
+                  </div>
+                  <div class="automation-block-template" draggable="true" data-block-type="trigger" data-block-event="contact.created">
+                    <div class="block-icon block-icon-trigger">&#128100;</div>Contact Created
+                  </div>
+                  <div class="automation-block-template" draggable="true" data-block-type="trigger" data-block-event="contact.stage_changed">
+                    <div class="block-icon block-icon-trigger">&#128260;</div>Stage Changed
+                  </div>
+                  <div class="automation-block-template" draggable="true" data-block-type="trigger" data-block-event="post.published">
+                    <div class="block-icon block-icon-trigger">&#128227;</div>Post Published
+                  </div>
+                  <div class="automation-block-template" draggable="true" data-block-type="trigger" data-block-event="subscriber.added">
+                    <div class="block-icon block-icon-trigger">&#128231;</div>Subscriber Added
+                  </div>
+                  <div class="automation-block-template" draggable="true" data-block-type="trigger" data-block-event="email.sent">
+                    <div class="block-icon block-icon-trigger">&#9993;</div>Email Sent
+                  </div>
+                  <div class="automation-block-template" draggable="true" data-block-type="trigger" data-block-event="landing_page.conversion">
+                    <div class="block-icon block-icon-trigger">&#127919;</div>Page Conversion
+                  </div>
+                  <div class="automation-block-template" draggable="true" data-block-type="trigger" data-block-event="link.clicked">
+                    <div class="block-icon block-icon-trigger">&#128279;</div>Link Clicked
+                  </div>
+                </div>
+                <div class="automation-palette-group">
+                  <div class="automation-palette-group-label">Conditions (If...)</div>
+                  <div class="automation-block-template" draggable="true" data-block-type="condition" data-block-event="filter_field">
+                    <div class="block-icon block-icon-condition">&#128269;</div>Filter by Field
+                  </div>
+                  <div class="automation-block-template" draggable="true" data-block-type="condition" data-block-event="match_tag">
+                    <div class="block-icon block-icon-condition">&#127991;</div>Has Tag
+                  </div>
+                  <div class="automation-block-template" draggable="true" data-block-type="condition" data-block-event="match_stage">
+                    <div class="block-icon block-icon-condition">&#128200;</div>In Stage
+                  </div>
+                </div>
+                <div class="automation-palette-group">
+                  <div class="automation-palette-group-label">Actions (Then...)</div>
+                  <div class="automation-block-template" draggable="true" data-block-type="action" data-block-event="tag_contact">
+                    <div class="block-icon block-icon-action">&#127991;</div>Add Tag
+                  </div>
+                  <div class="automation-block-template" draggable="true" data-block-type="action" data-block-event="update_contact_stage">
+                    <div class="block-icon block-icon-action">&#128200;</div>Update Stage
+                  </div>
+                  <div class="automation-block-template" draggable="true" data-block-type="action" data-block-event="add_score">
+                    <div class="block-icon block-icon-action">&#11088;</div>Add Score
+                  </div>
+                  <div class="automation-block-template" draggable="true" data-block-type="action" data-block-event="add_to_list">
+                    <div class="block-icon block-icon-action">&#128203;</div>Add to List
+                  </div>
+                  <div class="automation-block-template" draggable="true" data-block-type="action" data-block-event="send_webhook">
+                    <div class="block-icon block-icon-action">&#128268;</div>Send Webhook
+                  </div>
+                  <div class="automation-block-template" draggable="true" data-block-type="action" data-block-event="log_activity">
+                    <div class="block-icon block-icon-action">&#128221;</div>Log Activity
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Canvas -->
+            <div class="automation-canvas-wrap">
+              <div class="automation-toolbar">
+                <div class="automation-toolbar-left">
+                  <input type="text" id="automationName" placeholder="Untitled Automation" value="" />
+                </div>
+                <div class="automation-toolbar-right">
+                  <button class="btn btn-sm btn-outline" id="automationClearBtn" title="Clear canvas">Clear</button>
+                  <button class="btn btn-sm btn-ai" id="automationSaveBtn">Save Automation</button>
+                </div>
+              </div>
+              <div class="automation-canvas" id="automationCanvas">
+                <div class="workflow-drop-zone" id="automationDropZone">
+                  <div class="automation-canvas-empty" id="automationEmpty">
+                    <div class="empty-icon">&#9889;</div>
+                    <strong>Build your automation</strong>
+                    <span>Drag trigger, condition, and action blocks from the left panel</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- All Automations Tab -->
+        <div class="tab-panel" id="automations-list" style="display:none;">
+          <div id="automationListView"></div>
+        </div>
       </section>
 
       <!-- Audience Segments -->
@@ -1484,7 +1625,7 @@ Tip: Use the provider selector above to compare results from different AI models
         </form>
         <div class="card mt-1 hidden" id="smartSegmentsCard"><h3><span class="btn-ai-icon">&#9733;</span> AI Suggested Segments</h3><div id="smartSegmentsList"></div></div>
         <div id="segmentList" class="card-grid mt-1"></div>
-        <div class="modal-overlay" id="segmentModal" role="dialog" aria-labelledby="segmentModalTitle">
+        <div class="modal-overlay" id="segmentModal" role="dialog" aria-modal="true" aria-labelledby="segmentModalTitle">
           <div class="modal-content"><div class="modal-header"><h3 id="segmentModalTitle">Segment Contacts</h3><button class="modal-close" aria-label="Close" id="closeSegmentModal">&times;</button></div><div class="modal-body" id="segmentModalBody"></div></div>
         </div>
       </section>
@@ -1627,12 +1768,24 @@ Tip: Use the provider selector above to compare results from different AI models
     <div class="ai-assistant-output hidden" id="aiAssistantOutput">
       <div class="ai-assistant-output-header">
         <span class="text-small text-muted" id="aiAssistantOutputMeta"></span>
-        <div class="btn-group">
-          <button class="btn btn-sm btn-outline" id="aiAssistCopy">Copy</button>
-          <button class="btn btn-sm btn-ai" id="aiAssistApply">Apply to Field</button>
+        <div class="flex gap-1">
+          <div class="ai-assist-view-toggle">
+            <button class="ai-assist-view-btn active" data-assist-view="diff" title="Show changes">Diff</button>
+            <button class="ai-assist-view-btn" data-assist-view="result" title="Show result only">Result</button>
+          </div>
         </div>
       </div>
-      <pre class="ai-output" id="aiAssistantResult"></pre>
+      <div class="ai-assist-diff" id="aiAssistantDiff"></div>
+      <pre class="ai-output hidden" id="aiAssistantResult"></pre>
+      <div class="ai-assist-action-bar">
+        <button class="btn btn-sm btn-outline" id="aiAssistCopy">Copy</button>
+        <button class="btn btn-sm btn-outline" id="aiAssistUndo">Undo</button>
+        <button class="btn btn-sm btn-ai" id="aiAssistApply">Apply</button>
+      </div>
+    </div>
+    <div class="ai-assist-history" id="aiAssistHistory">
+      <div class="ai-assist-history-label">Recent Actions</div>
+      <div id="aiAssistHistoryList"><span class="text-small text-muted">No actions yet</span></div>
     </div>
   </div>
 </div>
@@ -1644,7 +1797,7 @@ Tip: Use the provider selector above to compare results from different AI models
 </button>
 
 <!-- Confirmation Dialog -->
-<div class="modal-overlay" id="confirmDialog" role="dialog" aria-label="Confirm action">
+<div class="modal-overlay" id="confirmDialog" role="dialog" aria-modal="true" aria-label="Confirm action">
   <div class="modal-content confirm-dialog">
     <div class="modal-body">
       <div class="confirm-icon" id="confirmIcon">&#9888;</div>

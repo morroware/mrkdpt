@@ -2,7 +2,7 @@
  * Form Builder page module.
  */
 import { api, getBasePath } from '../core/api.js';
-import { $, escapeHtml, formatDate, emptyState, confirm, tableEmpty } from '../core/utils.js';
+import { $, escapeHtml, formatDate, emptyState, confirm, tableEmpty, copyToClipboard } from '../core/utils.js';
 import { toast } from '../core/toast.js';
 
 export function init() {
@@ -30,13 +30,40 @@ async function loadForms() {
         <p class="text-muted text-small mt-1">${fieldCount} fields &middot; ${f.submissions} submissions &middot; ${getBasePath()}/f/${escapeHtml(f.slug)}</p>
         <div class="btn-group mt-1">
           <a href="${embedUrl}" target="_blank" class="btn btn-sm btn-outline">Preview</a>
-          <button class="btn btn-sm btn-outline" onclick="window._copyFormEmbed(${f.id})">Embed Code</button>
-          <button class="btn btn-sm btn-danger" onclick="window._deleteForm(${f.id})">Delete</button>
+          <button class="btn btn-sm btn-outline" data-copy-embed="${f.id}">Embed Code</button>
+          <button class="btn btn-sm btn-danger" data-delete-form="${f.id}">Delete</button>
         </div>
       </div>`;
     }).join('') || emptyState('&#128221;', 'No forms yet', 'Build your first form to collect leads and feedback.');
+
+    // Event delegation for form actions
+    el.addEventListener('click', handleFormListClick);
   } catch (err) {
     toast('Failed to load forms: ' + err.message, 'error');
+  }
+}
+
+async function handleFormListClick(e) {
+  const embedBtn = e.target.closest('[data-copy-embed]');
+  if (embedBtn) {
+    const id = embedBtn.dataset.copyEmbed;
+    try {
+      const resp = await api(`/api/forms/${id}/embed`);
+      const data = resp.item || resp;
+      await copyToClipboard(data.embed_code, embedBtn);
+      toast('Embed code copied to clipboard', 'info');
+    } catch (err) { toast(err.message, 'error'); }
+    return;
+  }
+
+  const deleteBtn = e.target.closest('[data-delete-form]');
+  if (deleteBtn) {
+    if (!await confirm('Delete Form', 'Are you sure you want to delete this form and all its submissions? This cannot be undone.')) return;
+    try {
+      await api(`/api/forms/${deleteBtn.dataset.deleteForm}`, { method: 'DELETE' });
+      toast('Deleted', 'success');
+      refresh();
+    } catch (err) { toast(err.message, 'error'); }
   }
 }
 
@@ -68,11 +95,10 @@ async function handleCreate(e) {
   e.preventDefault();
   const fd = new FormData(e.target);
   const data = Object.fromEntries(fd.entries());
-  // Parse fields JSON
   try {
     data.fields = JSON.parse(data.fields || '[]');
   } catch {
-    toast('Invalid fields JSON', 'error');
+    toast('Invalid fields JSON. Expected format: [{"name":"email","type":"email","required":true}]', 'error');
     return;
   }
   try {
@@ -108,20 +134,3 @@ async function loadSubmissions() {
     toast(err.message, 'error');
   }
 }
-
-window._copyFormEmbed = async (id) => {
-  try {
-    const resp = await api(`/api/forms/${id}/embed`);
-    const data = resp.item || resp;
-    navigator.clipboard.writeText(data.embed_code);
-    toast('Embed code copied to clipboard', 'info');
-  } catch (err) {
-    toast(err.message, 'error');
-  }
-};
-
-window._deleteForm = async (id) => {
-  if (!await confirm('Delete Form', 'Are you sure you want to delete this form and all its submissions? This cannot be undone.')) return;
-  try { await api(`/api/forms/${id}`, { method: 'DELETE' }); toast('Deleted', 'success'); refresh(); } catch (e) { toast(e.message, 'error'); }
-};
-

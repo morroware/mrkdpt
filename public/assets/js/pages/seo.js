@@ -3,16 +3,33 @@
  */
 
 import { api } from '../core/api.js';
-import { $, onClick } from '../core/utils.js';
+import { $, onClick, escapeHtml } from '../core/utils.js';
 import { success, error } from '../core/toast.js';
 
 function output(text) {
   const el = $('seoOutput');
-  if (el) el.textContent = typeof text === 'string' ? text : JSON.stringify(text, null, 2);
+  if (!el) return;
+  const raw = typeof text === 'string' ? text : JSON.stringify(text, null, 2);
+  // Render as formatted content instead of raw text
+  el.innerHTML = formatOutput(raw);
+}
+
+function formatOutput(text) {
+  // Simple markdown-like rendering
+  return escapeHtml(text)
+    .replace(/^### (.+)$/gm, '<h3 style="margin:0.5rem 0 0.25rem;font-size:0.95rem;font-weight:700">$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2 style="margin:0.75rem 0 0.35rem;font-size:1.05rem;font-weight:700">$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1 style="margin:0.75rem 0 0.35rem;font-size:1.15rem;font-weight:700">$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^[*-] (.+)$/gm, '<li style="margin-left:1rem">$1</li>')
+    .replace(/^\d+\. (.+)$/gm, '<li style="margin-left:1rem">$1</li>')
+    .replace(/\n\n/g, '<br><br>')
+    .replace(/\n/g, '<br>');
 }
 
 function loading() {
-  output('Generating... please wait.');
+  const el = $('seoOutput');
+  if (el) el.innerHTML = '<span class="text-muted" style="animation: subtlePulse 1.5s infinite">Generating... please wait.</span>';
 }
 
 export function refresh() {

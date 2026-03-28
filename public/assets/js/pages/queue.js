@@ -3,7 +3,7 @@
  */
 
 import { api } from '../core/api.js';
-import { $, escapeHtml, formatDateTime, onSubmit, onClick, statusBadge, tableEmpty } from '../core/utils.js';
+import { $, escapeHtml, formatDateTime, onSubmit, onClick, statusBadge, tableEmpty, confirm } from '../core/utils.js';
 import { success, error } from '../core/toast.js';
 
 async function loadQueue() {
@@ -37,11 +37,15 @@ async function loadQueue() {
 
     table.querySelectorAll('[data-remove]').forEach((btn) => {
       btn.addEventListener('click', async () => {
+        if (!await confirm('Remove from Queue', 'Are you sure you want to remove this post from the queue?', { okText: 'Remove', okClass: 'btn-danger' })) return;
+        btn.classList.add('loading');
+        btn.disabled = true;
         try {
           await api(`/api/social-queue/${btn.dataset.remove}`, { method: 'DELETE' });
           success('Removed from queue');
           loadQueue();
         } catch (e) { error(e.message); }
+        finally { btn.classList.remove('loading'); btn.disabled = false; }
       });
     });
   } catch (e) {

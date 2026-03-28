@@ -145,7 +145,9 @@ async function viewContact(id) {
       `<div><strong>${escapeHtml(k)}:</strong> ${escapeHtml(String(v))}</div>`
     ).join('');
 
-    $('cm-info').innerHTML = `
+    const cmInfo = $('cm-info');
+    if (!cmInfo) return;
+    cmInfo.innerHTML = `
       <div class="row2 mb-1"><div><strong>Company:</strong> ${escapeHtml(c.company)}</div><div><strong>Phone:</strong> ${escapeHtml(c.phone)}</div></div>
       <div class="row2 mb-1"><div><strong>Email:</strong> ${escapeHtml(c.email)}</div><div><strong>Created:</strong> ${formatDate(c.created_at)}</div></div>
       ${c.notes ? `<div class="mb-1"><strong>Notes:</strong> ${escapeHtml(c.notes)}</div>` : ''}

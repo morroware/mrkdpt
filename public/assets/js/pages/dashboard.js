@@ -169,32 +169,29 @@ async function loadAssets() {
       </div>
     `).join('');
 
-    // Wire asset action buttons
-    list.querySelectorAll('.asset-approve-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const id = parseInt(btn.dataset.id);
+    // Use event delegation to avoid listener accumulation on refresh
+    list.onclick = async (e) => {
+      const btn = e.target.closest('button[data-id]');
+      if (!btn || btn.disabled) return;
+      const id = parseInt(btn.dataset.id, 10);
+      if (isNaN(id)) return;
+
+      if (btn.classList.contains('asset-approve-btn')) {
+        btn.classList.add('loading'); btn.disabled = true;
         try {
           await api('/api/autopilot/assets/approve', { method: 'POST', body: JSON.stringify({ id }) });
           btn.closest('.ai-asset-item')?.remove();
           success('Asset approved');
           updateAssetCount(-1);
         } catch (e) { error(e.message); }
-      });
-    });
-
-    list.querySelectorAll('.asset-reject-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const id = parseInt(btn.dataset.id);
+        finally { btn.classList.remove('loading'); btn.disabled = false; }
+      } else if (btn.classList.contains('asset-reject-btn')) {
         try {
           await api('/api/autopilot/assets/reject', { method: 'POST', body: JSON.stringify({ id }) });
           btn.closest('.ai-asset-item')?.remove();
           updateAssetCount(-1);
         } catch (e) { error(e.message); }
-      });
-    });
-
-    list.querySelectorAll('.asset-expand-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
+      } else if (btn.classList.contains('asset-expand-btn')) {
         const item = btn.closest('.ai-asset-item');
         const preview = item?.querySelector('.ai-asset-preview');
         if (!preview) return;
@@ -205,8 +202,8 @@ async function loadAssets() {
           preview.dataset.expanded = isExpanded ? '0' : '1';
           btn.textContent = isExpanded ? 'View Full' : 'Collapse';
         }
-      });
-    });
+      }
+    };
   } catch (_) {
     // No assets yet
   }

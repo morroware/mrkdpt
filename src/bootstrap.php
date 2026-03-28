@@ -62,8 +62,9 @@ function db_setting(string $key, ?string $value = null, ?PDO $pdo = null): ?stri
         try {
             $rows = $dbHandle->query('SELECT setting_key, setting_value FROM app_settings')->fetchAll(PDO::FETCH_KEY_PAIR);
             $cache = $rows ?: [];
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
             $cache = [];
+            error_log('db_setting init failed: ' . $e->getMessage());
         }
     }
 
@@ -114,8 +115,11 @@ function security_headers(): void
 {
     header('X-Content-Type-Options: nosniff');
     header('X-Frame-Options: SAMEORIGIN');
-    header('X-XSS-Protection: 1; mode=block');
+    header('X-XSS-Protection: 0'); // Deprecated; CSP is the modern replacement
     header('Referrer-Policy: strict-origin-when-cross-origin');
+    header("Permissions-Policy: camera=(), microphone=(), geolocation=()");
+    // CSP: allow inline styles for SPA, sandbox iframes for email preview, restrict everything else
+    header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-src blob: data:; object-src 'none'; base-uri 'self'; form-action 'self'");
 }
 
 /**
@@ -186,6 +190,12 @@ function serve_upload(string $path, string $dataDir): void
 
     header('Content-Type: ' . $mime);
     header('Cache-Control: public, max-age=604800');
-    header('Content-Length: ' . filesize($file));
-    readfile($file);
+    $size = filesize($file);
+    if ($size !== false) {
+        header('Content-Length: ' . $size);
+    }
+    if (@readfile($file) === false) {
+        // File may have been deleted between check and read
+        http_response_code(500);
+    }
 }

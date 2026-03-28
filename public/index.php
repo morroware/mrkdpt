@@ -48,10 +48,15 @@ security_headers();
 $forceHttps = in_array(strtolower((string)app_config('APP_FORCE_HTTPS', 'false')), ['1', 'true', 'yes', 'on'], true);
 $isHttps = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
 $host = $_SERVER['HTTP_HOST'] ?? '';
+// Validate host header to prevent host header injection
+$host = preg_replace('/[^a-zA-Z0-9.\-:\[\]]/', '', $host);
 $isLocalDevHost = in_array(strtolower($host), ['localhost', '127.0.0.1'], true) || str_starts_with(strtolower($host), 'localhost:') || str_starts_with($host, '127.0.0.1:');
 if ($forceHttps && !$isHttps && !$isLocalDevHost) {
+    // Prefer APP_URL if configured, otherwise use sanitized host
+    $appUrl = app_config('APP_URL', '');
+    $redirectHost = $appUrl ? (string)(parse_url($appUrl, PHP_URL_HOST) ?? $host) : $host;
     $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
-    header('Location: https://' . $host . $requestUri, true, 301);
+    header('Location: https://' . $redirectHost . $requestUri, true, 301);
     exit;
 }
 

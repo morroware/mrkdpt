@@ -4,17 +4,19 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Marketing Suite</title>
+  <meta name="description" content="All-in-one AI marketing operations platform" />
+  <meta name="theme-color" content="#0d1117" />
   <link rel="stylesheet" href="assets/styles.css" />
 </head>
 <body>
 <a href="#mainContent" class="skip-link">Skip to main content</a>
 
 <!-- Login Page -->
-<div id="page-login" class="login-container">
+<div id="page-login" class="login-container" role="main">
   <div class="login-box">
     <h1>Marketing Suite</h1>
     <p>Sign in to your marketing command center</p>
-    <form id="loginForm" class="stack">
+    <form id="loginForm" class="stack" aria-label="Sign in">
       <div>
         <label for="loginUsername">Username</label>
         <input id="loginUsername" name="username" placeholder="Enter your username" required autocomplete="username" />
@@ -25,6 +27,7 @@
       </div>
       <button type="submit">Sign In</button>
     </form>
+    <p class="text-muted text-small" style="text-align:center;margin-top:1rem;">Self-hosted AI Marketing Platform</p>
   </div>
 </div>
 
@@ -119,7 +122,7 @@
         <h2 id="pageTitle">Dashboard</h2>
       </div>
       <div class="header-right">
-        <button class="btn btn-sm btn-ai" id="globalAiBtn" title="Quick AI Generate (Ctrl+K)"><span class="btn-ai-icon">&#9733;</span> AI Quick Generate</button>
+        <button class="btn btn-sm btn-ai" id="globalAiBtn" title="Quick AI Generate (Ctrl+K)"><span class="btn-ai-icon">&#9733;</span> <span>AI Generate</span> <span class="kbd" style="margin-left:0.25rem;color:#fff;border-color:rgba(255,255,255,0.2);background:rgba(255,255,255,0.1)">&#8984;K</span></button>
         <span id="settingsSummary" class="text-small text-muted"></span>
         <span class="badge" id="providerBadge">AI: --</span>
         <button class="theme-toggle" id="themeToggle" title="Toggle theme" aria-label="Toggle theme">&#9790;</button>
@@ -131,7 +134,8 @@
       <div class="modal-content ai-command-modal">
         <div class="ai-command-search">
           <span class="ai-command-icon">&#9733;</span>
-          <input id="aiCommandInput" placeholder="Describe what you need... (e.g. 'Write a LinkedIn post about our new feature')" autocomplete="off" />
+          <input id="aiCommandInput" placeholder="Describe what you need... (e.g. 'Write a LinkedIn post about our new feature')" autocomplete="off" aria-label="AI command input" />
+          <span class="text-muted text-small" style="white-space:nowrap">ESC to close</span>
         </div>
         <div class="ai-command-suggestions">
           <div class="ai-command-group">
@@ -325,7 +329,7 @@
         <div class="card autopilot-summary-card mb-2" id="autopilotSummary" style="display:none">
           <div class="flex-between">
             <h3><span class="btn-ai-icon">&#9733;</span> AI Autopilot Summary</h3>
-            <button class="btn btn-sm btn-ghost" id="dismissAutopilotSummary">&times;</button>
+            <button class="btn btn-sm btn-ghost" id="dismissAutopilotSummary" aria-label="Dismiss summary">&times;</button>
           </div>
           <div id="autopilotSummaryContent"></div>
         </div>
@@ -429,8 +433,26 @@
 
         <div id="dashboardCharts" class="chart-container"></div>
         <div class="card-grid">
-          <div class="card"><h3>Recent Posts</h3><div id="recentPosts"></div></div>
-          <div class="card"><h3>Recent Ideas</h3><div id="recentIdeas"></div></div>
+          <div class="card">
+            <h3>Recent Posts</h3>
+            <div id="recentPosts">
+              <div class="empty-state">
+                <div class="empty-state-icon">&#9998;</div>
+                <h4>No posts yet</h4>
+                <p>Create your first post to get started with content publishing.</p>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Recent Ideas</h3>
+            <div id="recentIdeas">
+              <div class="empty-state">
+                <div class="empty-state-icon">&#128161;</div>
+                <h4>No ideas yet</h4>
+                <p>Use AI Studio to brainstorm content ideas for your brand.</p>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="btn-group mt-1">
           <button class="btn" onclick="navigate('content')">New Post</button>
@@ -440,12 +462,12 @@
 
       <!-- Content Studio -->
       <section id="page-content" class="page">
-        <div class="tabs">
-          <button class="tab-btn active" data-tab="content-calendar">Calendar</button>
-          <button class="tab-btn" data-tab="content-list">List</button>
-          <button class="tab-btn" data-tab="content-create">Create Post</button>
+        <div class="tabs" role="tablist" aria-label="Content Studio views">
+          <button class="tab-btn active" data-tab="content-calendar" role="tab" aria-selected="true">Calendar</button>
+          <button class="tab-btn" data-tab="content-list" role="tab" aria-selected="false">List</button>
+          <button class="tab-btn" data-tab="content-create" role="tab" aria-selected="false">Create Post</button>
         </div>
-        <div id="content-calendar" class="tab-panel active">
+        <div id="content-calendar" class="tab-panel active" role="tabpanel">
           <div class="calendar-header">
             <button class="btn btn-sm btn-outline" id="calPrev" aria-label="Previous month">&larr;</button>
             <h3 id="calTitle">March 2026</h3>
@@ -461,9 +483,11 @@
             <input id="filterSearch" placeholder="Search..." style="min-width:160px" />
           </div>
           <div class="table-wrap">
-            <table class="data-table">
+            <table class="data-table" aria-label="Posts list">
               <thead><tr><th><input type="checkbox" id="selectAll" aria-label="Select all posts" /></th><th>ID</th><th>Platform</th><th>Type</th><th>Title</th><th>Status</th><th>Scheduled</th><th>Actions</th></tr></thead>
-              <tbody id="postTable"></tbody>
+              <tbody id="postTable">
+                <tr class="table-empty"><td colspan="8">No posts yet. Switch to the Create Post tab to get started.</td></tr>
+              </tbody>
             </table>
           </div>
         </div>
@@ -1153,10 +1177,10 @@ Tip: Use the provider selector above to compare results from different AI models
         <div id="email-subscribers" class="tab-panel">
           <form id="subscriberForm" class="stack card"><div class="row3"><div><label>Email</label><input name="email" type="email" required /></div><div><label>Name</label><input name="name" /></div><div><label>List</label><select name="list_id" id="subListSelect"></select></div></div><button type="submit">Add Subscriber</button></form>
           <div class="card mt-1"><h3>Import CSV</h3><textarea id="csvImport" placeholder="email,name&#10;john@example.com,John" rows="3" class="w-full"></textarea><div class="row2 mt-1"><select id="csvListSelect"></select><button class="btn" id="importCsv">Import</button></div></div>
-          <div class="table-wrap mt-1"><table class="data-table"><thead><tr><th>Email</th><th>Name</th><th>List</th><th>Status</th><th>Actions</th></tr></thead><tbody id="subscriberTable"></tbody></table></div>
+          <div class="table-wrap mt-1"><table class="data-table" aria-label="Subscribers"><thead><tr><th>Email</th><th>Name</th><th>List</th><th>Status</th><th>Actions</th></tr></thead><tbody id="subscriberTable"><tr class="table-empty"><td colspan="5">No subscribers yet. Add subscribers or import a CSV file.</td></tr></tbody></table></div>
         </div>
         <div id="email-campaigns" class="tab-panel">
-          <div class="table-wrap"><table class="data-table"><thead><tr><th>Name</th><th>Subject</th><th>List</th><th>Status</th><th>Sent</th><th>Actions</th></tr></thead><tbody id="emailCampaignTable"></tbody></table></div>
+          <div class="table-wrap"><table class="data-table" aria-label="Email campaigns"><thead><tr><th>Name</th><th>Subject</th><th>List</th><th>Status</th><th>Sent</th><th>Actions</th></tr></thead><tbody id="emailCampaignTable"><tr class="table-empty"><td colspan="6">No email campaigns yet. Compose an email to create your first campaign.</td></tr></tbody></table></div>
         </div>
         <div id="email-compose" class="tab-panel">
           <form id="emailComposeForm" class="stack card">
@@ -1298,7 +1322,7 @@ Tip: Use the provider selector above to compare results from different AI models
           </form>
         </div>
         <div class="table-wrap mt-1">
-          <table class="data-table"><thead><tr><th>Email</th><th>Name</th><th>Company</th><th>Stage</th><th>Score</th><th>Source</th><th>Last Activity</th><th>Actions</th></tr></thead><tbody id="contactTable"></tbody></table>
+          <table class="data-table" aria-label="Contacts"><thead><tr><th>Email</th><th>Name</th><th>Company</th><th>Stage</th><th>Score</th><th>Source</th><th>Last Activity</th><th>Actions</th></tr></thead><tbody id="contactTable"><tr class="table-empty"><td colspan="8">No contacts yet. Add contacts manually or import a CSV file.</td></tr></tbody></table>
         </div>
         <!-- Contact detail modal -->
         <div class="modal-overlay" id="contactModal" role="dialog" aria-labelledby="contactModalTitle">
@@ -1431,7 +1455,7 @@ Tip: Use the provider selector above to compare results from different AI models
           <div class="row2"><div><label>Conditions (JSON, optional)</label><input name="conditions" placeholder='{"source":"form"}' /><div class="text-muted text-small">Tip: choose a trigger to auto-suggest condition JSON.</div></div><div><label>Action Config (JSON)</label><input name="action_config" required placeholder='{"tag":"new-lead"}' /><div class="text-muted text-small">Tip: choose an action to auto-suggest config JSON.</div></div></div>
           <button type="submit">Create Automation</button>
         </form>
-        <div class="table-wrap mt-1"><table class="data-table"><thead><tr><th>Name</th><th>Trigger</th><th>Action</th><th>Runs</th><th>Last Run</th><th>Active</th><th>Actions</th></tr></thead><tbody id="automationTable"></tbody></table></div>
+        <div class="table-wrap mt-1"><table class="data-table" aria-label="Automations"><thead><tr><th>Name</th><th>Trigger</th><th>Action</th><th>Runs</th><th>Last Run</th><th>Active</th><th>Actions</th></tr></thead><tbody id="automationTable"><tr class="table-empty"><td colspan="7">No automations yet. Create trigger-action rules to automate your workflows.</td></tr></tbody></table></div>
       </section>
 
       <!-- Audience Segments -->

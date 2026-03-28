@@ -239,26 +239,25 @@ async function refreshWebhooks() {
         </div>`).join('')
       : '<p class="text-muted">No webhooks configured</p>';
 
-    list.querySelectorAll('[data-test-wh]').forEach((btn) => {
-      btn.addEventListener('click', async () => {
+    // Event delegation to avoid listener accumulation on refresh
+    list.onclick = async (e) => {
+      const testBtn = e.target.closest('[data-test-wh]');
+      const deleteBtn = e.target.closest('[data-delete-wh]');
+      if (testBtn) {
         try {
-          await api(`/api/webhooks/${btn.dataset.testWh}/test`, { method: 'POST' });
+          await api(`/api/webhooks/${testBtn.dataset.testWh}/test`, { method: 'POST' });
           success('Webhook test sent');
         } catch (err) { error(err.message); }
-      });
-    });
-
-    list.querySelectorAll('[data-delete-wh]').forEach((btn) => {
-      btn.addEventListener('click', async () => {
+      } else if (deleteBtn) {
         const ok = await confirm('Delete Webhook', 'Are you sure you want to remove this webhook?');
         if (!ok) return;
         try {
-          await api(`/api/webhooks/${btn.dataset.deleteWh}`, { method: 'DELETE' });
+          await api(`/api/webhooks/${deleteBtn.dataset.deleteWh}`, { method: 'DELETE' });
           success('Webhook deleted');
           refreshWebhooks();
         } catch (err) { error(err.message); }
-      });
-    });
+      }
+    };
   } catch (err) {
     error('Failed to load webhooks: ' + err.message);
   }

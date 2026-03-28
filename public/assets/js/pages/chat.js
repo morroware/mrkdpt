@@ -158,24 +158,21 @@ async function refreshConversations() {
       </div>
     `).join('') || '<p class="text-muted text-small">No conversations yet</p>';
 
-    list.querySelectorAll('.chat-conv-item').forEach((el) => {
-      el.addEventListener('click', (e) => {
-        if (e.target.closest('[data-rename-conv]') || e.target.closest('[data-delete-conv]')) return;
-        loadConversation(parseInt(el.dataset.convId));
-      });
-    });
-    list.querySelectorAll('[data-rename-conv]').forEach((btn) => {
-      btn.addEventListener('click', (e) => {
+    // Use event delegation to avoid listener accumulation on refresh
+    list.onclick = (e) => {
+      const renameBtn = e.target.closest('[data-rename-conv]');
+      const deleteBtn = e.target.closest('[data-delete-conv]');
+      const convItem = e.target.closest('.chat-conv-item');
+      if (renameBtn) {
         e.stopPropagation();
-        renameConversation(parseInt(btn.dataset.renameConv), btn.dataset.convTitle);
-      });
-    });
-    list.querySelectorAll('[data-delete-conv]').forEach((btn) => {
-      btn.addEventListener('click', (e) => {
+        renameConversation(parseInt(renameBtn.dataset.renameConv, 10), renameBtn.dataset.convTitle);
+      } else if (deleteBtn) {
         e.stopPropagation();
-        deleteConversation(parseInt(btn.dataset.deleteConv));
-      });
-    });
+        deleteConversation(parseInt(deleteBtn.dataset.deleteConv, 10));
+      } else if (convItem) {
+        loadConversation(parseInt(convItem.dataset.convId, 10));
+      }
+    };
   } catch (err) { error('Failed to load conversations: ' + err.message); }
 }
 
@@ -276,18 +273,19 @@ async function refreshSharedMemory() {
       </div>
     `).join('') || '<p class="text-muted text-small">No shared memory yet. Add context that all AI tools will use.</p>';
 
-    list.querySelectorAll('.chat-memory-delete').forEach((btn) => {
-      btn.addEventListener('click', async () => {
-        if (!await confirm('Delete Memory', 'Delete this memory item? All AI tools use shared memory.')) return;
-        try {
-          await api(`/api/ai/shared-memory/${btn.dataset.memoryId}`, { method: 'DELETE' });
-          success('Memory deleted');
-          refreshSharedMemory();
-        } catch (err) {
-          error(err.message);
-        }
-      });
-    });
+    // Event delegation for memory delete buttons
+    list.onclick = async (e) => {
+      const btn = e.target.closest('.chat-memory-delete');
+      if (!btn) return;
+      if (!await confirm('Delete Memory', 'Delete this memory item? All AI tools use shared memory.')) return;
+      try {
+        await api(`/api/ai/shared-memory/${btn.dataset.memoryId}`, { method: 'DELETE' });
+        success('Memory deleted');
+        refreshSharedMemory();
+      } catch (err) {
+        error(err.message);
+      }
+    };
   } catch (err) {
     list.innerHTML = '<p class="text-muted text-small">Memory unavailable.</p>';
     error('Failed to load shared memory: ' + err.message);

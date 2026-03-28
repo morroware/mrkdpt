@@ -13,14 +13,25 @@ function register_ai_routes(
     Analytics $analytics,
     PostRepository $posts,
     CampaignRepository $campaigns,
-    PDO $pdo
+    PDO $pdo,
+    ?AiMemoryEngine $memoryEngine = null,
+    ?AiOrchestrator $orchestrator = null,
 ): void {
+
+    // Helper: log activity + auto-extract learnings
+    $logAi = function (string $tool, string $category, string $inputSummary, $result, string $provider = '') use ($memoryEngine): void {
+        if ($memoryEngine === null) return;
+        $outputSummary = is_array($result) ? mb_substr(json_encode($result, JSON_UNESCAPED_SLASHES), 0, 800) : mb_substr((string)$result, 0, 800);
+        $activityId = $memoryEngine->logActivity($tool, $category, $inputSummary, $outputSummary, $provider);
+        // Auto-extract learnings in background (non-blocking for simple tools)
+        $memoryEngine->extractAndSaveLearnings($tool, $inputSummary, $outputSummary, $activityId);
+    };
 
     /* ================================================================== */
     /*  CONTENT CREATION                                                  */
     /* ================================================================== */
 
-    $router->post('/api/ai/content', function () use ($contentTools, $analytics) {
+    $router->post('/api/ai/content', function () use ($contentTools, $analytics, $logAi) {
         $p = request_json();
         $result = $contentTools->generateContent($p);
         $analytics->track('ai.content', 'ai', 0, [
@@ -28,13 +39,15 @@ function register_ai_routes(
             'quality_mode' => $p['quality_mode'] ?? 'enhanced',
             'reviewer_provider' => $result['reviewer_provider'] ?? '',
         ]);
+        $logAi('content', 'content', 'topic=' . ($p['topic'] ?? '') . ' platform=' . ($p['platform'] ?? '') . ' type=' . ($p['content_type'] ?? 'social_post'), $result, $result['provider'] ?? '');
         json_response(['item' => $result]);
     });
 
-    $router->post('/api/ai/blog-post', function () use ($contentTools, $analytics) {
+    $router->post('/api/ai/blog-post', function () use ($contentTools, $analytics, $logAi) {
         $p = request_json();
         $result = $contentTools->blogPostGenerator($p['title'] ?? '', $p['keywords'] ?? '', $p['outline'] ?? null, $p['provider'] ?? null, $p['model'] ?? null);
         $analytics->track('ai.blog_post', 'ai', 0, ['provider' => $result['provider'] ?? '']);
+        $logAi('blog-post', 'content', 'title=' . ($p['title'] ?? '') . ' keywords=' . ($p['keywords'] ?? ''), $result, $result['provider'] ?? '');
         json_response(['item' => $result]);
     });
 
@@ -103,23 +116,25 @@ function register_ai_routes(
     /*  RESEARCH & STRATEGY                                               */
     /* ================================================================== */
 
-    $router->post('/api/ai/research', function () use ($strategyTools, $aiLogs, $analytics) {
+    $router->post('/api/ai/research', function () use ($strategyTools, $aiLogs, $analytics, $logAi) {
         $p = request_json();
         $audience = $p['audience'] ?? 'local customers';
         $goal = $p['goal'] ?? 'grow inbound leads';
         $result = $strategyTools->marketResearch($audience, $goal);
         $aiLogs->saveResearch("audience={$audience};goal={$goal}", $result['brief']);
         $analytics->track('ai.research', 'ai', 0, ['provider' => $result['provider']]);
+        $logAi('research', 'strategy', "audience={$audience} goal={$goal}", $result, $result['provider']);
         json_response(['item' => $result]);
     });
 
-    $router->post('/api/ai/ideas', function () use ($strategyTools, $aiLogs, $analytics) {
+    $router->post('/api/ai/ideas', function () use ($strategyTools, $aiLogs, $analytics, $logAi) {
         $p = request_json();
         $topic = $p['topic'] ?? 'seasonal offer';
         $platform = $p['platform'] ?? 'instagram';
         $result = $strategyTools->contentIdeas($topic, $platform);
         $aiLogs->saveIdea($topic, $platform, $result['ideas']);
         $analytics->track('ai.ideas', 'ai', 0, ['platform' => $platform]);
+        $logAi('ideas', 'strategy', "topic={$topic} platform={$platform}", $result);
         json_response(['item' => $result]);
     });
 
@@ -130,17 +145,19 @@ function register_ai_routes(
         json_response(['item' => $result]);
     });
 
-    $router->post('/api/ai/competitor-analysis', function () use ($strategyTools, $analytics) {
+    $router->post('/api/ai/competitor-analysis', function () use ($strategyTools, $analytics, $logAi) {
         $p = request_json();
         $result = $strategyTools->competitorAnalysis($p['name'] ?? '', $p['notes'] ?? '');
         $analytics->track('ai.competitor_analysis', 'ai', 0, []);
+        $logAi('competitor-analysis', 'strategy', 'competitor=' . ($p['name'] ?? ''), $result);
         json_response(['item' => $result]);
     });
 
-    $router->post('/api/ai/social-strategy', function () use ($strategyTools, $analytics) {
+    $router->post('/api/ai/social-strategy', function () use ($strategyTools, $analytics, $logAi) {
         $p = request_json();
         $result = $strategyTools->socialStrategy($p['goals'] ?? '', $p['current_state'] ?? '');
         $analytics->track('ai.social_strategy', 'ai', 0, []);
+        $logAi('social-strategy', 'strategy', 'goals=' . ($p['goals'] ?? ''), $result);
         json_response(['item' => $result]);
     });
 
@@ -224,18 +241,20 @@ function register_ai_routes(
     /*  ANALYSIS & OPTIMIZATION                                           */
     /* ================================================================== */
 
-    $router->post('/api/ai/tone-analysis', function () use ($analysisTools, $analytics) {
+    $router->post('/api/ai/tone-analysis', function () use ($analysisTools, $analytics, $logAi) {
         $p = request_json();
         if (empty($p['content'])) { json_response(['error' => 'Missing: content'], 422); return; }
         $result = $analysisTools->toneAnalysis($p['content']);
         $analytics->track('ai.tone_analysis', 'ai', 0, []);
+        $logAi('tone-analysis', 'analysis', mb_substr($p['content'], 0, 100), $result);
         json_response(['item' => $result]);
     });
 
-    $router->post('/api/ai/score', function () use ($analysisTools, $analytics) {
+    $router->post('/api/ai/score', function () use ($analysisTools, $analytics, $logAi) {
         $p = request_json();
         $result = $analysisTools->contentScore($p['content'] ?? '', $p['platform'] ?? 'instagram');
         $analytics->track('ai.score', 'ai', 0, ['platform' => $p['platform'] ?? 'instagram']);
+        $logAi('score', 'analysis', 'platform=' . ($p['platform'] ?? 'instagram') . ' ' . mb_substr($p['content'] ?? '', 0, 80), $result);
         json_response(['item' => $result]);
     });
 
@@ -689,5 +708,159 @@ function register_ai_routes(
 
     $router->get('/api/ai/providers', function () use ($ai) {
         json_response($ai->providerStatus());
+    });
+
+    /* ================================================================== */
+    /*  AI BRAIN — Self-awareness, Activity, Learnings, Pipelines          */
+    /* ================================================================== */
+
+    // AI Brain status — self-reflection endpoint
+    $router->get('/api/ai/brain/status', function () use ($memoryEngine) {
+        if (!$memoryEngine) { json_response(['error' => 'Memory engine not available'], 500); return; }
+        json_response(['item' => $memoryEngine->selfReflect()]);
+    });
+
+    // Activity log
+    $router->get('/api/ai/brain/activity', function () use ($memoryEngine) {
+        if (!$memoryEngine) { json_response(['items' => []]); return; }
+        $limit = max(1, min(100, (int)($_GET['limit'] ?? 30)));
+        $category = !empty($_GET['category']) ? $_GET['category'] : null;
+        json_response(['items' => $memoryEngine->getRecentActivity($limit, $category)]);
+    });
+
+    // Activity stats
+    $router->get('/api/ai/brain/stats', function () use ($memoryEngine) {
+        if (!$memoryEngine) { json_response(['item' => []]); return; }
+        $days = max(1, min(90, (int)($_GET['days'] ?? 7)));
+        json_response(['item' => $memoryEngine->getActivityStats($days)]);
+    });
+
+    // Learnings CRUD
+    $router->get('/api/ai/brain/learnings', function () use ($pdo) {
+        $category = !empty($_GET['category']) ? $_GET['category'] : null;
+        $limit = max(1, min(100, (int)($_GET['limit'] ?? 50)));
+        $sql = "SELECT id, category, insight, confidence, source_tool, times_reinforced, last_used_at, created_at, updated_at FROM ai_learnings";
+        $params = [];
+        if ($category) {
+            $sql .= " WHERE category = :cat";
+            $params[':cat'] = $category;
+        }
+        $sql .= " ORDER BY (confidence * (1 + times_reinforced)) DESC, updated_at DESC LIMIT :limit";
+        $stmt = $pdo->prepare($sql);
+        foreach ($params as $k => $v) { $stmt->bindValue($k, $v); }
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        json_response(['items' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+    });
+
+    $router->delete('/api/ai/brain/learnings/{id}', function (array $params) use ($pdo) {
+        $id = (int)($params['id'] ?? 0);
+        $pdo->prepare("DELETE FROM ai_learnings WHERE id = :id")->execute([':id' => $id]);
+        json_response(['ok' => true]);
+    });
+
+    // Performance feedback
+    $router->post('/api/ai/brain/feedback', function () use ($memoryEngine) {
+        if (!$memoryEngine) { json_response(['error' => 'Memory engine not available'], 500); return; }
+        $p = request_json();
+        if (empty($p['entity_type']) || empty($p['entity_id']) || empty($p['metric_name'])) {
+            json_response(['error' => 'Missing: entity_type, entity_id, metric_name'], 422); return;
+        }
+        $memoryEngine->recordPerformanceFeedback(
+            $p['entity_type'],
+            (int)$p['entity_id'],
+            $p['metric_name'],
+            (float)($p['metric_value'] ?? 0),
+            $p['feedback_note'] ?? '',
+            isset($p['activity_id']) ? (int)$p['activity_id'] : null,
+        );
+        json_response(['ok' => true], 201);
+    });
+
+    $router->get('/api/ai/brain/feedback', function () use ($pdo) {
+        $limit = max(1, min(100, (int)($_GET['limit'] ?? 30)));
+        $stmt = $pdo->prepare(
+            "SELECT f.*, a.tool_name, a.input_summary FROM ai_performance_feedback f
+             LEFT JOIN ai_activity_log a ON f.activity_id = a.id
+             ORDER BY f.created_at DESC LIMIT :limit"
+        );
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        json_response(['items' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+    });
+
+    // Capture post performance (manual trigger)
+    $router->post('/api/ai/brain/capture-performance', function () use ($memoryEngine) {
+        if (!$memoryEngine) { json_response(['error' => 'Memory engine not available'], 500); return; }
+        $captured = $memoryEngine->capturePostPerformance();
+        json_response(['item' => ['captured' => $captured]]);
+    });
+
+    /* ================================================================== */
+    /*  AI PIPELINES — Tool chaining & orchestration                       */
+    /* ================================================================== */
+
+    // List pipeline templates
+    $router->get('/api/ai/pipelines/templates', function () use ($orchestrator) {
+        if (!$orchestrator) { json_response(['items' => []]); return; }
+        $templates = $orchestrator->getTemplates();
+        $items = [];
+        foreach ($templates as $id => $tpl) {
+            $items[] = [
+                'id'          => $id,
+                'name'        => $tpl['name'],
+                'description' => $tpl['description'],
+                'step_count'  => count($tpl['steps']),
+                'steps'       => array_map(fn($s) => ['tool' => $s['tool'], 'label' => $s['label']], $tpl['steps']),
+            ];
+        }
+        json_response(['items' => $items]);
+    });
+
+    // Run a pipeline
+    $router->post('/api/ai/pipelines/run', function () use ($orchestrator, $analytics) {
+        if (!$orchestrator) { json_response(['error' => 'Orchestrator not available'], 500); return; }
+        $p = request_json();
+        $templateId = $p['template_id'] ?? '';
+        $variables = $p['variables'] ?? [];
+        $customSteps = $p['steps'] ?? [];
+
+        if ($templateId === '' && empty($customSteps)) {
+            json_response(['error' => 'Missing: template_id or steps'], 422); return;
+        }
+
+        $result = $orchestrator->runPipeline($templateId, $variables, $customSteps);
+        $analytics->track('ai.pipeline', 'ai', 0, ['template' => $templateId, 'status' => $result['status'] ?? '']);
+        json_response(['item' => $result]);
+    });
+
+    // Get next action suggestions
+    $router->get('/api/ai/pipelines/next-actions', function () use ($orchestrator) {
+        if (!$orchestrator) { json_response(['items' => []]); return; }
+        $tool = $_GET['tool'] ?? '';
+        if ($tool === '') { json_response(['items' => []]); return; }
+        json_response(['items' => $orchestrator->suggestNextActions($tool)]);
+    });
+
+    // Pipeline run history
+    $router->get('/api/ai/pipelines/runs', function () use ($orchestrator) {
+        if (!$orchestrator) { json_response(['items' => []]); return; }
+        $limit = max(1, min(50, (int)($_GET['limit'] ?? 10)));
+        json_response(['items' => $orchestrator->getRecentRuns($limit)]);
+    });
+
+    // Pipeline run details
+    $router->get('/api/ai/pipelines/runs/{id}', function (array $params) use ($orchestrator) {
+        if (!$orchestrator) { json_response(['error' => 'Not available'], 500); return; }
+        $id = (int)($params['id'] ?? 0);
+        $run = $orchestrator->getRunDetails($id);
+        if (!$run) { json_response(['error' => 'Not found'], 404); return; }
+        json_response(['item' => $run]);
+    });
+
+    // Tool registry (for frontend pipeline builder)
+    $router->get('/api/ai/pipelines/tools', function () use ($orchestrator) {
+        if (!$orchestrator) { json_response(['items' => []]); return; }
+        json_response(['items' => $orchestrator->getToolRegistry()]);
     });
 }

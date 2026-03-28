@@ -28,6 +28,7 @@ import * as segments from './pages/segments.js';
 import * as queue from './pages/queue.js';
 import * as assistant from './pages/assistant.js';
 import * as chat from './pages/chat.js';
+import * as brain from './pages/brain.js';
 import * as onboarding from './pages/onboarding.js';
 
 // Register each page module with the SPA router
@@ -53,6 +54,7 @@ registerPage('automations', automations);
 registerPage('segments', segments);
 registerPage('queue', queue);
 registerPage('chat', chat);
+registerPage('brain', brain);
 registerPage('onboarding', onboarding);
 
 // Initialize all page modules (binds forms, click handlers, etc.)
@@ -79,6 +81,7 @@ function initAll() {
   segments.init();
   queue.init();
   chat.init();
+  brain.init();
   onboarding.init();
   assistant.init();
   initInlineAiToolbars();

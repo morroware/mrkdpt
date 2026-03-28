@@ -122,6 +122,8 @@ async function run(endpoint, payload, resultKey, btnId, toolName) {
     const text = resultKey ? item[resultKey] : item;
     output(typeof text === 'string' ? text : JSON.stringify(text, null, 2), item?.provider, toolName);
     success('Generated successfully');
+    // Fetch and show next-action suggestions
+    loadNextActions(toolName);
     return item;
   } catch (err) {
     output('Error: ' + err.message, '', toolName);
@@ -129,6 +131,40 @@ async function run(endpoint, payload, resultKey, btnId, toolName) {
     return null;
   } finally {
     if (btnId) setButtonLoading(btnId, false);
+  }
+}
+
+/** Show suggested next AI tools after a tool run. */
+async function loadNextActions(toolName) {
+  const el = $('aiNextActions');
+  if (!el) return;
+  // Map display tool names to API tool identifiers
+  const toolMap = {
+    'Content': 'content', 'Blog Post': 'blog-post', 'Video Script': 'video-script',
+    'Caption Batch': 'caption-batch', 'Repurpose': 'repurpose', 'Ad Variations': 'ad-variations',
+    'Subject Lines': 'subject-lines', 'Content Brief': 'brief', 'Headlines': 'headlines',
+    'Refine': 'refine', 'Workflow': 'workflow', 'Research': 'research', 'Ideas': 'ideas',
+    'Persona': 'persona', 'Competitor Analysis': 'competitor-analysis',
+    'Social Strategy': 'social-strategy', 'Calendar': 'calendar', 'Calendar Month': 'calendar-month',
+    'Smart Times': 'smart-times', 'Campaign Optimizer': 'campaign-optimizer',
+    'Score': 'score', 'Tone Analysis': 'tone-analysis', 'SEO Keywords': 'seo-keywords',
+    'Hashtags': 'hashtags', 'SEO Audit': 'seo-audit', 'Pre-Flight': 'preflight',
+    'Predict': 'predict', 'Competitor Radar': 'competitor-radar',
+  };
+  const apiTool = toolMap[toolName] || toolName?.toLowerCase()?.replace(/\s+/g, '-') || '';
+  if (!apiTool) { el.innerHTML = ''; return; }
+  try {
+    const data = await api(`/api/ai/pipelines/next-actions?tool=${encodeURIComponent(apiTool)}`);
+    const items = data.items || [];
+    if (items.length === 0) { el.innerHTML = ''; return; }
+    el.innerHTML = `<div style="margin-top:8px;padding:8px 12px;background:var(--input-bg);border-radius:var(--radius)">
+      <span class="text-small text-muted" style="font-weight:600">Suggested next:</span>
+      <div class="flex flex-wrap gap-1" style="margin-top:4px">
+        ${items.map(a => `<button class="btn btn-ai btn-sm" title="${escapeHtml(a.reason)}" style="font-size:11px;padding:3px 10px">${escapeHtml(a.tool)}</button>`).join('')}
+      </div>
+    </div>`;
+  } catch {
+    el.innerHTML = '';
   }
 }
 

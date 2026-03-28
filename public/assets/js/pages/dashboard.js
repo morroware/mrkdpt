@@ -87,6 +87,26 @@ export async function refresh() {
 
   // Auto-load AI insights on dashboard refresh
   loadAiInsights();
+
+  // Load AI Brain status
+  loadBrainStatus();
+}
+
+async function loadBrainStatus() {
+  const el = $('dashboardBrainStatus');
+  if (!el) return;
+  try {
+    const data = await api('/api/ai/brain/stats?days=7');
+    const stats = data.item || {};
+    const total = stats.total_calls || 0;
+    const byCategory = stats.by_category || [];
+    el.innerHTML = `
+      <span style="background:var(--input-bg);padding:4px 10px;border-radius:8px;font-size:12px"><strong>${total}</strong> AI calls (7d)</span>
+      ${byCategory.map(c => `<span style="background:var(--input-bg);padding:4px 10px;border-radius:8px;font-size:12px">${escapeHtml(c.tool_category)}: <strong>${c.count}</strong></span>`).join('')}
+    `;
+  } catch {
+    el.innerHTML = '<span class="text-muted text-small">AI Brain loading...</span>';
+  }
 }
 
 async function loadAutopilotSummary() {

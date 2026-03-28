@@ -11,10 +11,17 @@ declare(strict_types=1);
  */
 final class AiChatService
 {
+    private ?AiMemoryEngine $memoryEngine = null;
+
     public function __construct(
         private AiService $ai,
         private PDO $pdo,
     ) {}
+
+    public function setMemoryEngine(AiMemoryEngine $engine): void
+    {
+        $this->memoryEngine = $engine;
+    }
 
     /**
      * Process a chat message with full context from the marketing database.
@@ -31,23 +38,33 @@ final class AiChatService
         $context = $this->gatherContext($userMessage);
         $contentDirective = $this->buildContentDirective($contentBrief, $userMessage);
 
+        // Build AI activity context for cross-tool awareness
+        $activityContext = $this->getRecentAiActivity();
+
         $system = $this->ai->buildSystemPrompt(
-            "You are an AI marketing assistant for {$this->ai->getBusinessName()} ({$this->ai->getIndustry()}).
+            "You are the AI marketing department lead for {$this->ai->getBusinessName()} ({$this->ai->getIndustry()}).
 
-You have access to the company's real marketing data. Use the data context below to ground your answers in actual numbers and facts. When the user asks about performance, content, campaigns, or anything data-related, reference the actual data.
+You are a self-aware AI system with memory of past work, learned insights, and awareness of ongoing marketing operations. You don't just answer questions — you proactively connect dots between data, suggest optimizations, and reference what you've learned from previous interactions.
 
-When the user asks you to create content, write it ready-to-publish using the brand voice guidelines.
-
-CURRENT DATA CONTEXT:
+CURRENT MARKETING DATA:
 {$context}
 
+{$activityContext}
+
+CAPABILITIES:
+- You have deep knowledge of all marketing operations, content, campaigns, competitors, and analytics
+- You remember insights from past AI tool runs and apply them
+- You can suggest running specific AI tools when they would help (mention the tool name)
+- You proactively flag opportunities, risks, and connections the user might not see
+- When you learn something new from this conversation, note it explicitly so it can be saved
+
 RULES:
-- Be conversational but professional
-- Always reference real data when available
-- If asked about data you don't have, say so honestly
-- For content creation requests, produce ready-to-use output
-- Keep responses focused and actionable
-- You can suggest follow-up actions
+- Be conversational but data-driven — always reference real numbers when available
+- Connect insights across different areas (e.g., competitor moves → content opportunities)
+- When creating content, produce ready-to-publish output using brand voice
+- Proactively suggest next actions and relevant AI tools
+- If you identify a key insight worth remembering, prefix it with [INSIGHT] so the system can save it
+- If asked about data you don't have, say so and suggest how to get it
 
 CONTENT OUTPUT MODE:
 {$contentDirective}"
@@ -79,11 +96,75 @@ CONTENT OUTPUT MODE:
             $reply = $this->ai->fallback($userMessage);
         }
 
+        // Auto-extract insights from chat response
+        $extractedInsights = [];
+        if ($this->memoryEngine !== null) {
+            // Extract [INSIGHT] tagged items from the reply
+            $extractedInsights = $this->extractChatInsights($reply);
+
+            // Log the chat activity
+            $this->memoryEngine->logActivity(
+                'chat',
+                'conversation',
+                mb_substr($userMessage, 0, 200),
+                mb_substr($reply, 0, 500),
+                $p,
+            );
+        }
+
         return [
             'reply'        => $reply,
             'context_used' => $this->summarizeContext(),
             'provider'     => $p,
+            'insights_extracted' => $extractedInsights,
         ];
+    }
+
+    /**
+     * Extract [INSIGHT] tagged items from chat responses and save to shared memory.
+     */
+    private function extractChatInsights(string $reply): array
+    {
+        $insights = [];
+        if (preg_match_all('/\[INSIGHT\]\s*(.+?)(?:\n|$)/i', $reply, $matches)) {
+            foreach ($matches[1] as $insight) {
+                $insight = trim($insight);
+                if (mb_strlen($insight) < 10) continue;
+                try {
+                    $now = gmdate(DATE_ATOM);
+                    $this->pdo->prepare(
+                        "INSERT INTO ai_shared_memory (memory_key, content, source, source_ref, tags, category, created_at, updated_at)
+                         VALUES ('chat_insight', :content, 'ai_chat', '', 'auto-extracted', 'general', :created, :updated)"
+                    )->execute([':content' => $insight, ':created' => $now, ':updated' => $now]);
+                    $insights[] = $insight;
+                } catch (\PDOException $e) {
+                    error_log("AiChatService::extractChatInsights error: " . $e->getMessage());
+                }
+            }
+        }
+        return $insights;
+    }
+
+    /**
+     * Get recent AI tool activity for cross-tool awareness in chat.
+     */
+    private function getRecentAiActivity(): string
+    {
+        if ($this->memoryEngine === null) {
+            return '';
+        }
+
+        $recent = $this->memoryEngine->getRecentActivity(10);
+        if (empty($recent)) {
+            return '';
+        }
+
+        $lines = ["RECENT AI TOOL ACTIVITY (what I've been working on recently):"];
+        foreach ($recent as $a) {
+            $lines[] = "- {$a['tool_name']} ({$a['tool_category']}): {$a['input_summary']}";
+        }
+        $lines[] = "Reference these recent outputs when relevant to provide continuity.";
+        return implode("\n", $lines);
     }
 
     private function buildContentDirective(?array $contentBrief, string $userMessage): string

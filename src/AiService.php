@@ -20,6 +20,7 @@ final class AiService
     private ?array $brandVoice = null;
     private ?array $businessProfile = null;
     private array $sharedMemory = [];
+    private ?AiMemoryEngine $memoryEngine = null;
 
     /** Available models per provider for the frontend model picker. */
     private const MODELS = [
@@ -129,6 +130,16 @@ final class AiService
         return $this->sharedMemory;
     }
 
+    public function setMemoryEngine(AiMemoryEngine $engine): void
+    {
+        $this->memoryEngine = $engine;
+    }
+
+    public function getMemoryEngine(): ?AiMemoryEngine
+    {
+        return $this->memoryEngine;
+    }
+
     /* ------------------------------------------------------------------ */
     /*  Provider / Model info                                             */
     /* ------------------------------------------------------------------ */
@@ -231,6 +242,14 @@ final class AiService
             if (!empty($memoryLines)) {
                 $base .= "\n\nShared Team Memory:\n" . implode("\n", $memoryLines);
                 $base .= "\nTreat this as persistent company memory and keep outputs aligned with it.";
+            }
+        }
+
+        // AI Brain context: situational awareness, recent activity, learnings, performance feedback
+        if ($this->memoryEngine !== null) {
+            $brainContext = $this->memoryEngine->buildBrainContext();
+            if ($brainContext !== '') {
+                $base .= "\n\n" . $brainContext;
             }
         }
 

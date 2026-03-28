@@ -1439,6 +1439,15 @@ label {
   color: var(--accent);
 }
 
+/* ---- AI Brain Page ---- */
+.brain-header { background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(139,92,246,0.08)); border: 1px solid rgba(99,102,241,0.2); }
+#page-brain .badge { display: inline-block; }
+#page-brain .metrics-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+#brainKnowledgeMap { padding: 8px 0; }
+#brainPipelineTemplates .card { border: 1px solid var(--line); transition: border-color 0.2s, transform 0.2s; }
+#brainPipelineTemplates .card:hover { border-color: var(--accent); transform: translateY(-2px); }
+#brainPipelineRunner { border: 2px solid var(--accent); background: linear-gradient(180deg, rgba(99,102,241,0.04), transparent); }
+
 /* ---- AI Chat Page ---- */
 .chat-layout { display: grid; grid-template-columns: 260px 1fr; gap: 0; height: calc(100vh - 120px); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; min-height: 0; background: linear-gradient(180deg, rgba(99,102,241,0.03), rgba(99,102,241,0)); }
 .chat-sidebar { background: var(--panel); padding: 12px; border-right: 1px solid var(--line); overflow-y: auto; }

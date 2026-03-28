@@ -48,6 +48,7 @@
         <div class="nav-section-items" id="nav-ai-tools">
           <a href="#ai" data-page="ai"><span class="nav-icon">&#9733;</span> AI Studio</a>
           <a href="#chat" data-page="chat"><span class="nav-icon">&#128172;</span> AI Chat</a>
+          <a href="#brain" data-page="brain"><span class="nav-icon">&#129504;</span> AI Brain</a>
           <a href="#content" data-page="content"><span class="nav-icon">&#9998;</span> Content Studio</a>
           <a href="#templates" data-page="templates"><span class="nav-icon">&#9881;</span> Content Library</a>
           <a href="#queue" data-page="queue"><span class="nav-icon">&#9200;</span> Publish Queue</a>
@@ -402,6 +403,17 @@
               <button class="btn btn-ai" type="submit" id="launchCampaignAutopilot"><span class="btn-ai-icon">&#9733;</span> Launch Campaign Autopilot</button>
             </div>
           </form>
+        </div>
+
+        <!-- AI Brain Status -->
+        <div class="card mb-2" id="dashboardBrainCard" style="background:linear-gradient(135deg,rgba(99,102,241,0.06),rgba(139,92,246,0.06));border:1px solid rgba(99,102,241,0.15)">
+          <div class="flex-between">
+            <h3>&#129504; AI Brain Status</h3>
+            <a href="#brain" class="text-small">Open AI Brain &rarr;</a>
+          </div>
+          <div id="dashboardBrainStatus" class="flex gap-1 flex-wrap">
+            <span class="text-muted text-small">Loading brain status...</span>
+          </div>
         </div>
 
         <!-- AI Quick Actions -->
@@ -1027,6 +1039,7 @@
             </div>
             <div class="ai-output-rich" id="aiOutputRich"><p class="text-muted">Select a tool and click generate to see AI output here.</p><p class="text-small text-muted">Tip: Use the provider selector above to compare results from different AI models.</p></div>
             <pre class="ai-output hidden" id="aiOutput">Select a tool and click generate to see AI output here.</pre>
+            <div id="aiNextActions"></div>
           </div>
         </div>
       </section>
@@ -1119,6 +1132,115 @@
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <!-- AI Brain -->
+      <section id="page-brain" class="page">
+        <div class="brain-header card mb-1">
+          <div class="flex-between">
+            <div>
+              <h2 class="mt-0 mb-0">AI Brain</h2>
+              <p class="text-muted text-small mt-0">Self-aware memory, learned insights, activity log, and AI pipelines</p>
+            </div>
+            <div class="flex gap-1">
+              <button class="btn btn-ai btn-sm" id="brainRefreshBtn">Refresh</button>
+              <button class="btn btn-sm btn-outline" id="brainCapturePerf">Capture Performance</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Brain Tabs -->
+        <div class="tab-bar mb-1">
+          <button class="tab-btn active" data-tab="brain-overview">Overview</button>
+          <button class="tab-btn" data-tab="brain-learnings">Learnings</button>
+          <button class="tab-btn" data-tab="brain-activity">Activity Log</button>
+          <button class="tab-btn" data-tab="brain-pipelines">Pipelines</button>
+          <button class="tab-btn" data-tab="brain-feedback">Feedback</button>
+        </div>
+
+        <!-- Overview Tab -->
+        <div class="tab-panel active" id="brain-overview">
+          <div class="metrics-row" id="brainMetrics"></div>
+          <div class="row2 mt-1">
+            <div class="card">
+              <h3 class="mt-0">Knowledge Coverage</h3>
+              <div id="brainKnowledgeMap"></div>
+            </div>
+            <div class="card">
+              <h3 class="mt-0">Strongest Learnings</h3>
+              <div id="brainTopLearnings"></div>
+            </div>
+          </div>
+          <div class="card mt-1">
+            <h3 class="mt-0">Recent AI Activity</h3>
+            <div id="brainRecentActivity"></div>
+          </div>
+        </div>
+
+        <!-- Learnings Tab -->
+        <div class="tab-panel" id="brain-learnings">
+          <div class="flex-between mb-1">
+            <div class="flex gap-1">
+              <select id="brainLearningFilter">
+                <option value="">All Categories</option>
+                <option value="audience">Audience</option>
+                <option value="content">Content</option>
+                <option value="strategy">Strategy</option>
+                <option value="performance">Performance</option>
+                <option value="brand">Brand</option>
+                <option value="competitor">Competitor</option>
+                <option value="channel">Channel</option>
+                <option value="timing">Timing</option>
+              </select>
+            </div>
+          </div>
+          <div id="brainLearningsList" class="stack"></div>
+        </div>
+
+        <!-- Activity Log Tab -->
+        <div class="tab-panel" id="brain-activity">
+          <div class="flex-between mb-1">
+            <select id="brainActivityFilter">
+              <option value="">All Categories</option>
+              <option value="content">Content</option>
+              <option value="strategy">Strategy</option>
+              <option value="analysis">Analysis</option>
+              <option value="conversation">Conversation</option>
+              <option value="pipeline">Pipeline</option>
+            </select>
+          </div>
+          <div id="brainActivityList" class="stack"></div>
+        </div>
+
+        <!-- Pipelines Tab -->
+        <div class="tab-panel" id="brain-pipelines">
+          <h3 class="mt-0">Pipeline Templates</h3>
+          <p class="text-muted text-small">Chain AI tools together to automate multi-step marketing workflows.</p>
+          <div id="brainPipelineTemplates" class="card-grid mb-2"></div>
+
+          <!-- Pipeline Runner -->
+          <div class="card hidden" id="brainPipelineRunner">
+            <div class="flex-between">
+              <h3 class="mt-0" id="brainPipelineName">Pipeline</h3>
+              <button class="btn btn-ghost btn-sm" id="brainPipelineClose">Close</button>
+            </div>
+            <p class="text-muted text-small" id="brainPipelineDesc"></p>
+            <div id="brainPipelineSteps" class="stack mb-1"></div>
+            <div id="brainPipelineInputs" class="stack mb-1"></div>
+            <button class="btn btn-ai" id="brainPipelineRunBtn"><span class="btn-ai-icon">&#9733;</span> Run Pipeline</button>
+            <div id="brainPipelineResults" class="mt-1 hidden"></div>
+          </div>
+
+          <h3>Recent Pipeline Runs</h3>
+          <div id="brainPipelineHistory" class="stack"></div>
+        </div>
+
+        <!-- Feedback Tab -->
+        <div class="tab-panel" id="brain-feedback">
+          <h3 class="mt-0">Performance Feedback</h3>
+          <p class="text-muted text-small">How AI-generated content has performed. This data feeds back into AI context for future improvements.</p>
+          <div id="brainFeedbackList" class="stack"></div>
         </div>
       </section>
 

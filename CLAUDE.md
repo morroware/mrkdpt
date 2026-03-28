@@ -36,6 +36,7 @@ public/
         ai.js                 # AI Studio - 25+ tools with categories
         assistant.js          # AI Writing Assistant - floating refinement panel
         chat.js               # AI Marketing Chat - conversational AI with history
+        brain.js              # AI Brain - self-awareness dashboard, learnings, pipelines, feedback
         onboarding.js         # Onboarding wizard - business profile + AI autopilot
         content.js            # Content Studio - calendar, list, create with AI buttons
         dashboard.js          # Dashboard - metrics, recent items, AI quick actions
@@ -68,7 +69,9 @@ src/
   AiContentTools.php          # Content creation AI tools (generate, blog, video, captions, refine, etc.)
   AiAnalysisTools.php         # Analysis AI tools (tone, score, SEO, hashtags, A/B variants)
   AiStrategyTools.php         # Strategy AI tools (research, personas, competitor, calendar, insights)
-  AiChatService.php           # AI Marketing Chat with conversation history
+  AiChatService.php           # AI Marketing Chat with conversation history, auto-insight extraction
+  AiMemoryEngine.php          # AI Brain: activity logging, auto-learning, situational awareness, performance feedback
+  AiOrchestrator.php          # AI Pipelines: tool chaining, templates, next-action suggestions
   AiAutopilot.php             # AI Autopilot for onboarding content bootstrapping
   Repositories.php            # Data access layer (Post, Campaign, Competitor, etc.)
   SocialPublisher.php         # Multi-platform publishing (Twitter, Bluesky, Mastodon, Facebook, Instagram)
@@ -195,6 +198,52 @@ Uses `.ai-inline-btn[data-inline-refine]` elements, wired globally in `app.js::i
 
 ### Brand Voice
 `BrandProfileRepository` in `Repositories.php` manages brand voice profiles. Active profile fields (`voice_tone`, `vocabulary`, `avoid_words`, `example_content`, `target_audience`) are injected into AI system prompts via `AiService::buildSystemPrompt()`.
+
+### AI Brain System (`AiMemoryEngine.php` + `AiOrchestrator.php`)
+The AI Brain makes the system self-aware — it learns from its own outputs, tracks all activity, and feeds context back into every AI call.
+
+**Memory Engine (`AiMemoryEngine.php`):**
+- **Activity Logging**: Every AI tool invocation is logged to `ai_activity_log` with input/output summaries
+- **Auto-Learning**: After each tool run, the AI extracts key insights and saves them to `ai_learnings` with confidence scores
+- **Situational Awareness**: `buildBrainContext()` injects current date/time, active campaigns, upcoming deadlines, recent AI activity, and learned insights into every system prompt
+- **Performance Feedback**: Connects published content performance back to AI context via `ai_performance_feedback`
+- **Memory Decay**: Unreinforced learnings decay in confidence over time; duplicate insights reinforce existing ones
+- **Self-Reflection**: `selfReflect()` returns knowledge coverage, gaps, and strongest learnings
+
+**Orchestrator (`AiOrchestrator.php`):**
+- **Pipeline Templates**: 5 built-in multi-step pipelines (content_creation, campaign_launch, competitor_intel, content_repurpose, seo_content)
+- **Tool Chaining**: Steps pass context via `{{prev_summary}}` and `{{prev.content}}` variables
+- **Next-Action Suggestions**: After any tool runs, suggests the best follow-up tools via `NEXT_ACTION_MAP`
+- **Tool Registry**: Maps all 28+ tool names to endpoints, categories, and output fields
+
+**Database Tables:**
+- `ai_activity_log` — Every AI tool call (tool_name, category, input/output summaries, provider, duration)
+- `ai_learnings` — Auto-extracted insights (category, insight, confidence, reinforcement count, expiry)
+- `ai_performance_feedback` — Content performance metrics linked back to AI activity
+- `ai_pipelines` — Saved pipeline definitions
+- `ai_pipeline_runs` — Pipeline execution history with per-step results
+
+**Context Injection Flow:**
+```
+buildSystemPrompt() → buildBrainContext() injects:
+  1. Situational awareness (date, active campaigns, upcoming posts, draft count)
+  2. Recent AI activity digest (last 8 tool runs with summaries)
+  3. Learned insights grouped by category (ranked by confidence × reinforcement)
+  4. Performance feedback (what content worked/didn't)
+```
+
+**API Endpoints:**
+- `/api/ai/brain/status` — Self-reflection (knowledge coverage, gaps, stats)
+- `/api/ai/brain/activity` — Activity log with category filter
+- `/api/ai/brain/stats` — Aggregated activity statistics
+- `/api/ai/brain/learnings` — CRUD for auto-extracted learnings
+- `/api/ai/brain/feedback` — Performance feedback CRUD
+- `/api/ai/brain/capture-performance` — Auto-capture post performance data
+- `/api/ai/pipelines/templates` — List pipeline templates
+- `/api/ai/pipelines/run` — Execute a pipeline
+- `/api/ai/pipelines/next-actions` — Get suggested next tools
+- `/api/ai/pipelines/runs` — Pipeline run history
+- `/api/ai/pipelines/tools` — Tool registry for frontend
 
 ## UI/UX Architecture
 

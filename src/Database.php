@@ -592,6 +592,79 @@ final class Database
         )');
         $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_ai_shared_memory_updated ON ai_shared_memory(updated_at DESC)');
 
+        /* ---- Phase 9.5: AI Brain — Activity Log, Learnings, Performance Feedback ---- */
+
+        $this->pdo->exec('CREATE TABLE IF NOT EXISTS ai_activity_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tool_name TEXT NOT NULL,
+            tool_category TEXT DEFAULT "general",
+            input_summary TEXT DEFAULT "",
+            output_summary TEXT DEFAULT "",
+            provider TEXT DEFAULT "",
+            model TEXT DEFAULT "",
+            tokens_estimated INTEGER DEFAULT 0,
+            duration_ms INTEGER DEFAULT 0,
+            quality_score INTEGER DEFAULT 0,
+            metadata_json TEXT DEFAULT "{}",
+            created_at TEXT NOT NULL
+        )');
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_ai_activity_log_tool ON ai_activity_log(tool_name, created_at DESC)');
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_ai_activity_log_created ON ai_activity_log(created_at DESC)');
+
+        $this->pdo->exec('CREATE TABLE IF NOT EXISTS ai_learnings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category TEXT NOT NULL DEFAULT "general",
+            insight TEXT NOT NULL,
+            confidence REAL DEFAULT 0.7,
+            source_tool TEXT DEFAULT "",
+            source_activity_id INTEGER,
+            times_reinforced INTEGER DEFAULT 1,
+            last_used_at TEXT,
+            expires_at TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY(source_activity_id) REFERENCES ai_activity_log(id)
+        )');
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_ai_learnings_category ON ai_learnings(category, confidence DESC)');
+
+        $this->pdo->exec('CREATE TABLE IF NOT EXISTS ai_performance_feedback (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            entity_type TEXT NOT NULL,
+            entity_id INTEGER NOT NULL,
+            activity_id INTEGER,
+            metric_name TEXT NOT NULL,
+            metric_value REAL DEFAULT 0,
+            feedback_note TEXT DEFAULT "",
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(activity_id) REFERENCES ai_activity_log(id)
+        )');
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_ai_perf_entity ON ai_performance_feedback(entity_type, entity_id)');
+
+        $this->pdo->exec('CREATE TABLE IF NOT EXISTS ai_pipelines (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT DEFAULT "",
+            steps_json TEXT NOT NULL DEFAULT "[]",
+            status TEXT DEFAULT "draft",
+            last_run_at TEXT,
+            run_count INTEGER DEFAULT 0,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )');
+
+        $this->pdo->exec('CREATE TABLE IF NOT EXISTS ai_pipeline_runs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            pipeline_id INTEGER NOT NULL,
+            status TEXT DEFAULT "running",
+            steps_completed INTEGER DEFAULT 0,
+            steps_total INTEGER DEFAULT 0,
+            results_json TEXT DEFAULT "{}",
+            error TEXT DEFAULT "",
+            started_at TEXT NOT NULL,
+            completed_at TEXT,
+            FOREIGN KEY(pipeline_id) REFERENCES ai_pipelines(id)
+        )');
+
         /* ---- Phase 9: App Settings (DB-backed overrides for .env) ---- */
         $this->pdo->exec('CREATE TABLE IF NOT EXISTS app_settings (
             setting_key TEXT PRIMARY KEY,
@@ -626,6 +699,12 @@ final class Database
         $this->applySafeAlter('users', 'failed_login_attempts', 'INTEGER DEFAULT 0');
         $this->applySafeAlter('users', 'last_failed_login_at', 'INTEGER');
         $this->applySafeAlter('users', 'locked_until', 'INTEGER');
+
+        // AI Brain enhancements
+        $this->applySafeAlter('ai_shared_memory', 'relevance_score', 'REAL DEFAULT 1.0');
+        $this->applySafeAlter('ai_shared_memory', 'access_count', 'INTEGER DEFAULT 0');
+        $this->applySafeAlter('ai_shared_memory', 'expires_at', 'TEXT');
+        $this->applySafeAlter('ai_shared_memory', 'category', 'TEXT DEFAULT "general"');
     }
 
     private function applySafeAlter(string $table, string $column, string $type): void

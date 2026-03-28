@@ -33,7 +33,7 @@ async function loadFunnels() {
     if (!el) return;
     el.innerHTML = items.map(f => {
       const stages = f.stages || [];
-      const maxVal = Math.max(...stages.map(s => Math.max(s.target_count, s.actual_count)), 1);
+      const maxVal = Math.max(...stages.map(s => Math.max(s.target_count || 0, s.actual_count || 0)), 1);
       return `<div class="card" data-funnel-id="${f.id}">
         <div class="flex-between"><h3>${escapeHtml(f.name)}</h3>${f.campaign_name ? `<span class="badge">${escapeHtml(f.campaign_name)}</span>` : ''}</div>
         ${f.description ? `<p class="text-muted text-small mt-1">${escapeHtml(f.description)}</p>` : ''}

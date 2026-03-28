@@ -81,7 +81,7 @@ async function loadTests() {
             return `<div class="mb-1">
               <div class="flex-between"><span><strong>${escapeHtml(v.variant_name)}</strong></span><span>${v.conversions}/${v.impressions} (${v.conversion_rate}%)</span></div>
               <div class="progress"><div class="progress-bar" style="width:${pct}%"></div></div>
-              ${v.content ? `<p class="text-small text-muted mt-1" style="max-height:60px;overflow:hidden">${escapeHtml(v.content)}</p>` : ''}
+              ${v.content ? `<p class="text-small text-muted mt-1" style="max-height:80px;overflow-y:auto">${escapeHtml(v.content)}</p>` : ''}
               <div class="btn-group mt-1">
                 <button class="btn btn-sm btn-outline" data-ab-impression="${v.id}">+Impression</button>
                 <button class="btn btn-sm btn-success" data-ab-conversion="${v.id}">+Conversion</button>

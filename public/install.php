@@ -80,9 +80,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Regenerate token for next request
     $_SESSION['install_csrf'] = bin2hex(random_bytes(32));
 
+    $sensitiveKeys = [
+        'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GEMINI_API_KEY', 'DEEPSEEK_API_KEY',
+        'GROQ_API_KEY', 'MISTRAL_API_KEY', 'OPENROUTER_API_KEY', 'XAI_API_KEY',
+        'TOGETHER_API_KEY', 'SMTP_PASS',
+    ];
+
     foreach (array_keys($defaults) as $key) {
         if (isset($_POST[$key])) {
-            $values[$key] = trim((string)$_POST[$key]);
+            $submittedValue = trim((string)$_POST[$key]);
+            // Preserve existing secret values when installer shows masked values
+            // or when secret fields are left blank during a config update.
+            if (in_array($key, $sensitiveKeys, true) && ($submittedValue === '' || str_contains($submittedValue, '•'))) {
+                continue;
+            }
+            $values[$key] = $submittedValue;
         }
     }
 

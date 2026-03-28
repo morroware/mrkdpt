@@ -23,9 +23,10 @@ function renderMarkdown(text) {
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
     .replace(/^---$/gm, '<hr>')
-    .replace(/^[*-] (.+)$/gm, '<li>$1</li>')
-    .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
-    .replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>')
+    .replace(/^[*-] (.+)$/gm, '<li data-list="ul">$1</li>')
+    .replace(/^\d+\. (.+)$/gm, '<li data-list="ol">$1</li>')
+    .replace(/((?:<li data-list="ul">.*<\/li>\n?)+)/g, (m) => '<ul>' + m.replace(/ data-list="ul"/g, '') + '</ul>')
+    .replace(/((?:<li data-list="ol">.*<\/li>\n?)+)/g, (m) => '<ol>' + m.replace(/ data-list="ol"/g, '') + '</ol>')
     .replace(/\n\n/g, '</p><p>')
     .replace(/\n/g, '<br>');
 

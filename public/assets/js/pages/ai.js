@@ -48,12 +48,14 @@ function renderMarkdown(text) {
     .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
     // Horizontal rules
     .replace(/^---$/gm, '<hr>')
-    // Unordered lists
-    .replace(/^[*-] (.+)$/gm, '<li>$1</li>')
-    // Ordered lists
-    .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
-    // Wrap consecutive <li> in <ul>
-    .replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>')
+    // Unordered lists — mark with data attribute to distinguish
+    .replace(/^[*-] (.+)$/gm, '<li data-list="ul">$1</li>')
+    // Ordered lists — mark with data attribute
+    .replace(/^\d+\. (.+)$/gm, '<li data-list="ol">$1</li>')
+    // Wrap consecutive unordered <li> in <ul>
+    .replace(/((?:<li data-list="ul">.*<\/li>\n?)+)/g, (m) => '<ul>' + m.replace(/ data-list="ul"/g, '') + '</ul>')
+    // Wrap consecutive ordered <li> in <ol>
+    .replace(/((?:<li data-list="ol">.*<\/li>\n?)+)/g, (m) => '<ol>' + m.replace(/ data-list="ol"/g, '') + '</ol>')
     // Line breaks (paragraphs)
     .replace(/\n\n/g, '</p><p>')
     .replace(/\n/g, '<br>');

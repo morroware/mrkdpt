@@ -152,18 +152,32 @@ function renderFieldBuilder() {
     });
   });
 
-  // Drag-and-drop reorder
+  // Drag-and-drop reorder with visual feedback
   let dragIdx = null;
   container.querySelectorAll('.form-field-item').forEach(item => {
     item.addEventListener('dragstart', (e) => {
       dragIdx = parseInt(item.dataset.idx);
-      item.style.opacity = '0.5';
+      item.style.opacity = '0.4';
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
     });
     item.addEventListener('dragend', () => {
       item.style.opacity = '1';
+      item.classList.remove('dragging');
+      container.querySelectorAll('.form-field-item').forEach(el => el.classList.remove('drop-above', 'drop-below'));
       dragIdx = null;
     });
-    item.addEventListener('dragover', (e) => { e.preventDefault(); });
+    item.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (dragIdx === null) return;
+      container.querySelectorAll('.form-field-item').forEach(el => el.classList.remove('drop-above', 'drop-below'));
+      const rect = item.getBoundingClientRect();
+      const mid = rect.top + rect.height / 2;
+      item.classList.add(e.clientY < mid ? 'drop-above' : 'drop-below');
+    });
+    item.addEventListener('dragleave', () => {
+      item.classList.remove('drop-above', 'drop-below');
+    });
     item.addEventListener('drop', (e) => {
       e.preventDefault();
       const dropIdx = parseInt(item.dataset.idx);
@@ -220,7 +234,7 @@ async function loadForms() {
       </div>`;
     }).join('') || emptyState('&#128221;', 'No forms yet', 'Build your first form to collect leads and feedback.');
 
-    el.addEventListener('click', handleFormListClick);
+    el.onclick = handleFormListClick;
   } catch (err) {
     toast('Failed to load forms: ' + err.message, 'error');
   }

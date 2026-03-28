@@ -3684,3 +3684,69 @@ select {
 
 /* Character counter danger enhancement */
 .char-counter.danger { font-weight: 600; }
+
+/* ================================================================
+   DRAG-AND-DROP VISUAL FEEDBACK - Landing Page Sections & Form Fields
+   ================================================================ */
+
+/* Shared drag-drop item styles */
+.lp-section-item,
+.form-field-item {
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s, opacity 0.15s;
+}
+.lp-section-item.dragging,
+.form-field-item.dragging,
+.lp-section-item[style*="opacity: 0.4"],
+.form-field-item[style*="opacity: 0.5"] {
+  opacity: 0.4 !important;
+  transform: scale(0.98);
+}
+.lp-section-item.drop-above,
+.form-field-item.drop-above {
+  border-top: 3px solid var(--accent) !important;
+  padding-top: calc(.6rem - 2px);
+}
+.lp-section-item.drop-below,
+.form-field-item.drop-below {
+  border-bottom: 3px solid var(--accent) !important;
+  padding-bottom: calc(.6rem - 2px);
+}
+.lp-section-item:hover,
+.form-field-item:hover {
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+/* Landing page section picker grid */
+#lpSectionTemplates {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+/* Form field drag handle cursor */
+.form-field-item [style*="cursor:grab"],
+.lp-section-item [style*="cursor:grab"] {
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+.form-field-item:hover [style*="cursor:grab"],
+.lp-section-item:hover [style*="cursor:grab"] {
+  opacity: 1;
+}
+
+/* ================================================================
+   AI OUTPUT - Ordered List Styling
+   ================================================================ */
+.ai-output-rich ol {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+  list-style-type: decimal;
+}
+.ai-output-rich ol li {
+  margin-bottom: 0.25rem;
+}

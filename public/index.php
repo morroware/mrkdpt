@@ -222,7 +222,10 @@ if ($path === '/api/track/open' && $method === 'GET') {
 if ($path === '/api/track/click' && $method === 'GET') {
     $cid = (int)($_GET['c'] ?? 0);
     $sid = (int)($_GET['s'] ?? 0);
-    $url = sanitize_redirect_url((string)($_GET['url'] ?? '/'), '/', true);
+    $urlParam = (string)($_GET['url'] ?? '/');
+    $sig = (string)($_GET['sig'] ?? '');
+    $isSignedClick = $cid && $sid && $emailService && $emailService->verifyClickSignature($cid, $sid, $urlParam, $sig);
+    $url = sanitize_redirect_url($urlParam, '/', !$isSignedClick);
     if ($cid && $sid && $emailService) {
         $emailService->trackClick($cid, $sid, $url);
     }
@@ -235,8 +238,10 @@ if ($path === '/api/track/click' && $method === 'GET') {
 if ($path === '/api/unsubscribe' && $method === 'GET') {
     $sid = (int)($_GET['s'] ?? 0);
     $lid = (int)($_GET['l'] ?? 0);
+    $sig = (string)($_GET['sig'] ?? '');
+    $sigValid = $sid && $lid && $emailService && $emailService->verifyUnsubscribeSignature($sid, $lid, $sig);
     $unsubscribed = false;
-    if ($sid && $lid) {
+    if ($sigValid) {
         $sub = $subscribers->find($sid);
         if ($sub && (int)$sub['list_id'] === $lid) {
             $pdo->prepare("UPDATE subscribers SET status = 'unsubscribed', unsubscribed_at = :u WHERE id = :id AND list_id = :lid")->execute([

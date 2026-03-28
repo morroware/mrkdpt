@@ -489,7 +489,7 @@ class EmailService
      */
     public function generateTrackingPixel(int $campaignId, int $subscriberId): string
     {
-        $url = "{$this->baseUrl}/track/open?cid={$campaignId}&sid={$subscriberId}";
+        $url = "{$this->baseUrl}/api/track/open?cid={$campaignId}&sid={$subscriberId}";
         $url = htmlspecialchars($url, ENT_QUOTES, 'UTF-8');
         return '<img src="' . $url . '" width="1" height="1" alt="" style="display:none" />';
     }
@@ -500,7 +500,8 @@ class EmailService
     public function generateTrackingUrl(int $campaignId, int $subscriberId, string $originalUrl): string
     {
         $encoded = urlencode($originalUrl);
-        return "{$this->baseUrl}/track/click?cid={$campaignId}&sid={$subscriberId}&url={$encoded}";
+        $signature = hash_hmac('sha256', "{$campaignId}|{$subscriberId}|{$originalUrl}", $this->getSigningKey());
+        return "{$this->baseUrl}/api/track/click?cid={$campaignId}&sid={$subscriberId}&url={$encoded}&sig={$signature}";
     }
 
     // =========================================================================
@@ -537,9 +538,36 @@ class EmailService
     public function getUnsubscribeUrl(int $subscriberId, int $listId): string
     {
         $payload = "{$subscriberId}-{$listId}";
-        $signature = hash_hmac('sha256', $payload, $this->smtpPass);
+        $signature = hash_hmac('sha256', $payload, $this->getSigningKey());
 
-        return "{$this->baseUrl}/unsubscribe?sid={$subscriberId}&lid={$listId}&sig={$signature}";
+        return "{$this->baseUrl}/api/unsubscribe?sid={$subscriberId}&lid={$listId}&sig={$signature}";
+    }
+
+    public function verifyClickSignature(int $campaignId, int $subscriberId, string $url, string $signature): bool
+    {
+        if ($signature === '') {
+            return false;
+        }
+        $expected = hash_hmac('sha256', "{$campaignId}|{$subscriberId}|{$url}", $this->getSigningKey());
+        return hash_equals($expected, $signature);
+    }
+
+    public function verifyUnsubscribeSignature(int $subscriberId, int $listId, string $signature): bool
+    {
+        if ($signature === '') {
+            return false;
+        }
+        $payload = "{$subscriberId}-{$listId}";
+        $expected = hash_hmac('sha256', $payload, $this->getSigningKey());
+        return hash_equals($expected, $signature);
+    }
+
+    private function getSigningKey(): string
+    {
+        if ($this->smtpPass !== '') {
+            return $this->smtpPass;
+        }
+        return (string)app_config('CRON_KEY', 'marketing-suite-signing-key');
     }
 
     // =========================================================================

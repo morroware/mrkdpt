@@ -1,5 +1,11 @@
 # Marketing Suite - Project Reference
 
+## Beta Readiness (March 28, 2026)
+
+Before launching beta, use the canonical engineering checklist in `TODO-BETA.md`.
+
+**Release gate:** Beta is only "go" when all **P0** and **P1** items in `TODO-BETA.md` are complete, and smoke tests pass for install, auth, content creation, social queue, email send/tracking, forms, and cron.
+
 ## Overview
 
 All-in-one marketing operations platform with deep AI integration. Zero-dependency PHP 8.1+ backend with vanilla JS SPA frontend. SQLite database. No build step, no Composer, no npm.

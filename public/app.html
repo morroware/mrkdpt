@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="assets/styles.css" />
 </head>
 <body>
+<a href="#mainContent" class="skip-link">Skip to main content</a>
 
 <!-- Login Page -->
 <div id="page-login" class="login-container">
@@ -31,7 +32,7 @@
 <div id="appLayout" class="app-layout hidden">
 
   <!-- Sidebar -->
-  <aside class="sidebar" id="sidebar">
+  <aside class="sidebar" id="sidebar" aria-label="Primary navigation">
     <div class="sidebar-logo">Marketing Suite</div>
     <nav class="sidebar-nav">
       <a href="#dashboard" data-page="dashboard"><span class="nav-icon">&#9632;</span> Dashboard</a>
@@ -108,8 +109,10 @@
     </div>
   </aside>
 
+  <button class="sidebar-backdrop" id="sidebarBackdrop" aria-label="Close navigation" aria-hidden="true"></button>
+
   <!-- Main -->
-  <div class="main-area">
+  <main class="main-area" id="mainContent">
     <header class="header-bar">
       <div class="flex gap-1">
         <button id="menuToggle" aria-label="Toggle menu">&#9776;</button>
@@ -1542,7 +1545,7 @@ Tip: Use the provider selector above to compare results from different AI models
       </section>
 
     </div><!-- content-area -->
-  </div><!-- main-area -->
+  </main><!-- main-area -->
 </div><!-- app-layout -->
 
 <!-- AI Writing Assistant Panel -->

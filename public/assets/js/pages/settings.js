@@ -7,6 +7,17 @@ import { $, escapeHtml, formatDateTime, onSubmit, formData, onClick, copyToClipb
 import { success, error } from '../core/toast.js';
 
 let currentSettings = {};
+const providerLabels = {
+  openai: 'OpenAI',
+  anthropic: 'Anthropic',
+  gemini: 'Gemini',
+  deepseek: 'DeepSeek',
+  groq: 'Groq',
+  mistral: 'Mistral',
+  openrouter: 'OpenRouter',
+  xai: 'xAI',
+  together: 'Together AI',
+};
 
 async function refreshSettingsInfo() {
   try {
@@ -33,7 +44,7 @@ async function refreshSettingsInfo() {
             <select id="set_ai_provider" name="AI_PROVIDER" class="input">
               ${['openai','anthropic','gemini','deepseek','groq','mistral','openrouter','xai','together'].map(p => {
                 const hasKey = data.ai?.providers?.[p]?.configured;
-                const label = p.charAt(0).toUpperCase() + p.slice(1) + (hasKey ? '' : ' (no key)');
+                const label = (providerLabels[p] || p) + (hasKey ? '' : ' (no key)');
                 return `<option value="${p}" ${(data.ai_provider || 'openai') === p ? 'selected' : ''}>${label}</option>`;
               }).join('')}
             </select>
@@ -78,12 +89,16 @@ async function refreshSettingsInfo() {
           </div>
         </form>
         <div class="mt-1">
-          <p class="text-muted text-small"><strong>AI Provider Status:</strong>
+          <p class="text-muted text-small"><strong>AI Provider Status:</strong></p>
+          <div class="provider-status-grid">
             ${['openai','anthropic','gemini','deepseek','groq','mistral','openrouter','xai','together'].map(p => {
               const ok = data.ai?.providers?.[p]?.configured;
-              return `<span class="${ok ? 'text-success' : 'text-muted'}" style="margin-right:0.5em;">${p.charAt(0).toUpperCase() + p.slice(1)}: ${ok ? 'Ready' : 'No key'}</span>`;
+              const isActive = (data.ai_provider || 'openai') === p;
+              return `<span class="provider-chip ${ok ? 'provider-ready' : 'provider-missing'} ${isActive ? 'provider-active' : ''}">
+                ${escapeHtml(providerLabels[p] || p)} · ${ok ? 'Ready' : 'No key'}${isActive ? ' · Active' : ''}
+              </span>`;
             }).join(' ')}
-          </p>
+          </div>
           <p class="text-muted text-small"><strong>SMTP:</strong> ${data.smtp_configured ? 'Configured' : 'Not configured (set in .env)'}</p>
         </div>
       `;
@@ -101,6 +116,10 @@ async function refreshSettingsInfo() {
         const currentModel = currentModels[provider] || '';
         const modelKey = provider.toUpperCase() + '_MODEL';
         modelSelect.name = modelKey;
+        if (!Object.keys(models).length) {
+          modelSelect.innerHTML = '<option value="">No models available</option>';
+          return;
+        }
         modelSelect.innerHTML = Object.entries(models).map(([id, label]) =>
           `<option value="${id}" ${id === currentModel ? 'selected' : ''}>${escapeHtml(label)}</option>`
         ).join('');
@@ -115,6 +134,7 @@ async function refreshSettingsInfo() {
         form.addEventListener('submit', async (e) => {
           e.preventDefault();
           const btn = form.querySelector('button[type="submit"]');
+          if (!btn) return;
           btn.disabled = true;
           btn.classList.add('loading');
           try {
@@ -131,6 +151,7 @@ async function refreshSettingsInfo() {
             });
             await api('/api/settings', { method: 'PUT', body: JSON.stringify(payload) });
             success('Settings saved');
+            await refreshSettingsInfo();
           } catch (err) {
             error('Failed to save: ' + err.message);
           } finally {

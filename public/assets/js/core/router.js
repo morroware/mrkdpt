@@ -66,6 +66,9 @@ export function initRouter() {
       // Close mobile sidebar
       const sidebar = $('sidebar');
       if (sidebar) sidebar.classList.remove('sidebar-open');
+      const backdrop = $('sidebarBackdrop');
+      if (backdrop) backdrop.classList.remove('visible');
+      document.body.style.overflow = '';
     });
   });
 
@@ -126,10 +129,20 @@ export function initRouter() {
   // Mobile menu toggle
   const menuToggle = $('menuToggle');
   const sidebar = $('sidebar');
+  const backdrop = $('sidebarBackdrop');
+  function setMobileSidebarState(open) {
+    if (!sidebar) return;
+    sidebar.classList.toggle('sidebar-open', open);
+    if (backdrop) backdrop.classList.toggle('visible', open);
+    document.body.style.overflow = open ? 'hidden' : '';
+  }
   if (menuToggle && sidebar) {
     menuToggle.addEventListener('click', () => {
-      sidebar.classList.toggle('sidebar-open');
+      setMobileSidebarState(!sidebar.classList.contains('sidebar-open'));
     });
+    if (backdrop) {
+      backdrop.addEventListener('click', () => setMobileSidebarState(false));
+    }
   }
 
   // Theme toggle

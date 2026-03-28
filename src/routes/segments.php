@@ -31,7 +31,8 @@ function register_segment_routes(Router $router, SegmentRepository $segments): v
     });
 
     $router->put('/api/segments/{id}', function (array $params) use ($segments) {
-        json_response(['item' => $segments->update((int)$params['id'], request_json())]);
+        $item = $segments->update((int)$params['id'], request_json());
+        $item ? json_response(['item' => $item]) : json_response(['error' => 'Not found'], 404);
     });
 
     $router->post('/api/segments/{id}/recompute', function (array $params) use ($segments) {

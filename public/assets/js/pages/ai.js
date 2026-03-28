@@ -4,7 +4,7 @@
  */
 
 import { api } from '../core/api.js';
-import { $, onClick, copyToClipboard } from '../core/utils.js';
+import { $, onClick, copyToClipboard, escapeHtml } from '../core/utils.js';
 import { success, error } from '../core/toast.js';
 import { navigate } from '../core/router.js';
 

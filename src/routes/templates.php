@@ -18,7 +18,10 @@ function register_template_routes(Router $router, TemplateRepository $templates,
         $item ? json_response(['item' => $item]) : json_response(['error' => 'Not found'], 404);
     });
 
-    $router->put('/api/templates/{id}', fn($p) => json_response(['item' => $templates->update((int)$p['id'], request_json())]));
+    $router->put('/api/templates/{id}', function ($p) use ($templates) {
+        $item = $templates->update((int)$p['id'], request_json());
+        $item ? json_response(['item' => $item]) : json_response(['error' => 'Not found'], 404);
+    });
 
     $router->delete('/api/templates/{id}', function ($p) use ($templates) {
         $templates->delete((int)$p['id']);
@@ -54,7 +57,10 @@ function register_template_routes(Router $router, TemplateRepository $templates,
         $item ? json_response(['item' => $item]) : json_response(['error' => 'Not found'], 404);
     });
 
-    $router->put('/api/brand-profiles/{id}', fn($p) => json_response(['item' => $brandProfiles->update((int)$p['id'], request_json())]));
+    $router->put('/api/brand-profiles/{id}', function ($p) use ($brandProfiles) {
+        $item = $brandProfiles->update((int)$p['id'], request_json());
+        $item ? json_response(['item' => $item]) : json_response(['error' => 'Not found'], 404);
+    });
 
     $router->delete('/api/brand-profiles/{id}', function ($p) use ($brandProfiles) {
         $brandProfiles->delete((int)$p['id']);

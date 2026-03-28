@@ -21,7 +21,8 @@ function register_email_template_routes(Router $router, EmailTemplateRepository 
     });
 
     $router->put('/api/email-templates/{id}', function (array $params) use ($emailTemplates) {
-        json_response(['item' => $emailTemplates->update((int)$params['id'], request_json())]);
+        $item = $emailTemplates->update((int)$params['id'], request_json());
+        $item ? json_response(['item' => $item]) : json_response(['error' => 'Not found'], 404);
     });
 
     $router->post('/api/email-templates/{id}/render', function (array $params) use ($emailTemplates) {

@@ -399,6 +399,7 @@ final class AiOrchestrator
             'seo-audit'           => $this->analysisTools->seoAudit($input['url'] ?? '', $input['description'] ?? ''),
             'preflight'           => $this->analysisTools->preFlightCheck($input['content'] ?? '', $input['platform'] ?? 'general'),
             'predict'             => $this->analysisTools->predictPerformance($input['content'] ?? '', $input['platform'] ?? 'instagram'),
+            'competitor-radar'    => $this->strategyTools->competitorRadar($input['competitors'] ?? []),
             default               => ['error' => "Unknown tool: {$toolName}"],
         };
     }

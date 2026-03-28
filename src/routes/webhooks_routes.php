@@ -14,7 +14,10 @@ function register_webhook_routes(Router $router, Webhooks $webhooks): void
         json_response(['item' => $webhooks->create($p)], 201);
     });
 
-    $router->put('/api/webhooks/{id}', fn($p) => json_response(['item' => $webhooks->update((int)$p['id'], request_json())]));
+    $router->put('/api/webhooks/{id}', function ($p) use ($webhooks) {
+        $item = $webhooks->update((int)$p['id'], request_json());
+        $item ? json_response(['item' => $item]) : json_response(['error' => 'Not found'], 404);
+    });
 
     $router->delete('/api/webhooks/{id}', function ($p) use ($webhooks) {
         $webhooks->delete((int)$p['id']);

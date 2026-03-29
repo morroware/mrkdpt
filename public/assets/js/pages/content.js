@@ -326,6 +326,13 @@ async function loadCampaignFilter() {
 }
 
 export async function refresh() {
+  // Reset editing state on page re-entry
+  editingPostId = null;
+  const form = document.getElementById('postForm');
+  if (form) form.reset();
+  const submitBtn = form?.querySelector('button[type="submit"]');
+  if (submitBtn) submitBtn.textContent = 'Create Post';
+
   await loadCampaignFilter();
   await refreshPosts();
 

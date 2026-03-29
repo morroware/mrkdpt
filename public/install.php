@@ -13,6 +13,22 @@ $envPath = APP_ROOT . '/.env';
 $dataDir = APP_ROOT . '/data';
 $dbPath = $dataDir . '/marketing.sqlite';
 
+// Block access if the app is already fully installed (has .env + DB + at least one user)
+if (is_file($envPath) && is_file($dbPath)) {
+    try {
+        $checkDb = new Database($dbPath);
+        $checkPdo = $checkDb->pdo();
+        $userCount = (int) $checkPdo->query('SELECT COUNT(*) FROM users')->fetchColumn();
+        if ($userCount > 0 && php_sapi_name() !== 'cli') {
+            http_response_code(403);
+            echo '<!DOCTYPE html><html><head><title>Already Installed</title></head><body style="font-family:sans-serif;max-width:600px;margin:100px auto;text-align:center"><h1>Already Installed</h1><p>This application is already installed and has active users. The installer is disabled for security.</p><p><a href="app.html">Go to App</a></p></body></html>';
+            exit;
+        }
+    } catch (\Throwable $e) {
+        // If DB check fails, allow installer to proceed (might need re-setup)
+    }
+}
+
 $defaults = [
     'BUSINESS_NAME' => 'My Small Business',
     'BUSINESS_INDUSTRY' => 'Local services',

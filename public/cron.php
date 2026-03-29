@@ -49,6 +49,9 @@ if (!is_file($dbPath)) {
 $db = new Database($dbPath);
 $pdo = $db->pdo();
 
+// Initialize DB-backed settings cache (needed by app_config() overrides)
+db_setting('_init', null, $pdo);
+
 // Optionally load SocialPublisher if available
 $publisher = null;
 $publisherFile = APP_ROOT . '/src/SocialPublisher.php';
@@ -74,7 +77,7 @@ if (is_file($emailServiceFile)) {
 }
 
 $scheduler = new Scheduler($pdo, $publisher, $dataDir);
-$scheduler->setAutomations(new AutomationRepository($pdo));
+$scheduler->setAutomations(new AutomationRepository($pdo, $emailService));
 $scheduler->setQueue(new SocialQueue($pdo));
 
 // Wire up the async job queue and register handlers

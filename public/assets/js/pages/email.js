@@ -320,7 +320,7 @@ export function init() {
         method: 'POST',
         body: JSON.stringify({ topic, count: 5 }),
       });
-      if (item?.subjects) {
+      if (item?.subjects && typeof item.subjects === 'string') {
         // Extract first subject line
         const lines = item.subjects.split('\n').filter((l) => l.trim());
         const firstSubject = lines[0]?.replace(/^\d+[\.\)]\s*/, '').replace(/^["*]+|["*]+$/g, '').replace(/^Subject:\s*/i, '').replace(/^-\s*/, '').trim();

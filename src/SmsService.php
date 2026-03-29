@@ -54,9 +54,15 @@ final class SmsService
                 'Content-Type: application/x-www-form-urlencoded',
             ],
         ]);
-        curl_exec($ch);
+        $response = curl_exec($ch);
         $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
         curl_close($ch);
+
+        if ($code < 200 || $code >= 300) {
+            $detail = $curlError ?: ($response ?: 'Unknown error');
+            error_log("SmsService: Twilio API error (HTTP {$code}): {$detail}");
+        }
 
         return $code >= 200 && $code < 300;
     }

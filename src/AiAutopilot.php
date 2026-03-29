@@ -657,7 +657,7 @@ final class AiAutopilot
                     'cta'          => '',
                     'tags'         => 'autopilot,ai-generated',
                     'scheduled_for' => $scheduleDate . 'T09:00:00Z',
-                    'status'       => 'scheduled',
+                    'status'       => 'draft',
                     'ai_score'     => 0,
                 ]);
                 $postsCreated++;

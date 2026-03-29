@@ -86,8 +86,16 @@ final class EmailTemplateRepository
 
     private function seedBuiltins(): void
     {
+        // Use INSERT OR IGNORE to handle race conditions with concurrent requests
         $count = (int)$this->pdo->query("SELECT COUNT(*) FROM email_templates WHERE is_builtin = 1")->fetchColumn();
         if ($count > 0) return;
+
+        // Wrap in a transaction for atomicity
+        $this->pdo->beginTransaction();
+        try {
+            // Re-check inside transaction
+            $count = (int)$this->pdo->query("SELECT COUNT(*) FROM email_templates WHERE is_builtin = 1")->fetchColumn();
+            if ($count > 0) { $this->pdo->rollBack(); return; }
 
         $templates = [
             [
@@ -149,6 +157,11 @@ final class EmailTemplateRepository
         foreach ($templates as $tpl) {
             $tpl['is_builtin'] = 1;
             $this->create($tpl);
+        }
+            $this->pdo->commit();
+        } catch (\Throwable $e) {
+            $this->pdo->rollBack();
+            error_log('EmailTemplates::seedBuiltins() error: ' . $e->getMessage());
         }
     }
 

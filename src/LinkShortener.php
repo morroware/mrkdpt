@@ -54,7 +54,8 @@ final class LinkShortener
 
     public function recordClick(int $linkId, string $linkType, array $meta = []): void
     {
-        $this->pdo->prepare('UPDATE short_links SET clicks = clicks + 1 WHERE id = :id')->execute([':id' => $linkId]);
+        $table = $linkType === 'utm' ? 'utm_links' : 'short_links';
+        $this->pdo->prepare("UPDATE {$table} SET clicks = clicks + 1 WHERE id = :id")->execute([':id' => $linkId]);
 
         $this->pdo->prepare('INSERT INTO link_clicks(link_type, link_id, ip_hash, user_agent, referer, clicked_at) VALUES(:lt,:li,:ip,:ua,:r,:c)')->execute([
             ':lt' => $linkType,

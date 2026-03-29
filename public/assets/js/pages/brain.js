@@ -525,8 +525,7 @@ async function runPipeline() {
   if (!currentPipelineTemplate) return;
 
   const btn = $('#brainPipelineRunBtn');
-  btn.classList.add('loading');
-  btn.disabled = true;
+  if (btn) { btn.classList.add('loading'); btn.disabled = true; }
 
   // Gather variables
   const variables = {};
@@ -585,8 +584,7 @@ async function runPipeline() {
   } catch (e) {
     error('Pipeline failed: ' + e.message);
   } finally {
-    btn.classList.remove('loading');
-    btn.disabled = false;
+    if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
   }
 }
 

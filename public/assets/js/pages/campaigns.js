@@ -9,6 +9,13 @@ import { success, error } from '../core/toast.js';
 let editingCampaignId = null;
 
 export async function refresh() {
+  // Reset editing state on page re-entry
+  editingCampaignId = null;
+  const form = document.getElementById('campaignForm');
+  if (form) form.reset();
+  const submitBtn = form?.querySelector('button[type="submit"]');
+  if (submitBtn) submitBtn.textContent = 'Create Campaign';
+
   try {
     const { items } = await api('/api/campaigns');
     const list = $('campaignList');

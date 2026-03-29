@@ -72,7 +72,7 @@ final class JobQueue
      */
     public function process(array $handlers, int $limit = 20, string $queue = ''): array
     {
-        $now = gmdate('Y-m-d\TH:i:s');
+        $now = gmdate(DATE_ATOM);
         $stats = ['processed' => 0, 'failed' => 0, 'errors' => []];
 
         $sql = '
@@ -127,7 +127,7 @@ final class JobQueue
                 } else {
                     // Reschedule with exponential backoff: 30s, 120s, 480s...
                     $delay = (int) (30 * pow(4, $attempts - 1));
-                    $retryAt = gmdate('Y-m-d\TH:i:s', time() + $delay);
+                    $retryAt = gmdate(DATE_ATOM, time() + $delay);
                     $this->pdo->prepare('UPDATE jobs SET status = "pending", error = :e, scheduled_for = :sf WHERE id = :id')
                         ->execute([':e' => $e->getMessage(), ':sf' => $retryAt, ':id' => $jobId]);
                 }
@@ -154,7 +154,7 @@ final class JobQueue
      */
     public function recoverStale(int $timeout = 300): int
     {
-        $cutoff = gmdate('Y-m-d\TH:i:s', time() - $timeout);
+        $cutoff = gmdate(DATE_ATOM, time() - $timeout);
         $stmt = $this->pdo->prepare('
             UPDATE jobs SET status = "pending", error = "Recovered from stale processing state"
             WHERE status = "processing" AND started_at < :cutoff

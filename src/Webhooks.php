@@ -153,9 +153,16 @@ final class Webhooks
 
     private function send(array $hook, string $event, array $payload): array
     {
-        // SSRF protection: reject private/internal network targets
+        // SSRF protection: reject private/internal network targets and pin DNS
+        $resolvedIp = null;
         try {
             $this->validateUrlNotInternal($hook['url']);
+            // Pin the resolved IP to prevent DNS rebinding attacks
+            $host = parse_url($hook['url'], PHP_URL_HOST);
+            $resolvedIp = gethostbyname($host);
+            if ($resolvedIp === $host && !filter_var($host, FILTER_VALIDATE_IP)) {
+                $resolvedIp = null; // Could not resolve
+            }
         } catch (\InvalidArgumentException $e) {
             return [
                 'webhook_id' => $hook['id'],
@@ -176,7 +183,7 @@ final class Webhooks
         $signature = hash_hmac('sha256', $body, $hook['secret']);
 
         $ch = curl_init($hook['url']);
-        curl_setopt_array($ch, [
+        $curlOpts = [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST => true,
             CURLOPT_HTTPHEADER => [
@@ -190,7 +197,14 @@ final class Webhooks
             CURLOPT_CONNECTTIMEOUT => 5,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
-        ]);
+        ];
+        // Pin DNS resolution to prevent rebinding between validate and connect
+        if ($resolvedIp) {
+            $host = parse_url($hook['url'], PHP_URL_HOST);
+            $port = parse_url($hook['url'], PHP_URL_PORT) ?: (parse_url($hook['url'], PHP_URL_SCHEME) === 'https' ? 443 : 80);
+            $curlOpts[CURLOPT_RESOLVE] = ["{$host}:{$port}:{$resolvedIp}"];
+        }
+        curl_setopt_array($ch, $curlOpts);
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);

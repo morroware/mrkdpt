@@ -77,6 +77,9 @@ export async function refresh() {
           ).join('')
         : emptyState('&#128161;', 'No ideas yet', 'Use AI Studio to brainstorm content ideas for your marketing.', '<a href="#ai" class="btn btn-sm btn-ai"><span class="btn-ai-icon">&#9733;</span> Open AI Studio</a>');
     }
+    // Load weekly recap using already-fetched metrics (avoids redundant API call)
+    const m = dashData.metrics || {};
+    loadWeeklyRecap(m.published || 0, m.scheduled || 0);
   } catch (err) {
     error('Failed to load dashboard: ' + err.message);
   }
@@ -367,29 +370,20 @@ async function loadDailyActions() {
       });
     });
 
-    // Load weekly recap
-    loadWeeklyRecap();
   } catch (err) {
     list.innerHTML = '<p class="text-muted">Configure an AI provider in settings to get daily action recommendations.</p>';
   }
 }
 
-async function loadWeeklyRecap() {
+function loadWeeklyRecap(published = 0, scheduled = 0) {
   const el = $('weeklyRecap');
   const content = $('weeklyRecapContent');
   if (!el || !content) return;
 
-  try {
-    const data = await api('/api/dashboard');
-    const metrics = data.metrics || {};
-    const published = metrics.published || 0;
-    const scheduled = metrics.scheduled || 0;
-
-    if (published > 0 || scheduled > 0) {
-      content.innerHTML = `This week: <strong>${published}</strong> posts published, <strong>${scheduled}</strong> scheduled. Keep the momentum going!`;
-      el.style.display = '';
-    }
-  } catch (_) {}
+  if (published > 0 || scheduled > 0) {
+    content.innerHTML = `This week: <strong>${published}</strong> posts published, <strong>${scheduled}</strong> scheduled. Keep the momentum going!`;
+    el.style.display = '';
+  }
 }
 
 async function loadAiInsights() {

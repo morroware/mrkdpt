@@ -352,9 +352,16 @@ Return ONLY valid JSON, no markdown fences.";
     public function executeAll(int $taskId): array
     {
         $task = $this->getTask($taskId);
+        if ($task && in_array($task['status'], ['cancelled', 'completed', 'failed'], true)) {
+            return [
+                'executed_steps' => [],
+                'task' => $task,
+                'error' => "Task is already {$task['status']}",
+            ];
+        }
         $stepsTotal = 0;
         if ($task) {
-            $steps = json_decode($task['plan'] ?? '[]', true);
+            $steps = json_decode($task['plan_json'] ?? '[]', true);
             $stepsTotal = is_array($steps) ? count($steps) : 0;
         }
         $maxSteps = max(10, $stepsTotal);
@@ -532,7 +539,7 @@ You can request up to 2 tools per step. Include tool requests naturally within y
         $toolsExecuted = 0;
 
         $response = preg_replace_callback(
-            '/\[TOOL:(\w[\w-]*)\]\s*(\{[^}]*\})\s*\[\/TOOL\]/s',
+            '/\[TOOL:(\w[\w-]*)\]\s*(\{(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\})\s*\[\/TOOL\]/s',
             function ($matches) use (&$toolsExecuted, $maxTools) {
                 if ($toolsExecuted >= $maxTools) {
                     return $matches[0] . "\n[Tool execution skipped — max {$maxTools} tools per step]";

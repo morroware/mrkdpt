@@ -169,6 +169,7 @@ CONTENT OUTPUT MODE:
 
     private function buildContentDirective(?array $contentBrief, string $userMessage): string
     {
+        if ($contentBrief === null) $contentBrief = [];
         $contentType = strtolower(trim((string)($contentBrief['content_type'] ?? '')));
         $platform = trim((string)($contentBrief['platform'] ?? ''));
         $tone = trim((string)($contentBrief['tone'] ?? ''));

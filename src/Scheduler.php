@@ -214,6 +214,7 @@ final class Scheduler
               AND recurrence IS NOT NULL
               AND recurrence != 'none'
               AND recurrence != ''
+              AND (published_at >= datetime('now', '-90 days') OR created_at >= datetime('now', '-90 days'))
             ORDER BY id DESC
             LIMIT 100
         ");

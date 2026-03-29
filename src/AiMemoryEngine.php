@@ -238,10 +238,26 @@ Return ONLY valid JSON, no markdown fences.";
 
     private function reinforceLearning(string $insight, string $category): void
     {
-        // Boost confidence and reinforcement count of the most similar existing learning
-        $stmt = $this->pdo->prepare("SELECT id FROM ai_learnings WHERE category = :cat ORDER BY created_at DESC LIMIT 1");
+        // Boost confidence of the most similar existing learning in this category
+        // Use keyword matching to find the best match rather than just the most recent
+        $keywords = array_filter(array_unique(explode(' ', strtolower(preg_replace('/[^a-zA-Z0-9\s]/', '', $insight)))), fn($w) => strlen($w) > 3);
+        $stmt = $this->pdo->prepare("SELECT id, insight FROM ai_learnings WHERE category = :cat");
         $stmt->execute([':cat' => $category]);
-        $id = $stmt->fetchColumn();
+        $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        $bestId = null;
+        $bestScore = 0;
+        foreach ($rows as $row) {
+            $lowerInsight = strtolower($row['insight']);
+            $score = 0;
+            foreach ($keywords as $kw) {
+                if (str_contains($lowerInsight, $kw)) $score++;
+            }
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $bestId = $row['id'];
+            }
+        }
+        $id = $bestId ?: ($rows[0]['id'] ?? null);
         if ($id) {
             $this->pdo->prepare(
                 "UPDATE ai_learnings SET times_reinforced = times_reinforced + 1, confidence = MIN(1.0, confidence + 0.05), updated_at = :now WHERE id = :id"
@@ -1087,23 +1103,23 @@ Return ONLY valid JSON array.";
             case 'blogPostGenerator':
                 return [$input['title'] ?? '', $input['keywords'] ?? '', $input['outline'] ?? null];
             case 'contentIdeas':
-                return [$input['topic'] ?? '', $input['platform'] ?? 'general', (int)($input['count'] ?? 5)];
+                return [$input['topic'] ?? '', $input['platform'] ?? 'general'];
             case 'marketResearch':
-                return [$input['focus'] ?? '', $input['audience'] ?? ''];
+                return [$input['audience'] ?? $input['focus'] ?? '', $input['goal'] ?? $input['audience'] ?? ''];
             case 'audiencePersona':
                 return [$input['demographics'] ?? '', $input['behaviors'] ?? ''];
             case 'competitorAnalysis':
-                return [$input['competitor'] ?? '', $input['our_position'] ?? ''];
+                return [$input['competitorName'] ?? $input['competitor'] ?? '', $input['notes'] ?? $input['our_position'] ?? ''];
             case 'contentScore':
-                return [$input['content'] ?? ''];
+                return [$input['content'] ?? '', $input['platform'] ?? 'general'];
             case 'toneAnalysis':
                 return [$input['content'] ?? ''];
             case 'headlineOptimizer':
-                return [$input['topic'] ?? '', $input['current'] ?? null];
+                return [$input['headline'] ?? $input['topic'] ?? '', $input['platform'] ?? $input['current'] ?? 'general'];
             case 'hashtagResearch':
                 return [$input['topic'] ?? '', $input['platform'] ?? 'instagram'];
             case 'seoKeywordResearch':
-                return [$input['topic'] ?? '', $input['intent'] ?? 'informational'];
+                return [$input['topic'] ?? '', $input['niche'] ?? $input['intent'] ?? 'informational'];
             default:
                 return [$input];
         }

@@ -121,8 +121,9 @@ async function run(endpoint, payload, resultKey, btnId, toolName) {
     payload.provider = selectedProvider;
   }
   try {
-    const { item } = await api(endpoint, { method: 'POST', body: JSON.stringify(payload) });
-    const text = resultKey ? item[resultKey] : item;
+    const data = await api(endpoint, { method: 'POST', body: JSON.stringify(payload) });
+    const item = data?.item || data;
+    const text = resultKey ? (item?.[resultKey] ?? item) : item;
     output(typeof text === 'string' ? text : JSON.stringify(text, null, 2), item?.provider, toolName);
     success('Generated successfully');
     // Fetch and show next-action suggestions

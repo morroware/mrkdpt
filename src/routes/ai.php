@@ -1111,7 +1111,7 @@ function register_ai_routes(
         $prompt = "Based on this marketing data, generate exactly 5 prioritized daily actions as a JSON array. Each object must have: id (1-5), priority (high/medium/low), title (short), description (1 sentence), action_type (publish_draft|review_scheduled|create_content|send_email|analyze_performance|engage_audience), entity_id (number or null), entity_type (post|campaign|email|null).\n\n{$ctx}\n\nReturn ONLY valid JSON array.";
         $system = "You are an AI marketing assistant that creates actionable daily to-do lists. {$brainCtx}\nRespond with ONLY a valid JSON array, no other text.";
 
-        $result = $ai->generate($prompt, $system);
+        $result = $ai->generateAdvanced($system, $prompt);
         $actions = json_decode($result, true);
         if (!$actions && preg_match('/\[[\s\S]*\]/m', $result, $m)) {
             $actions = json_decode($m[0], true);
@@ -1134,7 +1134,7 @@ function register_ai_routes(
         $prompt = "Repurpose this content for these platforms: {$platformList}.\n\nOriginal content:\n{$content}\n\nFor each platform, create an adapted version respecting platform constraints:\n- Twitter: max 280 chars, concise, hashtags\n- Instagram: engaging caption, emojis, 5-10 hashtags\n- LinkedIn: professional tone, thought leadership\n- Facebook: conversational, question-driven\n- Email: subject line + body snippet\n\nReturn a JSON array where each object has: platform, content, hashtags (string of hashtags or empty).";
         $system = "You are a content repurposing expert. {$brainCtx}\nReturn ONLY a valid JSON array.";
 
-        $result = $ai->generate($prompt, $system);
+        $result = $ai->generateAdvanced($system, $prompt);
         $variants = json_decode($result, true);
         if (!$variants && preg_match('/\[[\s\S]*\]/m', $result, $m)) {
             $variants = json_decode($m[0], true);
@@ -1150,16 +1150,14 @@ function register_ai_routes(
         $startDate = $p['start_date'] ?? date('Y-m-d');
         $brainCtx = $memoryEngine ? $memoryEngine->buildBrainContext() : '';
 
-        $bizName = '';
-        try { $bizName = $pdo->query("SELECT value FROM settings WHERE key = 'business_name'")->fetchColumn() ?: ''; } catch (\Exception $e) {}
-        $industry = '';
-        try { $industry = $pdo->query("SELECT value FROM settings WHERE key = 'business_industry'")->fetchColumn() ?: ''; } catch (\Exception $e) {}
+        $bizName = app_config('BUSINESS_NAME', '');
+        $industry = app_config('BUSINESS_INDUSTRY', '');
 
         $days = $period === 'month' ? 28 : 7;
         $prompt = "Create a {$period}ly content calendar starting {$startDate} for a {$industry} business called \"{$bizName}\". Generate {$days} social media posts (1 per day) with variety: mix of promotional, educational, engagement, and storytelling content across platforms (instagram, twitter, linkedin, facebook).\n\nReturn a JSON array of objects with: title, body (the post content), platform, scheduled_for (YYYY-MM-DD HH:MM:SS format, spread across the {$days} days at optimal times), content_type (social_post).\n\n{$brainCtx}\nReturn ONLY valid JSON array.";
         $system = "You are a content calendar expert. Create diverse, engaging content. Return ONLY a valid JSON array.";
 
-        $result = $ai->generate($prompt, $system);
+        $result = $ai->generateAdvanced($system, $prompt);
         $posts = json_decode($result, true);
         if (!$posts && preg_match('/\[[\s\S]*\]/m', $result, $m)) {
             $posts = json_decode($m[0], true);
@@ -1198,7 +1196,7 @@ function register_ai_routes(
             case 'create-post':
                 $prompt = "Generate a social media post based on this request: {$args}\nReturn JSON: {title, body, platform (instagram|twitter|linkedin|facebook), tags}";
                 $system = "You are a content creator. {$brainCtx}\nReturn ONLY valid JSON object.";
-                $result = $ai->generate($prompt, $system);
+                $result = $ai->generateAdvanced($system, $prompt);
                 $post = json_decode($result, true);
                 if (!$post && preg_match('/\{[\s\S]*\}/m', $result, $m)) $post = json_decode($m[0], true);
                 if ($post && isset($post['body'])) {
@@ -1215,7 +1213,7 @@ function register_ai_routes(
             case 'schedule-posts':
                 $prompt = "Generate 5 social media posts based on this: {$args}\nReturn JSON array of objects with: title, body, platform, tags, scheduled_for (YYYY-MM-DD HH:MM:SS over the next 7 days at optimal times).";
                 $system = "You are a content scheduler. {$brainCtx}\nReturn ONLY valid JSON array.";
-                $result = $ai->generate($prompt, $system);
+                $result = $ai->generateAdvanced($system, $prompt);
                 $posts = json_decode($result, true);
                 if (!$posts && preg_match('/\[[\s\S]*\]/m', $result, $m)) $posts = json_decode($m[0], true);
                 if (is_array($posts)) {
@@ -1243,7 +1241,7 @@ function register_ai_routes(
 
                 $prompt = "Analyze these marketing analytics and provide insights: {$args}\n\n{$analyticsCtx}\n\nProvide a concise analysis with recommendations.";
                 $system = "You are a marketing analyst. {$brainCtx}";
-                $message = $ai->generate($prompt, $system);
+                $message = $ai->generateAdvanced($system, $prompt);
                 break;
 
             case 'optimize-campaign':
@@ -1252,7 +1250,7 @@ function register_ai_routes(
                 foreach ($activeCampaigns as $c) $ctx .= "Campaign: {$c['name']}, Channel: {$c['channel']}, Budget: {$c['budget']}\n";
                 $prompt = "Optimize these campaigns: {$args}\n\n{$ctx}\nProvide specific, actionable optimization recommendations.";
                 $system = "You are a campaign optimizer. {$brainCtx}";
-                $message = $ai->generate($prompt, $system);
+                $message = $ai->generateAdvanced($system, $prompt);
                 break;
 
             default:
@@ -1276,7 +1274,7 @@ function register_ai_routes(
 
         $prompt = "Analyze these content performance patterns and identify:\n1. What content types perform best\n2. Best platforms and posting times\n3. Content topics that resonate\n4. Specific recommendations for improvement\n\n{$ctx}";
         $system = "You are a marketing performance analyst. {$brainCtx}";
-        $result = $ai->generate($prompt, $system);
+        $result = $ai->generateAdvanced($system, $prompt);
         $logAi('performance-patterns', 'performance', 'Analyzed content performance patterns', $result);
         json_response(['item' => ['patterns' => $result]]);
     });
@@ -1299,7 +1297,7 @@ function register_ai_routes(
 
         $prompt = "Generate a comprehensive marketing performance review for the last {$days} days:\n{$ctx}\n\nInclude: Executive summary, key wins, areas for improvement, content performance by platform, and 5 specific recommendations for next month.";
         $system = "You are a CMO reviewing marketing performance. Be specific and data-driven. {$brainCtx}";
-        $result = $ai->generate($prompt, $system);
+        $result = $ai->generateAdvanced($system, $prompt);
         $logAi('monthly-review', 'performance', "Monthly review ({$days} days)", $result);
         json_response(['item' => ['review' => $result, 'days' => $days]]);
     });
@@ -1312,7 +1310,7 @@ function register_ai_routes(
 
         $prompt = "Convert this audience description into segment filter criteria:\n\"{$desc}\"\n\nReturn JSON object with:\n- segment_name (string, short name for this segment)\n- criteria (object with optional fields: stage (array of strings from: lead/prospect/customer/churned), min_score (int 0-100), max_score (int 0-100), tags (comma-separated string), source (string), company (string), has_activity_since (YYYY-MM-DD), no_activity_since (YYYY-MM-DD))\n- explanation (1 sentence explaining the criteria)\n- estimated_size (string like 'Small (~10-50)' or 'Medium (~50-200)')\n\nOnly include criteria fields that are relevant to the description.";
         $system = "You are a marketing segmentation expert. Return ONLY valid JSON.";
-        $result = $ai->generate($prompt, $system);
+        $result = $ai->generateAdvanced($system, $prompt);
         $parsed = json_decode($result, true);
         if (!$parsed && preg_match('/\{[\s\S]*\}/m', $result, $m)) $parsed = json_decode($m[0], true);
         $logAi('describe-audience', 'audience', "Audience: {$desc}", $result);
@@ -1322,20 +1320,29 @@ function register_ai_routes(
     // Email Intelligence
     $router->post('/api/ai/email-intelligence', function () use ($ai, $pdo, $memoryEngine, $logAi) {
         $brainCtx = $memoryEngine ? $memoryEngine->buildBrainContext() : '';
-        $campaigns = $pdo->query("SELECT name, subject, sent_count, open_count, click_count, sent_at FROM email_campaigns WHERE sent_at IS NOT NULL ORDER BY sent_at DESC LIMIT 20")->fetchAll(PDO::FETCH_ASSOC);
+        $campaigns = $pdo->query("
+            SELECT ec.id, ec.name, ec.subject, ec.sent_count, ec.sent_at,
+                   COALESCE(SUM(CASE WHEN et.event_type = 'open' THEN 1 ELSE 0 END), 0) AS open_count,
+                   COALESCE(SUM(CASE WHEN et.event_type = 'click' THEN 1 ELSE 0 END), 0) AS click_count
+            FROM email_campaigns ec
+            LEFT JOIN email_tracking et ON et.campaign_id = ec.id
+            WHERE ec.sent_at IS NOT NULL
+            GROUP BY ec.id
+            ORDER BY ec.sent_at DESC LIMIT 20
+        ")->fetchAll(PDO::FETCH_ASSOC);
         $subCount = $pdo->query("SELECT COUNT(*) FROM subscribers WHERE status = 'active'")->fetchColumn();
         $listCount = $pdo->query("SELECT COUNT(*) FROM email_lists")->fetchColumn();
 
         $ctx = "EMAIL DATA:\n- {$subCount} active subscribers across {$listCount} lists\n- Campaign history:\n";
         foreach ($campaigns as $c) {
-            $openRate = ($c['sent_count'] > 0) ? round(($c['open_count'] / $c['sent_count']) * 100, 1) : 0;
-            $clickRate = ($c['sent_count'] > 0) ? round(($c['click_count'] / $c['sent_count']) * 100, 1) : 0;
+            $openRate = ($c['sent_count'] > 0) ? round(((int)$c['open_count'] / (int)$c['sent_count']) * 100, 1) : 0;
+            $clickRate = ($c['sent_count'] > 0) ? round(((int)$c['click_count'] / (int)$c['sent_count']) * 100, 1) : 0;
             $ctx .= "  - \"{$c['name']}\" (Subject: \"{$c['subject']}\") sent:{$c['sent_count']} opens:{$openRate}% clicks:{$clickRate}% on {$c['sent_at']}\n";
         }
 
         $prompt = "Analyze this email marketing data and provide:\n1. Overall email health score\n2. Best performing subject line patterns\n3. Open rate and click rate trends\n4. Best send day/time patterns\n5. Specific recommendations to improve email performance\n6. Subscriber growth suggestions\n\n{$ctx}";
         $system = "You are an email marketing expert. Be specific and actionable. {$brainCtx}";
-        $result = $ai->generate($prompt, $system);
+        $result = $ai->generateAdvanced($system, $prompt);
         $logAi('email-intelligence', 'channel', 'Email intelligence analysis', $result);
         json_response(['item' => ['analysis' => $result]]);
     });
@@ -1355,7 +1362,7 @@ function register_ai_routes(
 
         $prompt = "Based on this email configuration, provide a deliverability assessment:\n{$ctx}\n\nCheck for:\n1. SMTP configuration completeness\n2. SPF/DKIM/DMARC recommendations for the domain\n3. Common deliverability issues\n4. Spam score risk factors\n5. Actionable steps to improve deliverability\n\nRate overall deliverability readiness as: Good / Needs Work / Critical Issues.";
         $system = "You are an email deliverability expert.";
-        $result = $ai->generate($prompt, $system);
+        $result = $ai->generateAdvanced($system, $prompt);
         $logAi('deliverability-check', 'channel', 'Deliverability check', $result);
         json_response(['item' => ['analysis' => $result]]);
     });
@@ -1373,7 +1380,7 @@ function register_ai_routes(
 
         $prompt = "Write a professional business response to this {$rating}-star review from {$reviewer}:\n\n\"{$reviewText}\"\n\nTone: {$tone}\nBusiness: {$bizName}\n\nKeep it concise (2-4 sentences). " . ($rating < 3 ? "Acknowledge the issue, apologize, and offer to make it right. Include an invitation to discuss offline." : "Thank them genuinely and invite them back.");
         $system = "You are a reputation manager for {$bizName}. Write natural, non-template responses.";
-        $result = $ai->generate($prompt, $system);
+        $result = $ai->generateAdvanced($system, $prompt);
         $logAi('review-response', 'brand', "Response for {$rating}-star review", $result);
         json_response(['item' => ['response' => $result]]);
     });
@@ -1393,7 +1400,7 @@ function register_ai_routes(
 
         $prompt = "Analyze this content calendar and provide:\n1. Content mix assessment (is it balanced?)\n2. Platform coverage gaps\n3. Seasonal opportunities for the next 2 weeks\n4. Content frequency recommendations\n5. Topics that are missing\n\n{$ctx}\nToday is " . date('F j, Y');
         $system = "You are a content strategist. Identify gaps and opportunities. {$brainCtx}";
-        $result = $ai->generate($prompt, $system);
+        $result = $ai->generateAdvanced($system, $prompt);
         $logAi('calendar-intelligence', 'strategy', 'Calendar intelligence analysis', $result);
         json_response(['item' => ['analysis' => $result]]);
     });
@@ -1402,8 +1409,7 @@ function register_ai_routes(
     $router->post('/api/ai/seo-opportunities', function () use ($ai, $pdo, $logAi) {
         $p = request_json();
         $topic = trim((string)($p['topic'] ?? ''));
-        $industry = '';
-        try { $industry = $pdo->query("SELECT value FROM settings WHERE key = 'business_industry'")->fetchColumn() ?: ''; } catch (\Exception $e) {}
+        $industry = app_config('BUSINESS_INDUSTRY', '');
         $existingPosts = $pdo->query("SELECT title FROM posts WHERE status = 'published' ORDER BY created_at DESC LIMIT 20")->fetchAll(PDO::FETCH_COLUMN);
 
         $ctx = "Industry: {$industry}\nTopic focus: {$topic}\nExisting content:\n";
@@ -1411,7 +1417,7 @@ function register_ai_routes(
 
         $prompt = "Find SEO content opportunities:\n{$ctx}\n\n1. Identify 5 low-competition keywords this business could rank for\n2. For each keyword, suggest a content piece (title, type, target word count)\n3. Identify content gaps compared to typical competitors\n4. Suggest internal linking opportunities\n5. Quick wins for improving existing content SEO";
         $system = "You are an SEO strategist. Focus on achievable, high-impact opportunities for small businesses.";
-        $result = $ai->generate($prompt, $system);
+        $result = $ai->generateAdvanced($system, $prompt);
         $logAi('seo-opportunities', 'strategy', "SEO opportunities: {$topic}", $result);
         json_response(['item' => ['opportunities' => $result]]);
     });
@@ -1430,7 +1436,7 @@ function register_ai_routes(
 
         $prompt = "Review this old content and recommend:\n{$ctx}\n\n1. Which pieces should be updated and why\n2. What updates are needed (new data, refreshed examples, updated statistics)\n3. Which pieces could be repurposed into new formats\n4. Priority ranking (update first → later)";
         $system = "You are a content freshness auditor. Be specific about what needs updating.";
-        $result = $ai->generate($prompt, $system);
+        $result = $ai->generateAdvanced($system, $prompt);
         $logAi('content-freshness', 'content', 'Content freshness check', $result);
         json_response(['item' => ['analysis' => $result]]);
     });
@@ -1448,7 +1454,7 @@ function register_ai_routes(
 
         $prompt = "Perform a compliance audit:\n{$ctx}\n\nCheck for:\n1. GDPR compliance (consent, data handling, privacy notices)\n2. FTC guidelines (sponsored content disclosures, truthful claims)\n3. CAN-SPAM compliance (email opt-out, physical address)\n4. Platform-specific rules (character limits, prohibited content)\n5. Accessibility concerns\n6. Cookie consent requirements for landing pages\n\nRate overall compliance as: Compliant / Needs Attention / Non-Compliant, with specific action items.";
         $system = "You are a marketing compliance auditor. Be thorough but practical.";
-        $result = $ai->generate($prompt, $system);
+        $result = $ai->generateAdvanced($system, $prompt);
         $logAi('compliance-check', 'general', 'Compliance audit', $result);
         json_response(['item' => ['analysis' => $result]]);
     });

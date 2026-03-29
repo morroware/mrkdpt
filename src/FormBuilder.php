@@ -314,6 +314,15 @@ final class FormRepository
     private function slugify(string $text): string
     {
         $slug = strtolower(trim(preg_replace('/[^a-zA-Z0-9]+/', '-', $text), '-'));
-        return $slug ?: 'form-' . time();
+        $slug = $slug ?: 'form-' . time();
+
+        // Ensure uniqueness by appending a numeric suffix if needed
+        $base = $slug;
+        $suffix = 1;
+        $check = $this->pdo->prepare('SELECT COUNT(*) FROM forms WHERE slug = :s');
+        while ($check->execute([':s' => $slug]) && (int)$check->fetchColumn() > 0) {
+            $slug = $base . '-' . (++$suffix);
+        }
+        return $slug;
     }
 }

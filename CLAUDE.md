@@ -61,11 +61,11 @@ public/
         login.js              # Auth flow
 
 src/
-  bootstrap.php               # Helpers: env_value(), json_response(), security_headers()
-  Database.php                # SQLite schema (35+ tables), auto-migration
+  bootstrap.php               # Helpers: env_value(), json_response(), security_headers(), global error handler
+  Database.php                # SQLite schema (35+ tables), auto-migration with applySafeAlter()
   Auth.php                    # Session + bearer token, CSRF, rate limiting
   Router.php                  # Lightweight router with middleware
-  AiService.php               # Multi-provider AI (9 providers) - core generate/chat methods
+  AiService.php               # Multi-provider AI (9 providers) - core generate/chat/image methods, provider failover
   AiContentTools.php          # Content creation AI tools (generate, blog, video, captions, refine, etc.)
   AiAnalysisTools.php         # Analysis AI tools (tone, score, SEO, hashtags, A/B variants)
   AiStrategyTools.php         # Strategy AI tools (research, personas, competitor, calendar, insights)
@@ -76,30 +76,33 @@ src/
   AiAgentSystem.php           # Multi-agent autonomous tasks: planner, specialized agents, human-in-the-loop
   AiAutopilot.php             # AI Autopilot for onboarding content bootstrapping
   Repositories.php            # Data access layer (Post, Campaign, Competitor, etc.)
-  SocialPublisher.php         # Multi-platform publishing (Twitter, Bluesky, Mastodon, Facebook, Instagram)
+  SocialPublisher.php         # Multi-platform publishing (15 platforms including WordPress, Telegram, Discord)
   SocialQueue.php             # Queue with best-time optimization
-  EmailService.php            # SMTP client with tracking, merge tags
-  EmailTemplates.php          # Built-in email templates
-  Scheduler.php               # Cron task runner
+  EmailService.php            # SMTP client with tracking, merge tags, connection reuse, curl_multi support
+  EmailTemplates.php          # Built-in email templates (6 categories: onboarding, promo, newsletter, announcement, re-engage, survey)
+  Scheduler.php               # Cron task runner with flock-based locking + stale lock recovery
+  JobQueue.php                # Async job queue with retry/backoff, priority, stale job recovery
+  SmsService.php              # Twilio SMS integration for automation actions
   Analytics.php               # Event tracking, dashboard metrics
-  Contacts.php                # Mini CRM
-  FormBuilder.php             # Dynamic forms + submissions
-  LandingPages.php            # Landing page editor (5 templates) + CSS sanitization
-  LinkShortener.php           # Short links + click analytics (iterative code gen)
+  Contacts.php                # Mini CRM with upsert on duplicate email
+  FormBuilder.php             # Dynamic forms + submissions with unique slug generation
+  LandingPages.php            # Landing page editor (5 templates) + CSS sanitization + unique slugs
+  LinkShortener.php           # Short links + click analytics (iterative code gen), UTM click tracking
   UtmBuilder.php              # UTM link generator
-  Automations.php             # Trigger-action engine
-  Segments.php                # Dynamic contact segmentation
+  Automations.php             # Trigger-action engine (email, SMS, webhook, tag, list, score actions)
+  Segments.php                # Dynamic contact segmentation with criteria-based filtering
   Templates.php               # Reusable templates + brand profiles
   Funnels.php                 # Sales funnel stages
   AbTesting.php               # A/B test variants + conversion tracking
   CampaignMetrics.php         # ROI tracking
   MediaLibrary.php            # File uploads + thumbnails
   RssFetcher.php              # RSS/Atom parser
-  Webhooks.php                # Event dispatch + HMAC signing
+  Webhooks.php                # Event dispatch + HMAC signing + DNS-pinned SSRF protection
   routes/                     # 32 route files (one per API domain)
-    ai.php                    # AI tool endpoints, brain, pipelines, search, agents, model routing
+    ai.php                    # AI tool endpoints, brain, pipelines, search, agents, model routing, extended AI routes
     posts.php                 # Full CRUD, calendar, bulk ops, approval workflows
     auth.php                  # Login, logout, setup status
+    settings.php              # App config, health check, backups, Twilio settings
     campaigns.php, contacts.php, email.php, etc.
 ```
 
@@ -353,21 +356,22 @@ Button variants: `.btn`, `.btn-ai` (AI purple gradient), `.btn-ghost` (transpare
 ## Database (SQLite)
 
 35+ tables defined in `Database.php`. Key tables:
-- `posts` - Content with platform, status, AI score, recurrence
+- `posts` - Content with platform, status, AI score, recurrence, recurring_parent_id
 - `campaigns` - Budget, channel, objective, ROI tracking
 - `social_accounts` - Connected platforms with tokens
 - `publish_log` - Post-to-platform history
 - `social_queue` - Publishing queue with priority
 - `email_lists`, `subscribers`, `email_campaigns` - Email marketing
+- `email_templates` - Built-in + custom email templates with HTML/text bodies
 - `contacts`, `contact_activities` - CRM
 - `analytics_events` - Event tracking
 - `content_ideas`, `research_briefs` - AI output storage
 - `landing_pages`, `forms`, `form_submissions`
-- `utm_links`, `short_links` - Link tracking
+- `utm_links`, `short_links`, `link_clicks` - Link tracking with click analytics
 - `ab_tests`, `ab_test_variants` - A/B testing
 - `funnels`, `funnel_stages` - Sales funnels
-- `automations` - Trigger-action workflows
-- `segments` - Dynamic contact segmentation
+- `automation_rules` - Trigger-action workflows (supports email, SMS, webhook, tag, list, score actions)
+- `segments`, `segment_contacts` - Dynamic contact segmentation
 - `templates`, `brand_profiles` - Content library
 - `media` - File uploads
 - `webhooks`, `cron_log`, `rss_feeds`, `rss_items`
@@ -376,7 +380,11 @@ Button variants: `.btn`, `.btn-ai` (AI purple gradient), `.btn-ghost` (transpare
 - `ai_agent_tasks` - AI Agent system
 - `ai_model_routing` - Task-type model routing
 - `ai_search_history` - AI Search history
-- `ai_shared_memory` - Shared AI memory/context
+- `ai_shared_memory` - Shared AI memory/context (with category + expiry)
+- `jobs` - Async job queue (type, payload, status, priority, retry with backoff)
+- `settings` - Key-value app settings (DB-backed overrides for .env)
+- `business_profile` - Business info for AI context + onboarding state
+- `chat_conversations`, `chat_messages` - AI chat history
 
 ## Authentication
 
@@ -407,7 +415,10 @@ Button variants: `.btn`, `.btn-ai` (AI purple gradient), `.btn-ghost` (transpare
 ## Configuration (.env)
 
 ```
+# Business Identity
 BUSINESS_NAME, BUSINESS_INDUSTRY, TIMEZONE
+
+# AI Providers (set AI_PROVIDER to the active one)
 AI_PROVIDER=openai|anthropic|gemini|deepseek|groq|mistral|openrouter|xai|together
 OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL
 ANTHROPIC_API_KEY, ANTHROPIC_MODEL
@@ -418,13 +429,44 @@ MISTRAL_API_KEY, MISTRAL_MODEL
 OPENROUTER_API_KEY, OPENROUTER_MODEL
 XAI_API_KEY, XAI_MODEL
 TOGETHER_API_KEY, TOGETHER_MODEL
-BANANA_API_KEY, BANANA_BASE_URL, BANANA_MODEL_ID
+BANANA_API_KEY, BANANA_BASE_URL, BANANA_MODEL_ID   # Image generation
+
+# Application
 APP_URL, APP_FORCE_HTTPS, MAX_UPLOAD_MB, CRON_KEY
+
+# Email (SMTP)
 SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM, SMTP_FROM_NAME
+
+# SMS (Twilio) - optional, used by automation send_sms action
+TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER
+```
+
+## Async Job Queue (`JobQueue.php`)
+
+Background job processing with retry and backoff for long-running tasks like email campaigns.
+
+**Features:**
+- Priority-based job ordering
+- Configurable max attempts with exponential backoff (30s, 120s, 480s...)
+- Stale job recovery (detects crashed workers by timeout)
+- Queue isolation (named queues)
+- Integrated with `Scheduler.php` for cron-based processing
+
+**Job Types:**
+- `email_campaign` — Sends email campaigns asynchronously via `EmailService::sendCampaign()`
+
+**Database Table:** `jobs` (type, payload JSON, status, priority, attempts, max_attempts, error, scheduled_for, started_at, completed_at)
+
+**Usage in cron.php:**
+```php
+$jobQueue = new JobQueue($pdo);
+$scheduler->setJobQueue($jobQueue);
+$scheduler->registerJobHandler('email_campaign', function ($payload) use ($emailService) { ... });
 ```
 
 ## Development Notes
 
+### General
 - No build step required - edit files directly and refresh
 - All frontend JS uses ES modules (`import`/`export`)
 - Backend uses `request_json()` helper to parse POST bodies
@@ -433,14 +475,57 @@ SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM, SMTP_FROM_NAME
 - The `formData(e)` utility converts FormData to a plain object
 - `statusBadge(status)` returns colored badge HTML
 - Toast notifications via `success()`, `error()` from `toast.js`
-- When adding new AI tools: add method to the appropriate tool class (`AiContentTools.php`, `AiAnalysisTools.php`, or `AiStrategyTools.php`), register route in `routes/ai.php`, add card in `app.html`, wire button in `pages/ai.js`
-- When adding new pages: create page module in `pages/`, register in `app.js`, add HTML section in `app.html`, add nav link in sidebar
+- `bootstrap.php` sets a global error handler that converts `E_WARNING` to `ErrorException` — use `@` operator for expected warnings
+
+### Adding New Features
+- **New AI tools**: add method to the appropriate tool class (`AiContentTools.php`, `AiAnalysisTools.php`, or `AiStrategyTools.php`), register route in `routes/ai.php`, add card in `app.html`, wire button in `pages/ai.js`
+- **New pages**: create page module in `pages/`, register in `app.js`, add HTML section in `app.html`, add nav link in sidebar
+- **New automation actions**: add case to `AutomationRepository::fire()`, update settings UI if needed
+- **New job types**: register handler in `cron.php` via `$scheduler->registerJobHandler()`
+
+### Key Patterns
 - All SQL queries use prepared statements with parameter binding (no raw concatenation)
+- Landing page + form slugs auto-deduplicate with numeric suffixes on collision
 - Landing page custom CSS is sanitized via `LandingPages::sanitizeCss()` to prevent style tag injection
 - Short link codes are generated iteratively (max 20 attempts, auto-lengthens on collision)
 - Scheduler uses `flock()` with `LOCK_EX | LOCK_NB` for atomic cron lock + stale lock recovery
-- Webhook dispatch validates URLs against SSRF (blocks private/reserved IP ranges)
+- Webhook dispatch validates URLs against SSRF (blocks private/reserved IPs + DNS pinning via `CURLOPT_RESOLVE`)
 - AI Studio provider select sends `provider` param to API for per-request provider override
 - All API list endpoints return `{ items: [...] }` and single-item endpoints return `{ item: {...} }`; frontend uses defensive `data.items || data` unwrapping
 - `install.php` requires minimum 10-character passwords (matches server-side validation in Auth)
+- `install.php` blocks access after installation (if DB has users) for security
 - `login.js` guards against duplicate `initRouter()` calls on re-authentication
+- `cron.php` initializes `db_setting()` for DB-backed config overrides
+- `cron.php` passes `$emailService` to `AutomationRepository` for send_email actions
+- `AiService::generate()` auto-wraps with `buildSystemPrompt()`; use `generateAdvanced($system, $prompt)` for custom system prompts
+- `AiMemoryEngine::reinforceLearning()` uses keyword matching to find the most relevant existing learning to reinforce
+- `AiAgentSystem` uses `plan_json` column (not `plan`) — `getTaskDetails()` decodes it into `$task['plan']`
+- `JobQueue` uses `DATE_ATOM` format consistently for all timestamps
+- Page modules should reset editing state in `refresh()` to prevent stale form data across navigations
+
+### Extended AI Routes (routes/ai.php)
+17 additional AI endpoints added beyond the core tool methods:
+- `/api/ai/daily-actions` — Prioritized daily marketing action queue
+- `/api/ai/repurpose-chain` — One-click content repurposing across platforms
+- `/api/ai/calendar-autofill` — Auto-generate a week/month of content calendar posts
+- `/api/ai/chat-execute` — Slash command execution (create-post, schedule-posts, check-analytics, optimize-campaign)
+- `/api/ai/performance-patterns` — Content performance pattern analysis
+- `/api/ai/monthly-review` — Comprehensive marketing performance review
+- `/api/ai/describe-audience` — Natural language to segment criteria conversion
+- `/api/ai/email-intelligence` — Email marketing health analysis
+- `/api/ai/deliverability-check` — SMTP/deliverability assessment
+- `/api/ai/review-response` — AI-generated business review responses
+- `/api/ai/calendar-intelligence` — Content calendar gap analysis
+- `/api/ai/seo-opportunities` — SEO content opportunity finder
+- `/api/ai/content-freshness` — Old content refresh recommendations
+- `/api/ai/compliance-check` — GDPR/FTC/CAN-SPAM compliance audit
+All use `generateAdvanced($system, $prompt)` for custom system prompts with brain context.
+
+### Automation Actions
+`AutomationRepository::fire()` supports these action types:
+- `add_tag` / `remove_tag` — Modify contact tags
+- `update_score` — Adjust contact lead score
+- `add_to_list` — Add contact to email subscriber list
+- `send_email` — Send email via `EmailService` (requires injection in constructor)
+- `send_sms` — Send SMS via `SmsService` / Twilio (requires Twilio config in .env)
+- `send_webhook` — POST to external URL with SSRF protection + DNS pinning

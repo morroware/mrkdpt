@@ -8,11 +8,68 @@ import { toast } from '../core/toast.js';
 
 let pageSections = [];
 let sectionTemplates = [];
+let editingPageId = null;
 
 export function init() {
   $('landingPageForm')?.addEventListener('submit', handleCreate);
   $('addLpSection')?.addEventListener('click', toggleSectionPicker);
   loadSectionTemplates();
+
+  // Preview button
+  const previewBtn = document.getElementById('previewLanding');
+  if (previewBtn) {
+    previewBtn.addEventListener('click', async () => {
+      const form = $('landingPageForm');
+      if (!form) return;
+      const fd = new FormData(form);
+      const data = Object.fromEntries(fd.entries());
+      try { data.sections_json = JSON.parse(data.sections_json || '[]'); } catch { data.sections_json = []; }
+      if (!data.title && !data.hero_heading) { toast('Enter a title or heading to preview', 'error'); return; }
+      if (!data.title) data.title = data.hero_heading;
+
+      previewBtn.classList.add('loading');
+      previewBtn.disabled = true;
+      try {
+        const resp = await fetch('/api/landing-pages/preview', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '' },
+          body: JSON.stringify(data),
+        });
+        const html = await resp.text();
+
+        // Open preview in a modal overlay with iframe
+        let overlay = document.getElementById('lpPreviewOverlay');
+        if (!overlay) {
+          overlay = document.createElement('div');
+          overlay.id = 'lpPreviewOverlay';
+          overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.8);display:flex;flex-direction:column;align-items:center;padding:1rem';
+          overlay.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;width:100%;max-width:1200px;margin-bottom:.5rem">
+            <div style="display:flex;gap:.5rem;align-items:center">
+              <span style="color:#fff;font-weight:600">Preview</span>
+              <button class="btn btn-sm btn-outline" data-preview-size="375" style="color:#fff;border-color:rgba(255,255,255,.3)">Mobile</button>
+              <button class="btn btn-sm btn-outline" data-preview-size="768" style="color:#fff;border-color:rgba(255,255,255,.3)">Tablet</button>
+              <button class="btn btn-sm btn-outline" data-preview-size="100%" style="color:#fff;border-color:rgba(255,255,255,.3)">Desktop</button>
+            </div>
+            <button class="btn btn-sm btn-ghost" id="closeLpPreview" style="color:#fff;font-size:1.5rem">&times;</button>
+          </div>
+          <iframe id="lpPreviewFrame" style="flex:1;width:100%;max-width:1200px;border:none;border-radius:8px;background:#fff"></iframe>`;
+          document.body.appendChild(overlay);
+          document.getElementById('closeLpPreview').addEventListener('click', () => overlay.style.display = 'none');
+          overlay.querySelectorAll('[data-preview-size]').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const size = btn.dataset.previewSize;
+              const iframe = document.getElementById('lpPreviewFrame');
+              iframe.style.maxWidth = size === '100%' ? '1200px' : size + 'px';
+            });
+          });
+        }
+        overlay.style.display = 'flex';
+        const iframe = document.getElementById('lpPreviewFrame');
+        iframe.srcdoc = html;
+      } catch (err) { toast('Preview failed: ' + err.message, 'error'); }
+      finally { previewBtn.classList.remove('loading'); previewBtn.disabled = false; }
+    });
+  }
 
   // AI Generate Landing Page Copy
   const aiBtn = document.getElementById('aiGenerateLanding');
@@ -29,31 +86,50 @@ export function init() {
         const resp = await api('/api/ai/content', {
           method: 'POST',
           body: JSON.stringify({
-            content_type: 'social_post',
+            content_type: 'landing_page',
             platform: 'website',
-            topic: `Landing page for: ${heading || title}`,
+            topic: heading || title,
             tone: 'professional',
-            goal: 'Generate landing page copy including: hero heading, hero subheading, CTA text, and body content with value propositions and social proof sections. Format with HTML tags.',
+            goal: `Generate compelling landing page copy for "${heading || title}". Return ONLY valid JSON (no markdown, no code fences) in this exact format:
+{"hero_heading":"A powerful headline (max 10 words)","hero_subheading":"A supporting subtitle (1-2 sentences)","cta_text":"CTA button text (2-4 words)","meta_description":"SEO meta description (under 155 chars)","body_html":"<h2>Section heading</h2><p>Paragraph</p><h2>Another section</h2><p>More content</p>"}
+Make the body_html include 2-3 sections with h2 headings and paragraphs about benefits and value propositions. Use HTML tags.`,
           }),
         });
         if (resp?.item?.content) {
-          const content = resp.item.content;
+          const raw = resp.item.content;
           const headingField = form.querySelector('[name="hero_heading"]');
           const subField = form.querySelector('[name="hero_subheading"]');
           const bodyField = form.querySelector('[name="body_html"]');
           const metaDesc = form.querySelector('[name="meta_description"]');
+          const ctaTextField = form.querySelector('[name="hero_cta_text"]');
 
-          if (bodyField) bodyField.value = content;
-          if (!headingField?.value) {
-            const h1Match = content.match(/<h1[^>]*>(.*?)<\/h1>/i) || content.match(/^#\s*(.+)/m);
-            if (h1Match) headingField.value = h1Match[1].replace(/<[^>]*>/g, '').slice(0, 100);
-          }
-          if (!subField?.value) {
-            const subMatch = content.match(/<(?:p|h2)[^>]*>(.*?)<\/(?:p|h2)>/i);
-            if (subMatch) subField.value = subMatch[1].replace(/<[^>]*>/g, '').slice(0, 150);
-          }
-          if (!metaDesc?.value) {
-            metaDesc.value = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 155);
+          // Try to parse as JSON first (preferred), fall back to HTML extraction
+          let parsed = null;
+          try {
+            const jsonMatch = raw.match(/\{[\s\S]*\}/);
+            if (jsonMatch) parsed = JSON.parse(jsonMatch[0]);
+          } catch { /* fall back to HTML extraction */ }
+
+          if (parsed) {
+            if (!headingField?.value && parsed.hero_heading) headingField.value = parsed.hero_heading;
+            if (!subField?.value && parsed.hero_subheading) subField.value = parsed.hero_subheading;
+            if (!ctaTextField?.value && parsed.cta_text) ctaTextField.value = parsed.cta_text;
+            if (!metaDesc?.value && parsed.meta_description) metaDesc.value = parsed.meta_description;
+            if (bodyField && parsed.body_html) bodyField.value = parsed.body_html;
+          } else {
+            // Fallback: treat as HTML content
+            if (bodyField) bodyField.value = raw;
+            if (!headingField?.value) {
+              const h1Match = raw.match(/<h1[^>]*>(.*?)<\/h1>/i) || raw.match(/^#\s*(.+)/m);
+              if (h1Match) headingField.value = h1Match[1].replace(/<[^>]*>/g, '').slice(0, 100);
+            }
+            if (!subField?.value) {
+              const subMatch = raw.match(/<(?:p|h2)[^>]*>(.*?)<\/(?:p|h2)>/i);
+              if (subMatch) subField.value = subMatch[1].replace(/<[^>]*>/g, '').slice(0, 150);
+            }
+            if (!metaDesc?.value) {
+              metaDesc.value = raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 155);
+            }
           }
           toast('Landing page copy generated with AI', 'success');
         }
@@ -73,9 +149,9 @@ export async function refresh() {
 
 const DEFAULT_SECTION_TEMPLATES = [
   { label: 'Features Grid', description: 'Highlight key features or benefits', default: { type: 'features', heading: 'Why Choose Us', items: [{ title: 'Feature 1', description: 'Description of your first key feature.' }, { title: 'Feature 2', description: 'Description of your second key feature.' }, { title: 'Feature 3', description: 'Description of your third key feature.' }] } },
-  { label: 'Testimonials', description: 'Social proof from happy customers', default: { type: 'testimonials', heading: 'What Our Customers Say', items: [{ quote: 'This product changed everything for us.', author: 'Jane Doe', role: 'CEO, Acme Inc.' }] } },
+  { label: 'Testimonials', description: 'Social proof from happy customers', default: { type: 'testimonials', heading: 'What Our Customers Say', items: [{ quote: 'This product changed everything for us.', name: 'Jane Doe', role: 'CEO, Acme Inc.', rating: 5 }] } },
   { label: 'FAQ', description: 'Frequently asked questions', default: { type: 'faq', heading: 'Frequently Asked Questions', items: [{ question: 'How does it work?', answer: 'Simply sign up and follow the setup wizard.' }, { question: 'Is there a free trial?', answer: 'Yes, we offer a 14-day free trial.' }] } },
-  { label: 'Pricing Table', description: 'Show your pricing plans', default: { type: 'pricing', heading: 'Simple Pricing', items: [{ name: 'Starter', price: '$9/mo', features: 'Core features, email support' }, { name: 'Pro', price: '$29/mo', features: 'All features, priority support' }] } },
+  { label: 'Pricing Table', description: 'Show your pricing plans', default: { type: 'pricing', heading: 'Simple Pricing', items: [{ name: 'Starter', price: '$9/mo', description: 'Perfect for getting started', features: ['Core features', 'Email support'], cta_text: 'Get Started', cta_url: '#form' }, { name: 'Pro', price: '$29/mo', description: 'Best for growing businesses', features: ['All features', 'Priority support', 'Analytics'], cta_text: 'Get Started', cta_url: '#form', featured: true }] } },
   { label: 'CTA Banner', description: 'Call to action with button', default: { type: 'cta', heading: 'Ready to Get Started?', subheading: 'Join thousands of happy customers today.', cta_text: 'Start Free Trial', cta_url: '#' } },
   { label: 'Text Block', description: 'Free-form text content section', default: { type: 'text', heading: 'About Us', body: 'Tell your story here. Share your mission, values, or any additional information visitors need.' } },
 ];
@@ -298,6 +374,7 @@ async function loadPages() {
           <div><strong>${rate}%</strong><br><span class="text-muted text-small">Conv. Rate</span></div>
         </div>
         <div class="btn-group mt-1">
+          <button class="btn btn-sm btn-outline" data-edit-landing="${p.id}">Edit</button>
           ${p.status === 'published' ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="btn btn-sm btn-outline">View</a>` : ''}
           ${p.status === 'draft' ? `<button class="btn btn-sm btn-success" data-publish-landing="${p.id}">Publish</button>` : ''}
           <button class="btn btn-sm btn-outline" data-copy-url="${escapeHtml(url)}">Copy URL</button>
@@ -313,6 +390,12 @@ async function loadPages() {
 }
 
 async function handlePageListClick(e) {
+  const editBtn = e.target.closest('[data-edit-landing]');
+  if (editBtn) {
+    await loadPageForEdit(parseInt(editBtn.dataset.editLanding));
+    return;
+  }
+
   const publishBtn = e.target.closest('[data-publish-landing]');
   if (publishBtn) {
     publishBtn.classList.add('loading');
@@ -371,6 +454,71 @@ async function loadCampaignOptions() {
   }
 }
 
+async function loadPageForEdit(id) {
+  try {
+    const resp = await api(`/api/landing-pages/${id}`);
+    const page = resp.item;
+    if (!page) { toast('Page not found', 'error'); return; }
+
+    editingPageId = id;
+    const form = $('landingPageForm');
+    if (!form) return;
+
+    // Populate form fields
+    const fields = ['title', 'slug', 'template', 'status', 'meta_title', 'meta_description',
+      'hero_heading', 'hero_subheading', 'hero_cta_text', 'hero_cta_url', 'body_html', 'custom_css', 'og_image'];
+    fields.forEach(f => {
+      const input = form.querySelector(`[name="${f}"]`);
+      if (input) input.value = page[f] || '';
+    });
+
+    // Set selects
+    const formSel = $('lpFormSelect');
+    if (formSel) formSel.value = page.form_id || '';
+    const campSel = $('lpCampaignSelect');
+    if (campSel) campSel.value = page.campaign_id || '';
+
+    // Load sections
+    try { pageSections = JSON.parse(page.sections_json || '[]'); } catch { pageSections = []; }
+    renderSections();
+
+    // Update submit button text
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.textContent = 'Update Landing Page';
+
+    // Show cancel edit button
+    let cancelBtn = form.querySelector('.cancel-edit-btn');
+    if (!cancelBtn) {
+      cancelBtn = document.createElement('button');
+      cancelBtn.type = 'button';
+      cancelBtn.className = 'btn btn-ghost cancel-edit-btn';
+      cancelBtn.textContent = 'Cancel Edit';
+      cancelBtn.addEventListener('click', resetForm);
+      submitBtn.parentElement.appendChild(cancelBtn);
+    }
+    cancelBtn.classList.remove('hidden');
+
+    // Switch to create tab
+    document.querySelector('[data-tab="landing-create"]')?.click();
+  } catch (err) {
+    toast('Failed to load page: ' + err.message, 'error');
+  }
+}
+
+function resetForm() {
+  editingPageId = null;
+  const form = $('landingPageForm');
+  if (form) {
+    form.reset();
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.textContent = 'Save Landing Page';
+    const cancelBtn = form.querySelector('.cancel-edit-btn');
+    if (cancelBtn) cancelBtn.classList.add('hidden');
+  }
+  pageSections = [];
+  renderSections();
+}
+
 async function handleCreate(e) {
   e.preventDefault();
   const fd = new FormData(e.target);
@@ -382,12 +530,19 @@ async function handleCreate(e) {
     data.sections_json = [];
   }
   try {
-    await api('/api/landing-pages', { method: 'POST', body: JSON.stringify(data) });
-    toast('Landing page created', 'success');
-    e.target.reset();
-    pageSections = [];
-    renderSections();
+    if (editingPageId) {
+      await api(`/api/landing-pages/${editingPageId}`, { method: 'PATCH', body: JSON.stringify(data) });
+      toast('Landing page updated', 'success');
+      resetForm();
+    } else {
+      await api('/api/landing-pages', { method: 'POST', body: JSON.stringify(data) });
+      toast('Landing page created', 'success');
+      e.target.reset();
+      pageSections = [];
+      renderSections();
+    }
     refresh();
+    document.querySelector('[data-tab="landing-list"]')?.click();
   } catch (err) {
     toast(err.message, 'error');
   }

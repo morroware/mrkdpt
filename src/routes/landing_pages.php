@@ -32,6 +32,35 @@ function register_landing_page_routes(Router $router, LandingPageRepository $pag
             : json_response(['error' => 'Not found'], 404);
     });
 
+    // Preview a landing page (renders regardless of status)
+    $router->post('/api/landing-pages/preview', function () use ($pages) {
+        $data = request_json();
+        if (empty($data['title'])) {
+            json_response(['error' => 'title is required'], 400);
+            return;
+        }
+        // Build a page array from the submitted data for rendering
+        $page = [
+            'title' => $data['title'] ?? '',
+            'slug' => $data['slug'] ?? 'preview',
+            'template' => $data['template'] ?? 'blank',
+            'meta_title' => $data['meta_title'] ?? '',
+            'meta_description' => $data['meta_description'] ?? '',
+            'hero_heading' => $data['hero_heading'] ?? '',
+            'hero_subheading' => $data['hero_subheading'] ?? '',
+            'hero_cta_text' => $data['hero_cta_text'] ?? '',
+            'hero_cta_url' => $data['hero_cta_url'] ?? '',
+            'body_html' => $data['body_html'] ?? '',
+            'custom_css' => $data['custom_css'] ?? '',
+            'sections_json' => is_array($data['sections_json'] ?? null) ? json_encode($data['sections_json']) : ($data['sections_json'] ?? '[]'),
+            'og_image' => $data['og_image'] ?? '',
+        ];
+        $html = $pages->render($page);
+        header('Content-Type: text/html');
+        echo $html;
+        exit;
+    });
+
     // Section templates for the builder
     $router->get('/api/landing-pages/section-templates', function () {
         json_response(['items' => [

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-function register_form_routes(Router $router, FormRepository $forms, ContactRepository $contacts, AutomationRepository $automations, ?Auth $auth = null, ?EmailService $emailService = null): void
+function register_form_routes(Router $router, FormRepository $forms, ContactRepository $contacts, AutomationRepository $automations, ?Auth $auth = null, ?EmailService $emailService = null, ?LandingPageRepository $landingPages = null): void
 {
     $router->get('/api/forms', fn() => json_response(['items' => $forms->all()]));
 
@@ -61,7 +61,7 @@ function register_form_routes(Router $router, FormRepository $forms, ContactRepo
     });
 
     // Public submission endpoint (no CSRF required - handled separately)
-    $router->post('/api/forms/{slug}/submit', function (array $params) use ($forms, $contacts, $automations, $auth, $emailService) {
+    $router->post('/api/forms/{slug}/submit', function (array $params) use ($forms, $contacts, $automations, $auth, $emailService, $landingPages) {
         // Rate limit public form submissions to prevent spam
         if ($auth && !$auth->rateLimit('form_submit', 10, 60)) {
             json_response(['error' => 'Too many submissions. Please try again later.'], 429);
@@ -77,6 +77,15 @@ function register_form_routes(Router $router, FormRepository $forms, ContactRepo
         $pageUrl = $_SERVER['HTTP_REFERER'] ?? '';
 
         $result = $forms->submit($form['id'], $data, $ipHash, $pageUrl, $contacts, $emailService);
+
+        // Track landing page conversions — detect if form was submitted from a landing page
+        if ($landingPages && $pageUrl && preg_match('#/p/([a-zA-Z0-9\-]+)#', $pageUrl, $lpMatch)) {
+            $lp = $landingPages->findBySlug($lpMatch[1]);
+            if ($lp) {
+                $landingPages->incrementConversions((int)$lp['id']);
+            }
+        }
+
         $automations->fire('form.submitted', [
             'form_id' => $form['id'],
             'form_name' => $form['name'],

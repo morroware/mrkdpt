@@ -173,10 +173,8 @@ async function loadNextActions(toolName) {
         for (const card of cards) {
           const h3 = card.querySelector('h3');
           if (h3 && h3.textContent.trim().toLowerCase() === name) {
-            card.style.display = '';
+            expandCard(card);
             card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            const body = card.querySelector('.ai-tool-card-body');
-            if (body) body.style.display = '';
             break;
           }
         }
@@ -263,7 +261,7 @@ function initCollapsibleCards() {
     }
 
     // Wrap body content if not already wrapped
-    const body = card.querySelector('.ai-tool-card-body');
+    let body = card.querySelector('.ai-tool-card-body');
     if (!body) {
       const desc = card.querySelector('.ai-tool-desc');
       const bodyContent = [];
@@ -275,11 +273,19 @@ function initCollapsibleCards() {
       if (bodyContent.length > 0) {
         const wrapper = document.createElement('div');
         wrapper.className = 'ai-tool-card-body';
-        // Measure natural height for animation
         bodyContent.forEach(el => wrapper.appendChild(el));
         card.appendChild(wrapper);
-        wrapper.style.maxHeight = wrapper.scrollHeight + 'px';
+        body = wrapper;
       }
+    }
+
+    // Set initial max-height after layout is complete
+    if (body) {
+      requestAnimationFrame(() => {
+        if (!card.classList.contains('collapsed')) {
+          body.style.maxHeight = body.scrollHeight + 'px';
+        }
+      });
     }
 
     // Toggle collapse on header click
@@ -292,11 +298,27 @@ function initCollapsibleCards() {
         if (card.classList.contains('collapsed')) {
           bodyEl.style.maxHeight = '0';
         } else {
-          bodyEl.style.maxHeight = bodyEl.scrollHeight + 'px';
+          // Use requestAnimationFrame to get correct scrollHeight after class toggle
+          requestAnimationFrame(() => {
+            bodyEl.style.maxHeight = bodyEl.scrollHeight + 'px';
+          });
         }
       }
     });
   });
+}
+
+/** Expand a card by removing collapsed state and recalculating height */
+function expandCard(card) {
+  if (!card) return;
+  card.classList.remove('collapsed');
+  card.style.display = '';
+  const body = card.querySelector('.ai-tool-card-body');
+  if (body) {
+    requestAnimationFrame(() => {
+      body.style.maxHeight = body.scrollHeight + 'px';
+    });
+  }
 }
 
 /** Output view tabs */

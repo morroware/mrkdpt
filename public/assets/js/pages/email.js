@@ -148,14 +148,14 @@ async function refreshEmailTemplates() {
       const previewBtn = e.target.closest('[data-preview-tpl]');
       if (previewBtn) {
         try {
-          const tpl = await api(`/api/email-templates/${previewBtn.dataset.previewTpl}`);
+          const { item: tpl } = await api(`/api/email-templates/${previewBtn.dataset.previewTpl}`);
           const modal = $('emailTplModal');
           const body = $('emailTplModalBody');
           if (modal && body) {
             const iframe = document.createElement('iframe');
             iframe.style.cssText = 'width:100%;min-height:400px;border:none;border-radius:8px;background:#fff';
             iframe.sandbox = '';
-            iframe.srcdoc = tpl.html_template || '<p>No HTML content</p>';
+            iframe.srcdoc = tpl?.html_template || '<p>No HTML content</p>';
             body.innerHTML = '';
             body.appendChild(iframe);
             modal.classList.add('visible');

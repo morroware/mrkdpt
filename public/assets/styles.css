@@ -2474,12 +2474,14 @@ body.light .ai-fab,
 .ai-tool-card-body {
   transition: max-height 0.3s ease, opacity 0.2s ease, padding 0.3s ease;
   overflow: hidden;
+  opacity: 1;
 }
 .ai-tool-card.collapsed .ai-tool-card-body {
   max-height: 0 !important;
   opacity: 0;
   padding-top: 0;
   padding-bottom: 0;
+  pointer-events: none;
 }
 .ai-tool-card.collapsed .ai-tool-desc {
   margin-bottom: 0;

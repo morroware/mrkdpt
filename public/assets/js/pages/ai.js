@@ -101,7 +101,7 @@ function loading(toolName) {
   const el = $('aiOutput');
   const richEl = $('aiOutputRich');
   if (el) el.textContent = `Generating ${toolName || ''}... please wait.`;
-  if (richEl) richEl.innerHTML = `<p class="text-muted" style="animation: subtlePulse 1.5s infinite">Generating ${toolName || ''}... please wait.</p>`;
+  if (richEl) richEl.innerHTML = `<p class="text-muted" style="animation: subtlePulse 1.5s infinite">Generating ${escapeHtml(toolName || '')}... please wait.</p>`;
   const meta = $('aiOutputMeta');
   if (meta) meta.textContent = 'Processing...';
 }

@@ -17,13 +17,13 @@ function register_funnel_routes(Router $router, FunnelRepository $funnels): void
 
     $router->get('/api/funnels/{id}', function (array $params) use ($funnels) {
         $funnel = $funnels->find((int)$params['id']);
-        $funnel ? json_response($funnel) : json_response(['error' => 'Not found'], 404);
+        $funnel ? json_response(['item' => $funnel]) : json_response(['error' => 'Not found'], 404);
     });
 
     $router->patch('/api/funnels/{id}', function (array $params) use ($funnels) {
         $data = request_json();
         $funnel = $funnels->update((int)$params['id'], $data);
-        $funnel ? json_response($funnel) : json_response(['error' => 'Not found'], 404);
+        $funnel ? json_response(['item' => $funnel]) : json_response(['error' => 'Not found'], 404);
     });
 
     $router->post('/api/funnels/{id}/stages', function (array $params) use ($funnels) {
@@ -33,7 +33,8 @@ function register_funnel_routes(Router $router, FunnelRepository $funnels): void
             return;
         }
         $funnels->addStage((int)$params['id'], $data, (int)($data['stage_order'] ?? 0));
-        json_response($funnels->find((int)$params['id']));
+        $funnel = $funnels->find((int)$params['id']);
+        $funnel ? json_response(['item' => $funnel]) : json_response(['error' => 'Not found'], 404);
     });
 
     $router->patch('/api/funnels/stages/{id}', function (array $params) use ($funnels) {

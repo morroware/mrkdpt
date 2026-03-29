@@ -59,8 +59,8 @@ async function loadFunnels() {
       </div>`;
     }).join('') || emptyState('&#127987;', 'No funnels yet', 'Create one to visualize your marketing pipeline and track conversions.');
 
-    // Event delegation
-    el.addEventListener('click', handleFunnelListClick);
+    // Event delegation (use onclick to prevent accumulation on refresh)
+    el.onclick = handleFunnelListClick;
   } catch (err) {
     toast('Failed to load funnels: ' + err.message, 'error');
   }

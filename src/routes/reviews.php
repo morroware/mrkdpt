@@ -29,9 +29,11 @@ function register_review_routes(Router $router, PDO $pdo, AiService $aiService):
         $neutral = (int)$pdo->query('SELECT COUNT(*) FROM reviews WHERE rating = 3')->fetchColumn();
         $negative = (int)$pdo->query('SELECT COUNT(*) FROM reviews WHERE rating <= 2')->fetchColumn();
 
-        json_response([
+        json_response(['item' => [
             'total' => $total,
             'avg_rating' => round($avgRating, 2),
+            'pending' => $byStatus['pending'] ?? 0,
+            'responded' => $byStatus['responded'] ?? 0,
             'by_platform' => $byPlatform,
             'by_status' => $byStatus,
             'sentiment' => [
@@ -39,7 +41,7 @@ function register_review_routes(Router $router, PDO $pdo, AiService $aiService):
                 'neutral' => $neutral,
                 'negative' => $negative,
             ],
-        ]);
+        ]]);
     });
 
     // GET /api/reviews - list all with optional platform filter

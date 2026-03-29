@@ -636,7 +636,7 @@
         <div class="card mt-2 hidden" id="repurposeChainPanel">
           <div class="flex-between mb-1">
             <h3>&#9889; One-Click Repurpose</h3>
-            <button class="btn btn-sm btn-ghost" id="closeRepurposeChain">&times;</button>
+            <button class="btn btn-sm btn-ghost" id="closeRepurposeChain" aria-label="Close repurpose panel">&times;</button>
           </div>
           <p class="text-small text-muted mb-1">AI-generated variants for each platform:</p>
           <div id="repurposeChainResults"></div>
@@ -1129,8 +1129,11 @@
             <div class="card mt-1 chat-memory-card">
               <h4 class="mt-0">Shared AI Memory</h4>
               <p class="text-muted text-small">These notes are global context used by all AI tools and chat.</p>
+              <label for="chatMemoryKey" class="text-small text-muted">Key</label>
               <input id="chatMemoryKey" placeholder="Memory key (e.g. offer)" />
+              <label for="chatMemoryContent" class="text-small text-muted">Content</label>
               <textarea id="chatMemoryContent" rows="3" placeholder="Add evergreen context from your team or WordPress..."></textarea>
+              <label for="chatMemoryTags" class="text-small text-muted">Tags</label>
               <input id="chatMemoryTags" placeholder="tags (comma separated)" />
               <button class="btn btn-sm btn-ai w-full" id="saveChatMemoryBtn"><span class="btn-ai-icon">&#9733;</span> Save Memory</button>
               <div id="chatMemoryList" class="chat-memory-list mt-1"></div>
@@ -1298,7 +1301,7 @@
                 <h3 class="mt-0" id="agentTaskTitle">Task</h3>
                 <div class="flex gap-1">
                   <span class="badge" id="agentTaskStatus">planned</span>
-                  <button class="btn btn-ghost btn-sm" id="agentTaskClose">&times;</button>
+                  <button class="btn btn-ghost btn-sm" id="agentTaskClose" aria-label="Close agent task">&times;</button>
                 </div>
               </div>
               <p class="text-muted text-small" id="agentTaskGoal"></p>
@@ -1713,7 +1716,7 @@
             <button class="btn btn-ai" id="seoRunFreshness"><span class="btn-ai-icon">&#9733;</span> Check Freshness</button>
           </div>
         </div>
-        <div class="card mt-1"><h3>SEO Output</h3><pre class="ai-output" id="seoOutput">Results will appear here...</pre></div>
+        <div class="card mt-1"><h3>SEO Output</h3><div class="ai-output-rich" id="seoOutput" style="min-height:120px;max-height:500px;overflow-y:auto;padding:var(--space-md);border:1px solid var(--input-border);border-radius:var(--radius-sm);background:var(--input-bg)"><p class="text-muted">Results will appear here...</p></div></div>
       </section>
 
       <!-- Content Library -->
@@ -1760,9 +1763,10 @@
         <div id="rssFeedList" class="mt-1"></div>
         <div class="card mt-1"><h3>Recent Items</h3><div class="table-wrap"><table class="data-table"><thead><tr><th>Title</th><th>Source</th><th>Date</th><th>Actions</th></tr></thead><tbody id="rssItemTable"></tbody></table></div></div>
         <!-- RSS to Post Modal -->
-        <div class="modal-overlay" id="rssPostModal" role="dialog" aria-modal="true" aria-label="AI: Turn into Post">
-          <div class="modal-content"><div class="modal-header"><h3>AI: Turn into Post</h3><button class="modal-close" aria-label="Close" id="closeRssPostModal">&times;</button></div>
+        <div class="modal-overlay" id="rssPostModal" role="dialog" aria-modal="true" aria-labelledby="rssPostModalTitle">
+          <div class="modal-content"><div class="modal-header"><h3 id="rssPostModalTitle">AI: Turn into Post</h3><button class="modal-close" aria-label="Close" id="closeRssPostModal">&times;</button></div>
             <div class="modal-body stack">
+              <label for="rssPostPlatform">Platform</label>
               <select id="rssPostPlatform"><option>twitter</option><option>linkedin</option><option>instagram</option><option>facebook</option></select>
               <div id="rssPostOutput" class="ai-output" style="min-height:100px;max-height:300px;overflow:auto"></div>
               <div class="btn-group"><button class="btn btn-sm" id="rssPostCopy">Copy</button><button class="btn btn-sm btn-ai" id="rssPostCreate">Create as Post</button></div>
@@ -2185,9 +2189,9 @@
       </section>
 
       <!-- Reviews & Reputation -->
-      <section class="page-section" id="page-reviews">
-        <div class="page-header">
-          <h2>&#11088; Reviews & Reputation</h2>
+      <section class="page" id="page-reviews">
+        <div class="flex-between mb-2">
+          <h3>&#11088; Reviews & Reputation</h3>
           <button class="btn btn-ai" id="addReviewBtn"><span class="btn-ai-icon">+</span> Add Review</button>
         </div>
 

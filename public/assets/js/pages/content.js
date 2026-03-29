@@ -146,7 +146,7 @@ async function handlePostAction(action, id, btn) {
     } else if (action === 'repurpose') {
       const body = btn?.dataset.body || '';
       if (!body) { error('Post has no content to repurpose'); return; }
-      await runRepurposeChain(body, btn?.closest('tr')?.querySelector('td:5')?.textContent || '');
+      await runRepurposeChain(body, btn?.closest('tr')?.querySelector('td:nth-child(5)')?.textContent || '');
       return;
     }
     refreshPosts();

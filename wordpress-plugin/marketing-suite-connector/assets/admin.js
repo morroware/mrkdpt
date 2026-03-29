@@ -1,5 +1,6 @@
 /**
  * Marketing Suite Connector - Admin JavaScript
+ * Version 2.0.0
  */
 (function ($) {
     'use strict';
@@ -7,27 +8,34 @@
     const API = mscData.restUrl;
     const NONCE = mscData.nonce;
 
+    // =========================================================================
+    //  Utilities
+    // =========================================================================
+
     function apiRequest(endpoint, options = {}) {
-        return $.ajax({
+        const opts = {
             url: API + endpoint,
             method: options.method || 'GET',
             contentType: 'application/json',
-            data: options.body ? JSON.stringify(options.body) : undefined,
             beforeSend: function (xhr) {
                 xhr.setRequestHeader('X-WP-Nonce', NONCE);
             },
-        });
+        };
+        if (options.body) {
+            opts.data = JSON.stringify(options.body);
+        }
+        return $.ajax(opts);
     }
 
     function setLoading(btn, loading) {
         if (loading) {
             btn.addClass('msc-loading-btn').prop('disabled', true);
-            btn.data('original-text', btn.text());
+            btn.data('original-text', btn.html());
         } else {
             btn.removeClass('msc-loading-btn').prop('disabled', false);
             const originalText = btn.data('original-text');
             if (originalText) {
-                btn.text(originalText);
+                btn.html(originalText);
             }
         }
     }
@@ -50,9 +58,26 @@
 
     function escHtml(str) {
         const div = document.createElement('div');
-        div.textContent = str;
+        div.textContent = String(str || '');
         return div.innerHTML;
     }
+
+    // =========================================================================
+    //  Tab Navigation
+    // =========================================================================
+
+    $(document).on('click', '.msc-tabs .nav-tab', function (e) {
+        e.preventDefault();
+        const tab = $(this).data('tab');
+
+        // Update tab buttons
+        $('.msc-tabs .nav-tab').removeClass('nav-tab-active');
+        $(this).addClass('nav-tab-active');
+
+        // Update tab panels
+        $('.msc-tab-panel').hide().removeClass('msc-tab-active');
+        $('#msc-tab-' + tab).show().addClass('msc-tab-active');
+    });
 
     // =========================================================================
     //  Settings: Test Connection
@@ -94,17 +119,19 @@
                 // Metrics
                 let metricsHtml = '';
                 const metrics = [
-                    { key: 'total_posts', label: 'Total Posts' },
-                    { key: 'published_posts', label: 'Published' },
-                    { key: 'scheduled_posts', label: 'Scheduled' },
-                    { key: 'draft_posts', label: 'Drafts' },
-                    { key: 'campaigns', label: 'Campaigns' },
-                    { key: 'contacts', label: 'Contacts' },
+                    { key: 'total_posts', label: 'Total Posts', icon: 'admin-post' },
+                    { key: 'published_posts', label: 'Published', icon: 'yes-alt' },
+                    { key: 'scheduled_posts', label: 'Scheduled', icon: 'clock' },
+                    { key: 'draft_posts', label: 'Drafts', icon: 'edit' },
+                    { key: 'campaigns', label: 'Campaigns', icon: 'megaphone' },
+                    { key: 'contacts', label: 'Contacts', icon: 'groups' },
+                    { key: 'synced_items', label: 'Synced', icon: 'update' },
                 ];
                 metrics.forEach(function (m) {
                     if (data[m.key] !== undefined) {
                         metricsHtml += `
                             <div class="msc-metric-card">
+                                <span class="dashicons dashicons-${m.icon} msc-metric-icon"></span>
                                 <span class="msc-metric-value">${escHtml(String(data[m.key]))}</span>
                                 <span class="msc-metric-label">${escHtml(m.label)}</span>
                             </div>`;
@@ -143,6 +170,18 @@
                 } else {
                     campaigns.html('<p>No active campaigns.</p>');
                 }
+
+                // Recent syncs
+                if (data.recent_syncs && data.recent_syncs.length > 0) {
+                    let syncHtml = '<ul class="msc-recent-list">';
+                    data.recent_syncs.forEach(function (s) {
+                        const dir = s.sync_direction === 'push' ? '&rarr; WP' : '&larr; WP';
+                        syncHtml += `<li><span>${escHtml(s.local_type)} #${s.local_id} ${dir} #${s.wp_id}</span><small>${escHtml(s.last_synced_at || '')}</small></li>`;
+                    });
+                    syncHtml += '</ul>';
+                    const syncEl = $('#msc-recent-syncs');
+                    if (syncEl.length) syncEl.html(syncHtml);
+                }
             })
             .fail(function (xhr) {
                 const msg = getErrorMessage(xhr, 'Failed to load dashboard data.');
@@ -160,7 +199,7 @@
     });
 
     // =========================================================================
-    //  Content Sync: Fetch remote posts
+    //  Content Sync: Fetch remote posts (Pull tab)
     // =========================================================================
 
     $(document).on('click', '#msc-fetch-remote', function () {
@@ -182,17 +221,20 @@
                 const posts = data.items || [];
                 if (posts.length === 0) {
                     container.html('<p>No content found matching your filters.</p>');
+                    $('#msc-pull-bulk').hide();
                     return;
                 }
 
                 let html = '<table class="msc-remote-table">';
-                html += '<tr><th>Title</th><th>Platform</th><th>Status</th><th>Actions</th></tr>';
+                html += '<thead><tr><th class="check-column"><input type="checkbox" class="msc-pull-check-all" /></th><th>Title</th><th>Platform</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead><tbody>';
                 posts.forEach(function (p) {
                     html += `
                         <tr>
+                            <td><input type="checkbox" class="msc-pull-check" value="${parseInt(p.id)}" /></td>
                             <td>${escHtml(p.title || 'Untitled')}</td>
                             <td>${escHtml(p.platform || '-')}</td>
                             <td><span class="msc-badge msc-badge-${escHtml(p.status || 'draft')}">${escHtml(p.status || 'draft')}</span></td>
+                            <td><small>${escHtml(p.created_at || '')}</small></td>
                             <td>
                                 <button type="button" class="button button-small msc-import-post" data-remote-id="${parseInt(p.id)}">
                                     Import to WP
@@ -200,8 +242,10 @@
                             </td>
                         </tr>`;
                 });
-                html += '</table>';
+                html += '</tbody></table>';
                 container.html(html);
+                $('#msc-pull-bulk').show();
+                updatePullSelectedCount();
             })
             .fail(function (xhr) {
                 const msg = getErrorMessage(xhr, 'Failed to fetch content.');
@@ -212,23 +256,40 @@
             });
     });
 
+    // Select all for pull
+    $(document).on('change', '.msc-pull-check-all, #msc-pull-select-all', function () {
+        const checked = $(this).is(':checked');
+        $('.msc-pull-check').prop('checked', checked);
+        updatePullSelectedCount();
+    });
+
+    $(document).on('change', '.msc-pull-check', function () {
+        updatePullSelectedCount();
+    });
+
+    function updatePullSelectedCount() {
+        const count = $('.msc-pull-check:checked').length;
+        $('#msc-pull-selected-count').text(count + ' selected');
+    }
+
     // =========================================================================
-    //  Content Sync: Import remote post
+    //  Content Sync: Import single remote post
     // =========================================================================
 
     $(document).on('click', '.msc-import-post', function () {
         const btn = $(this);
         const remoteId = btn.data('remote-id');
+        const postType = $('#msc-pull-import-as').val() || 'post';
 
         setLoading(btn, true);
 
         apiRequest('import-post', {
             method: 'POST',
-            body: { remote_id: remoteId },
+            body: { remote_id: remoteId, post_type: postType },
         })
             .done(function (data) {
                 if (data.edit_url) {
-                    btn.replaceWith(`<a href="${escHtml(data.edit_url)}" class="button button-small">Edit Draft</a>`);
+                    btn.replaceWith(`<a href="${escHtml(data.edit_url)}" class="button button-small" target="_blank">Edit ${data.existing ? '(existing)' : 'Draft'}</a>`);
                 } else {
                     btn.text('Imported!').prop('disabled', true);
                 }
@@ -236,6 +297,53 @@
             .fail(function (xhr) {
                 const msg = getErrorMessage(xhr, 'Import failed.');
                 alert(msg);
+                setLoading(btn, false);
+            });
+    });
+
+    // =========================================================================
+    //  Content Sync: Bulk import
+    // =========================================================================
+
+    $(document).on('click', '#msc-bulk-import', function () {
+        const btn = $(this);
+        const remoteIds = [];
+        const postType = $('#msc-pull-import-as').val() || 'post';
+
+        $('.msc-pull-check:checked').each(function () {
+            remoteIds.push(parseInt($(this).val()));
+        });
+
+        if (remoteIds.length === 0) {
+            alert('Please select at least one post to import.');
+            return;
+        }
+
+        setLoading(btn, true);
+
+        apiRequest('bulk-import', {
+            method: 'POST',
+            body: { remote_ids: remoteIds, post_type: postType },
+        })
+            .done(function (data) {
+                const msg = data.message || `${remoteIds.length} posts processed.`;
+                showNotice($('#msc-tab-pull .msc-card'), msg, 'success');
+
+                // Update buttons for successfully imported items
+                if (data.results) {
+                    data.results.forEach(function (r) {
+                        if (r.success && r.edit_url) {
+                            const btn = $(`.msc-import-post[data-remote-id="${r.remote_id}"]`);
+                            btn.replaceWith(`<a href="${escHtml(r.edit_url)}" class="button button-small" target="_blank">Edit ${r.existing ? '(existing)' : 'Draft'}</a>`);
+                        }
+                    });
+                }
+            })
+            .fail(function (xhr) {
+                const msg = getErrorMessage(xhr, 'Bulk import failed.');
+                alert(msg);
+            })
+            .always(function () {
                 setLoading(btn, false);
             });
     });
@@ -258,7 +366,6 @@
                 const msg = data.message || 'Post pushed successfully.';
                 if (btn.closest('.msc-metabox').length) {
                     showNotice(btn.closest('.msc-metabox'), msg, 'success');
-                    // Update synced info
                     if (data.remote_id) {
                         btn.text('Update in Marketing Suite');
                     }
@@ -275,6 +382,140 @@
                 setLoading(btn, false);
             });
     });
+
+    // =========================================================================
+    //  Bulk push
+    // =========================================================================
+
+    // Select all for push
+    $(document).on('change', '.msc-push-check-all, #msc-push-select-all', function () {
+        const checked = $(this).is(':checked');
+        $('.msc-push-check').prop('checked', checked);
+        updatePushSelectedCount();
+    });
+
+    $(document).on('change', '.msc-push-check', function () {
+        updatePushSelectedCount();
+    });
+
+    function updatePushSelectedCount() {
+        const count = $('.msc-push-check:checked').length;
+        $('#msc-push-selected-count').text(count + ' selected');
+    }
+
+    $(document).on('click', '#msc-bulk-push', function () {
+        const btn = $(this);
+        const postIds = [];
+
+        $('.msc-push-check:checked').each(function () {
+            postIds.push(parseInt($(this).val()));
+        });
+
+        if (postIds.length === 0) {
+            alert('Please select at least one post to push.');
+            return;
+        }
+
+        setLoading(btn, true);
+
+        apiRequest('bulk-push', {
+            method: 'POST',
+            body: { post_ids: postIds },
+        })
+            .done(function (data) {
+                const msg = data.message || `${postIds.length} posts processed.`;
+                showNotice($('#msc-tab-push .msc-card'), msg, 'success');
+            })
+            .fail(function (xhr) {
+                const msg = getErrorMessage(xhr, 'Bulk push failed.');
+                alert(msg);
+            })
+            .always(function () {
+                setLoading(btn, false);
+            });
+    });
+
+    // =========================================================================
+    //  WordPress Site Content Tab
+    // =========================================================================
+
+    let wpCurrentPage = 1;
+    let wpTotalPages = 1;
+
+    $(document).on('click', '#msc-fetch-wp-content', function () {
+        wpCurrentPage = 1;
+        fetchWpContent();
+    });
+
+    $(document).on('click', '#msc-wp-prev', function () {
+        if (wpCurrentPage > 1) {
+            wpCurrentPage--;
+            fetchWpContent();
+        }
+    });
+
+    $(document).on('click', '#msc-wp-next', function () {
+        if (wpCurrentPage < wpTotalPages) {
+            wpCurrentPage++;
+            fetchWpContent();
+        }
+    });
+
+    function fetchWpContent() {
+        const container = $('#msc-wp-content');
+        const contentType = $('#msc-wp-content-type').val();
+        const status = $('#msc-wp-status').val();
+        const search = $('#msc-wp-search').val();
+
+        container.html('<p class="msc-loading">Loading...</p>');
+
+        let qs = `wp-content?content_type=${encodeURIComponent(contentType)}&page=${wpCurrentPage}&per_page=15`;
+        if (status && status !== 'any') qs += `&status=${encodeURIComponent(status)}`;
+        if (search) qs += `&search=${encodeURIComponent(search)}`;
+
+        apiRequest(qs)
+            .done(function (data) {
+                const items = data.items || [];
+                wpTotalPages = data.total_pages || 1;
+
+                if (items.length === 0) {
+                    container.html('<p>No content found.</p>');
+                    $('#msc-wp-pagination').hide();
+                    return;
+                }
+
+                let html = '<table class="msc-remote-table">';
+                html += '<thead><tr><th>Title</th><th>Status</th><th>Date</th><th>Link</th></tr></thead><tbody>';
+
+                items.forEach(function (item) {
+                    const title = item.title?.rendered || item.title || 'Untitled';
+                    const status = item.status || 'unknown';
+                    const date = item.date ? new Date(item.date).toLocaleDateString() : '-';
+                    const link = item.link || '#';
+
+                    html += `<tr>
+                        <td>${escHtml(title.replace(/<[^>]*>/g, ''))}</td>
+                        <td><span class="msc-badge msc-badge-${escHtml(status)}">${escHtml(status)}</span></td>
+                        <td><small>${escHtml(date)}</small></td>
+                        <td><a href="${escHtml(link)}" target="_blank" class="button button-small">View</a></td>
+                    </tr>`;
+                });
+
+                html += '</tbody></table>';
+                container.html(html);
+
+                // Pagination
+                $('#msc-wp-page-info').text(`Page ${wpCurrentPage} of ${wpTotalPages} (${data.total || items.length} total)`);
+                $('#msc-wp-pagination').show();
+                $('#msc-wp-prev').prop('disabled', wpCurrentPage <= 1);
+                $('#msc-wp-next').prop('disabled', wpCurrentPage >= wpTotalPages);
+            })
+            .fail(function (xhr) {
+                const msg = getErrorMessage(xhr, 'Failed to fetch WordPress content.');
+                container.html(`<p class="msc-error">${escHtml(msg)}</p>`);
+                $('#msc-wp-pagination').hide();
+            });
+    }
 
     // =========================================================================
     //  AI Content Generation
@@ -312,6 +553,33 @@
             });
     });
 
+    // AI Refine buttons
+    $(document).on('click', '#msc-ai-refine-btn, #msc-ai-refine-expand, #msc-ai-refine-seo', function () {
+        const btn = $(this);
+        const action = btn.data('action');
+        const content = $('#msc-ai-output').text();
+
+        if (!content) return;
+
+        setLoading(btn, true);
+
+        apiRequest('ai-refine', {
+            method: 'POST',
+            body: { content: content, action: action },
+        })
+            .done(function (data) {
+                const output = data.content || data.result || data.text || JSON.stringify(data, null, 2);
+                $('#msc-ai-output').text(output);
+            })
+            .fail(function (xhr) {
+                const msg = getErrorMessage(xhr, 'AI refinement failed.');
+                alert(msg);
+            })
+            .always(function () {
+                setLoading(btn, false);
+            });
+    });
+
     // Save AI result as WP draft
     $(document).on('click', '#msc-ai-save-draft', function () {
         const btn = $(this);
@@ -325,6 +593,8 @@
         const lines = content.split('\n');
         let title = lines[0].replace(/^#+\s*/, '').trim() || 'AI Generated Post';
         const body = lines.slice(1).join('\n').trim();
+        const postType = $('#msc-ai-save-as').val() || 'post';
+        const category = $('#msc-ai-category').val() || 0;
 
         $.ajax({
             url: mscData.adminUrl + 'admin-ajax.php',
@@ -334,6 +604,8 @@
                 _wpnonce: NONCE,
                 title: title,
                 content: body,
+                post_type: postType,
+                category: category,
             },
         })
             .done(function (data) {
@@ -360,6 +632,98 @@
                 setTimeout(() => $(this).text('Copy to Clipboard'), 2000);
             });
         }
+    });
+
+    // =========================================================================
+    //  Taxonomy Sync
+    // =========================================================================
+
+    $(document).on('click', '#msc-push-categories', function () {
+        const btn = $(this);
+        setLoading(btn, true);
+
+        apiRequest('push-taxonomies', {
+            method: 'POST',
+            body: { taxonomy: 'category' },
+        })
+            .done(function (data) {
+                const cats = data.results?.categories || [];
+                const success = cats.filter(c => c.success).length;
+                showNotice($('#msc-tab-taxonomy .msc-card'), `${success} of ${cats.length} categories synced.`, 'success');
+            })
+            .fail(function (xhr) {
+                alert(getErrorMessage(xhr, 'Failed to push categories.'));
+            })
+            .always(function () {
+                setLoading(btn, false);
+            });
+    });
+
+    $(document).on('click', '#msc-push-tags', function () {
+        const btn = $(this);
+        setLoading(btn, true);
+
+        apiRequest('push-taxonomies', {
+            method: 'POST',
+            body: { taxonomy: 'tag' },
+        })
+            .done(function (data) {
+                const tags = data.results?.tags || [];
+                const success = tags.filter(t => t.success).length;
+                showNotice($('#msc-tab-taxonomy .msc-card'), `${success} of ${tags.length} tags synced.`, 'success');
+            })
+            .fail(function (xhr) {
+                alert(getErrorMessage(xhr, 'Failed to push tags.'));
+            })
+            .always(function () {
+                setLoading(btn, false);
+            });
+    });
+
+    $(document).on('click', '#msc-refresh-taxonomy-map', function () {
+        const btn = $(this);
+        const container = $('#msc-taxonomy-map-result');
+        setLoading(btn, true);
+
+        apiRequest('taxonomy-map?taxonomy=category')
+            .done(function (catData) {
+                apiRequest('taxonomy-map?taxonomy=tag')
+                    .done(function (tagData) {
+                        const cats = catData.items || [];
+                        const tags = tagData.items || [];
+
+                        let html = '<h3>Category Mappings</h3>';
+                        if (cats.length === 0) {
+                            html += '<p>No category mappings yet. Push categories to create mappings.</p>';
+                        } else {
+                            html += '<table class="wp-list-table widefat striped"><thead><tr><th>Local Value</th><th>WP Term</th><th>Term ID</th></tr></thead><tbody>';
+                            cats.forEach(function (m) {
+                                html += `<tr><td>${escHtml(m.local_value)}</td><td>${escHtml(m.wp_term_name)}</td><td>${m.wp_term_id}</td></tr>`;
+                            });
+                            html += '</tbody></table>';
+                        }
+
+                        html += '<h3 style="margin-top:16px;">Tag Mappings</h3>';
+                        if (tags.length === 0) {
+                            html += '<p>No tag mappings yet. Push tags to create mappings.</p>';
+                        } else {
+                            html += '<table class="wp-list-table widefat striped"><thead><tr><th>Local Value</th><th>WP Term</th><th>Term ID</th></tr></thead><tbody>';
+                            tags.forEach(function (m) {
+                                html += `<tr><td>${escHtml(m.local_value)}</td><td>${escHtml(m.wp_term_name)}</td><td>${m.wp_term_id}</td></tr>`;
+                            });
+                            html += '</tbody></table>';
+                        }
+
+                        container.html(html);
+                    })
+                    .always(function () {
+                        setLoading(btn, false);
+                    });
+            })
+            .fail(function (xhr) {
+                container.html(`<p class="msc-error">${escHtml(getErrorMessage(xhr, 'Failed to fetch mappings.'))}</p>`);
+                setLoading(btn, false);
+            });
     });
 
     // =========================================================================
@@ -409,7 +773,7 @@
         apiRequest(endpoint, { method: 'POST', body: body })
             .done(function (data) {
                 const output = data.content || data.result || data.text || JSON.stringify(data, null, 2);
-                resultBox.text(output).show();
+                resultBox.css('color', '').text(output).show();
             })
             .fail(function (xhr) {
                 const msg = getErrorMessage(xhr, 'AI action failed.');
@@ -421,6 +785,28 @@
     });
 
     // =========================================================================
+    //  Sync Status Bar
+    // =========================================================================
+
+    function loadSyncStatus() {
+        const el = $('#msc-sync-count');
+        if (!el.length) return;
+
+        apiRequest('sync-status?local_type=post&limit=200')
+            .done(function (data) {
+                const items = data.items || [];
+                el.text(items.length + ' items synced');
+            })
+            .fail(function () {
+                el.text('Unable to load sync status');
+            });
+    }
+
+    $(document).on('click', '#msc-refresh-sync-status', function () {
+        loadSyncStatus();
+    });
+
+    // =========================================================================
     //  Init
     // =========================================================================
 
@@ -428,6 +814,11 @@
         // Auto-load dashboard if we're on that page
         if ($('#msc-dashboard').length) {
             loadDashboard();
+        }
+
+        // Load sync status on content sync page
+        if ($('#msc-sync-status').length) {
+            loadSyncStatus();
         }
     });
 

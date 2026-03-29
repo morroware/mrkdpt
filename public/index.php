@@ -451,7 +451,7 @@ if (str_starts_with($path, '/api/')) {
     register_social_queue_routes($router, $socialQueue);
     register_email_template_routes($router, $emailTemplates);
     register_campaign_metric_routes($router, $campaignMetrics);
-    register_wordpress_plugin_routes($router, $posts, $campaigns, $contactRepo, $pdo);
+    register_wordpress_plugin_routes($router, $posts, $campaigns, $contactRepo, $pdo, $socialPublisher, $socialAccounts);
     register_onboarding_routes($router, $autopilot);
     register_autopilot_routes($router, $autopilot);
     register_review_routes($router, $pdo, $ai);

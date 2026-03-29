@@ -1,5 +1,6 @@
 /**
  * Marketing Suite Connector - Admin Styles
+ * Version 2.0.0
  */
 
 /* ---- Layout ---- */
@@ -25,9 +26,16 @@
     grid-column: 1 / -1;
 }
 
+.msc-taxonomy-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
 @media (max-width: 960px) {
     .msc-dashboard-grid,
-    .msc-sync-layout {
+    .msc-sync-layout,
+    .msc-taxonomy-grid {
         grid-template-columns: 1fr;
     }
 }
@@ -38,6 +46,7 @@
     border: 1px solid #c3c4c7;
     border-radius: 4px;
     padding: 20px;
+    margin-top: 0;
 }
 
 .msc-card h2 {
@@ -54,6 +63,42 @@
     color: #6366f1;
 }
 
+/* ---- Tabs ---- */
+.msc-tabs {
+    margin-top: 16px;
+    margin-bottom: 0;
+    border-bottom: 1px solid #c3c4c7;
+}
+
+.msc-tabs .nav-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    padding: 6px 12px;
+}
+
+.msc-tabs .nav-tab .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+}
+
+.msc-tabs .nav-tab-active {
+    background: #fff;
+    border-bottom-color: #fff;
+}
+
+.msc-tab-panel {
+    margin-top: -1px;
+    padding-top: 20px;
+}
+
+.msc-tab-panel .msc-card {
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+}
+
 /* ---- Connection status ---- */
 .msc-connection-status {
     display: flex;
@@ -63,6 +108,7 @@
     margin: 16px 0;
     border-radius: 4px;
     font-weight: 500;
+    flex-wrap: wrap;
 }
 
 .msc-connection-status.connected {
@@ -83,10 +129,82 @@
     height: 20px;
 }
 
+.msc-connection-details {
+    font-weight: 400;
+    font-size: 13px;
+    opacity: 0.8;
+}
+
 .msc-test-result {
     margin-left: 8px;
     font-weight: 400;
     font-size: 13px;
+}
+
+/* ---- Capabilities bar ---- */
+.msc-capabilities-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    padding: 10px 16px;
+    margin: -8px 0 16px;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.msc-capability-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    background: #e0e7ff;
+    color: #4338ca;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+/* ---- Sync status bar ---- */
+.msc-sync-status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    margin: 16px 0;
+    background: #f0f0ff;
+    border: 1px solid #c7d2fe;
+    border-radius: 4px;
+}
+
+.msc-sync-stats {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #4338ca;
+}
+
+.msc-sync-stats .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+}
+
+/* ---- Section headers in settings ---- */
+.msc-section-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 0 8px;
+    border-bottom: 1px solid #f0f0f1;
+    margin-top: 24px;
+}
+
+.msc-section-header .dashicons {
+    color: #6366f1;
 }
 
 /* ---- Metrics grid ---- */
@@ -102,6 +220,15 @@
     background: #f8f9fa;
     border-radius: 6px;
     border: 1px solid #e9ecef;
+}
+
+.msc-metric-icon {
+    display: block;
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    color: #a5b4fc;
+    margin: 0 auto 4px;
 }
 
 .msc-metric-value {
@@ -201,6 +328,16 @@
     color: #1e40af;
 }
 
+.msc-badge-trash {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.msc-badge-private {
+    background: #f3e8ff;
+    color: #7c3aed;
+}
+
 /* ---- Pull/Push tables ---- */
 .msc-remote-table {
     width: 100%;
@@ -220,6 +357,11 @@
     background: #f8f9fa;
 }
 
+.msc-remote-table .check-column {
+    width: 30px;
+    padding: 8px 4px;
+}
+
 /* ---- Quick actions ---- */
 .msc-quick-actions {
     display: flex;
@@ -234,11 +376,54 @@
 }
 
 /* ---- Filters ---- */
-.msc-pull-filters {
+.msc-pull-filters,
+.msc-push-filters,
+.msc-wp-filters {
     display: flex;
     gap: 8px;
     margin-bottom: 16px;
     flex-wrap: wrap;
+    align-items: center;
+}
+
+/* ---- Bulk actions ---- */
+.msc-bulk-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+}
+
+.msc-selected-count {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+/* ---- Taxonomy actions ---- */
+.msc-taxonomy-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* ---- Pagination ---- */
+.msc-pagination {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 16px;
+    padding: 10px;
+}
+
+#msc-wp-page-info {
+    font-size: 13px;
+    color: #6b7280;
 }
 
 /* ---- AI section ---- */
@@ -253,6 +438,13 @@
     grid-template-columns: auto 1fr auto 1fr;
     gap: 8px;
     align-items: center;
+}
+
+.msc-ai-options-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
 }
 
 @media (max-width: 600px) {
@@ -277,6 +469,7 @@
 .msc-ai-result-actions {
     display: flex;
     gap: 8px;
+    flex-wrap: wrap;
 }
 
 /* ---- Metabox ---- */
@@ -356,6 +549,13 @@
     margin-bottom: 0;
 }
 
+.msc-info-box code {
+    background: #e0e7ff;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
 /* ---- Loading state for buttons ---- */
 .msc-loading-btn {
     opacity: 0.6;
@@ -363,7 +563,7 @@
 }
 
 .msc-loading-btn::after {
-    content: "...";
+    content: " ...";
 }
 
 /* ---- Campaigns list ---- */
@@ -392,4 +592,17 @@
 .msc-campaign-meta {
     font-size: 12px;
     color: #6b7280;
+}
+
+/* ---- Synced info in metabox ---- */
+.msc-synced-info {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 8px;
+    background: #ecfdf5;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #166534;
+    margin-bottom: 8px;
 }

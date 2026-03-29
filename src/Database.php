@@ -820,6 +820,47 @@ final class Database
         $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_reviews_platform ON reviews(platform)');
         $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(response_status)');
         $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_reviews_created ON reviews(created_at DESC)');
+
+        /* ---- Phase 3: WordPress Bidirectional Sync ---- */
+
+        $this->pdo->exec('CREATE TABLE IF NOT EXISTS wp_sync_map (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            social_account_id INTEGER NOT NULL,
+            local_type TEXT NOT NULL DEFAULT "post",
+            local_id INTEGER NOT NULL,
+            wp_id INTEGER NOT NULL,
+            wp_type TEXT NOT NULL DEFAULT "post",
+            sync_direction TEXT NOT NULL DEFAULT "push",
+            sync_hash TEXT DEFAULT "",
+            last_synced_at TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(social_account_id) REFERENCES social_accounts(id)
+        )');
+        $this->pdo->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_wp_sync_map_unique ON wp_sync_map(social_account_id, local_type, local_id, wp_type)');
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_wp_sync_map_wp ON wp_sync_map(social_account_id, wp_type, wp_id)');
+
+        $this->pdo->exec('CREATE TABLE IF NOT EXISTS wp_taxonomy_map (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            social_account_id INTEGER NOT NULL,
+            local_value TEXT NOT NULL,
+            wp_taxonomy TEXT NOT NULL DEFAULT "category",
+            wp_term_id INTEGER NOT NULL,
+            wp_term_name TEXT NOT NULL DEFAULT "",
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(social_account_id) REFERENCES social_accounts(id)
+        )');
+        $this->pdo->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_wp_taxonomy_map_unique ON wp_taxonomy_map(social_account_id, wp_taxonomy, wp_term_id)');
+
+        $this->pdo->exec('CREATE TABLE IF NOT EXISTS wp_webhook_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            social_account_id INTEGER,
+            event TEXT NOT NULL,
+            wp_post_id INTEGER,
+            payload_json TEXT DEFAULT "{}",
+            processed INTEGER DEFAULT 0,
+            created_at TEXT NOT NULL
+        )');
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_wp_webhook_log_created ON wp_webhook_log(created_at DESC)');
     }
 
     private function applySafeAlter(string $table, string $column, string $type): void

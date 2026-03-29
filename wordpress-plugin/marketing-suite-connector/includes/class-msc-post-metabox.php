@@ -20,14 +20,17 @@ class MSC_Post_Metabox {
             return;
         }
 
-        add_meta_box(
-            'msc_post_sync',
-            __('Marketing Suite', 'msc'),
-            [$this, 'render_metabox'],
-            'post',
-            'side',
-            'default'
-        );
+        $post_types = ['post', 'page'];
+        foreach ($post_types as $pt) {
+            add_meta_box(
+                'msc_post_sync',
+                __('Marketing Suite', 'msc'),
+                [$this, 'render_metabox'],
+                $pt,
+                'side',
+                'default'
+            );
+        }
     }
 
     public function render_metabox(\WP_Post $post): void {

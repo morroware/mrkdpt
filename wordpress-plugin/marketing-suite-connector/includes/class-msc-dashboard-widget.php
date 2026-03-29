@@ -137,20 +137,27 @@ class MSC_Dashboard_Widget {
                     </div>
                 </div>
 
+                <div class="msc-card msc-card-syncs">
+                    <h2><?php esc_html_e('Recent Sync Activity', 'msc'); ?></h2>
+                    <div id="msc-recent-syncs">
+                        <p class="msc-loading"><?php esc_html_e('Loading...', 'msc'); ?></p>
+                    </div>
+                </div>
+
                 <div class="msc-card msc-card-quick-actions">
                     <h2><?php esc_html_e('Quick Actions', 'msc'); ?></h2>
                     <div class="msc-quick-actions">
                         <a href="<?php echo esc_url(admin_url('admin.php?page=msc-content')); ?>" class="button">
                             <span class="dashicons dashicons-download"></span>
-                            <?php esc_html_e('Pull Content', 'msc'); ?>
+                            <?php esc_html_e('Content Sync', 'msc'); ?>
                         </a>
                         <a href="<?php echo esc_url(admin_url('post-new.php')); ?>" class="button">
-                            <span class="dashicons dashicons-upload"></span>
-                            <?php esc_html_e('New Post → Push', 'msc'); ?>
+                            <span class="dashicons dashicons-edit"></span>
+                            <?php esc_html_e('New Post', 'msc'); ?>
                         </a>
                         <button type="button" class="button msc-refresh-dashboard">
                             <span class="dashicons dashicons-update"></span>
-                            <?php esc_html_e('Refresh Data', 'msc'); ?>
+                            <?php esc_html_e('Refresh', 'msc'); ?>
                         </button>
                         <?php if ($this->api->get_base_url()): ?>
                         <a href="<?php echo esc_url($this->api->get_base_url()); ?>" target="_blank" class="button">

@@ -2,8 +2,8 @@
 /**
  * Plugin Name: Marketing Suite Connector
  * Plugin URI:  https://github.com/morroware/marketing
- * Description: Connect your WordPress site to the Marketing Suite platform. Pull content, push posts, view analytics, and manage campaigns directly from WordPress.
- * Version:     1.1.0
+ * Description: Connect your WordPress site to the Marketing Suite platform. Bidirectional content sync, AI writing, taxonomy mapping, webhook notifications, and campaign management directly from WordPress.
+ * Version:     2.0.0
  * Author:      Morroware
  * Author URI:  https://github.com/morroware
  * License:     GPL-2.0-or-later
@@ -14,7 +14,7 @@
 
 defined('ABSPATH') || exit;
 
-define('MSC_VERSION', '1.1.0');
+define('MSC_VERSION', '2.0.0');
 define('MSC_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('MSC_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -23,6 +23,8 @@ require_once MSC_PLUGIN_DIR . 'includes/class-msc-settings.php';
 require_once MSC_PLUGIN_DIR . 'includes/class-msc-dashboard-widget.php';
 require_once MSC_PLUGIN_DIR . 'includes/class-msc-post-metabox.php';
 require_once MSC_PLUGIN_DIR . 'includes/class-msc-content-sync.php';
+require_once MSC_PLUGIN_DIR . 'includes/class-msc-taxonomy-sync.php';
+require_once MSC_PLUGIN_DIR . 'includes/class-msc-webhook.php';
 
 final class Marketing_Suite_Connector {
 
@@ -33,6 +35,8 @@ final class Marketing_Suite_Connector {
     private MSC_Dashboard_Widget $dashboard;
     private MSC_Post_Metabox $metabox;
     private MSC_Content_Sync $sync;
+    private MSC_Taxonomy_Sync $taxonomy;
+    private MSC_Webhook $webhook;
 
     public static function instance(): self {
         if (self::$instance === null) {
@@ -47,6 +51,8 @@ final class Marketing_Suite_Connector {
         $this->dashboard = new MSC_Dashboard_Widget($this->api);
         $this->metabox   = new MSC_Post_Metabox($this->api);
         $this->sync      = new MSC_Content_Sync($this->api);
+        $this->taxonomy  = new MSC_Taxonomy_Sync($this->api);
+        $this->webhook   = new MSC_Webhook($this->api);
 
         add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_assets']);
         add_action('admin_menu', [$this, 'register_admin_menu']);
@@ -90,6 +96,14 @@ final class Marketing_Suite_Connector {
             'restUrl'  => rest_url('msc/v1/'),
             'nonce'    => wp_create_nonce('wp_rest'),
             'adminUrl' => admin_url(),
+            'siteUrl'  => home_url(),
+            'defaults' => [
+                'importStatus'   => get_option('msc_default_status', 'draft'),
+                'importPostType' => get_option('msc_default_post_type', 'post'),
+                'syncCategories' => (bool) get_option('msc_sync_categories', true),
+                'syncTags'       => (bool) get_option('msc_sync_tags', true),
+                'aiEnabled'      => (bool) get_option('msc_ai_enabled', true),
+            ],
         ]);
     }
 
@@ -154,12 +168,8 @@ final class Marketing_Suite_Connector {
             'callback'            => [$this->sync, 'rest_pull_posts'],
             'permission_callback' => fn() => current_user_can('edit_posts'),
             'args'                => [
-                'status' => [
-                    'sanitize_callback' => 'sanitize_text_field',
-                ],
-                'platform' => [
-                    'sanitize_callback' => 'sanitize_text_field',
-                ],
+                'status'   => ['sanitize_callback' => 'sanitize_text_field'],
+                'platform' => ['sanitize_callback' => 'sanitize_text_field'],
             ],
         ]);
 
@@ -177,6 +187,19 @@ final class Marketing_Suite_Connector {
             ],
         ]);
 
+        // Bulk push
+        register_rest_route('msc/v1', '/bulk-push', [
+            'methods'             => 'POST',
+            'callback'            => [$this->sync, 'rest_bulk_push'],
+            'permission_callback' => fn() => current_user_can('edit_posts'),
+            'args'                => [
+                'post_ids' => [
+                    'required' => true,
+                    'type'     => 'array',
+                ],
+            ],
+        ]);
+
         // Import a Marketing Suite post into WordPress
         register_rest_route('msc/v1', '/import-post', [
             'methods'             => 'POST',
@@ -188,7 +211,49 @@ final class Marketing_Suite_Connector {
                     'sanitize_callback' => 'absint',
                     'validate_callback' => fn($value) => (int) $value > 0,
                 ],
+                'post_type' => [
+                    'sanitize_callback' => 'sanitize_text_field',
+                    'default'           => 'post',
+                ],
             ],
+        ]);
+
+        // Bulk import
+        register_rest_route('msc/v1', '/bulk-import', [
+            'methods'             => 'POST',
+            'callback'            => [$this->sync, 'rest_bulk_import'],
+            'permission_callback' => fn() => current_user_can('edit_posts'),
+            'args'                => [
+                'remote_ids' => [
+                    'required' => true,
+                    'type'     => 'array',
+                ],
+                'post_type' => [
+                    'sanitize_callback' => 'sanitize_text_field',
+                    'default'           => 'post',
+                ],
+            ],
+        ]);
+
+        // Fetch WordPress site content via Marketing Suite proxy
+        register_rest_route('msc/v1', '/wp-content', [
+            'methods'             => 'GET',
+            'callback'            => [$this->sync, 'rest_fetch_wp_content'],
+            'permission_callback' => fn() => current_user_can('edit_posts'),
+            'args'                => [
+                'content_type' => ['sanitize_callback' => 'sanitize_text_field', 'default' => 'posts'],
+                'per_page'     => ['sanitize_callback' => 'absint', 'default' => 20],
+                'page'         => ['sanitize_callback' => 'absint', 'default' => 1],
+                'status'       => ['sanitize_callback' => 'sanitize_text_field'],
+                'search'       => ['sanitize_callback' => 'sanitize_text_field'],
+            ],
+        ]);
+
+        // Sync status
+        register_rest_route('msc/v1', '/sync-status', [
+            'methods'             => 'GET',
+            'callback'            => [$this->sync, 'rest_sync_status'],
+            'permission_callback' => fn() => current_user_can('edit_posts'),
         ]);
 
         // Get dashboard analytics
@@ -204,16 +269,9 @@ final class Marketing_Suite_Connector {
             'callback'            => [$this->sync, 'rest_ai_generate'],
             'permission_callback' => fn() => current_user_can('edit_posts'),
             'args'                => [
-                'topic' => [
-                    'required'          => true,
-                    'sanitize_callback' => 'sanitize_textarea_field',
-                ],
-                'content_type' => [
-                    'sanitize_callback' => 'sanitize_text_field',
-                ],
-                'tone' => [
-                    'sanitize_callback' => 'sanitize_text_field',
-                ],
+                'topic'        => ['required' => true, 'sanitize_callback' => 'sanitize_textarea_field'],
+                'content_type' => ['sanitize_callback' => 'sanitize_text_field'],
+                'tone'         => ['sanitize_callback' => 'sanitize_text_field'],
             ],
         ]);
 
@@ -223,13 +281,8 @@ final class Marketing_Suite_Connector {
             'callback'            => [$this->sync, 'rest_ai_refine'],
             'permission_callback' => fn() => current_user_can('edit_posts'),
             'args'                => [
-                'content' => [
-                    'required'          => true,
-                    'sanitize_callback' => 'sanitize_textarea_field',
-                ],
-                'action' => [
-                    'sanitize_callback' => 'sanitize_text_field',
-                ],
+                'content' => ['required' => true, 'sanitize_callback' => 'sanitize_textarea_field'],
+                'action'  => ['sanitize_callback' => 'sanitize_text_field'],
             ],
         ]);
 
@@ -245,6 +298,37 @@ final class Marketing_Suite_Connector {
             'methods'             => 'POST',
             'callback'            => [$this, 'rest_push_memory'],
             'permission_callback' => fn() => current_user_can('edit_posts'),
+        ]);
+
+        // Taxonomy endpoints
+        register_rest_route('msc/v1', '/categories', [
+            'methods'             => 'GET',
+            'callback'            => [$this->taxonomy, 'rest_get_categories'],
+            'permission_callback' => fn() => current_user_can('edit_posts'),
+        ]);
+
+        register_rest_route('msc/v1', '/tags', [
+            'methods'             => 'GET',
+            'callback'            => [$this->taxonomy, 'rest_get_tags'],
+            'permission_callback' => fn() => current_user_can('edit_posts'),
+        ]);
+
+        register_rest_route('msc/v1', '/push-taxonomies', [
+            'methods'             => 'POST',
+            'callback'            => [$this->taxonomy, 'rest_push_taxonomies'],
+            'permission_callback' => fn() => current_user_can('edit_posts'),
+            'args'                => [
+                'taxonomy' => ['sanitize_callback' => 'sanitize_text_field', 'default' => 'all'],
+            ],
+        ]);
+
+        register_rest_route('msc/v1', '/taxonomy-map', [
+            'methods'             => 'GET',
+            'callback'            => [$this->taxonomy, 'rest_get_taxonomy_map'],
+            'permission_callback' => fn() => current_user_can('edit_posts'),
+            'args'                => [
+                'taxonomy' => ['sanitize_callback' => 'sanitize_text_field', 'default' => 'category'],
+            ],
         ]);
     }
 
@@ -283,22 +367,35 @@ final class Marketing_Suite_Connector {
             wp_send_json_error(['message' => __('You are not allowed to create drafts.', 'msc')], 403);
         }
 
-        $title   = sanitize_text_field((string) ($_POST['title'] ?? ''));
-        $content = wp_kses_post((string) ($_POST['content'] ?? ''));
+        $title     = sanitize_text_field((string) ($_POST['title'] ?? ''));
+        $content   = wp_kses_post((string) ($_POST['content'] ?? ''));
+        $post_type = sanitize_text_field((string) ($_POST['post_type'] ?? 'post'));
+        $category  = absint($_POST['category'] ?? 0);
 
         if ($title === '' && $content === '') {
             wp_send_json_error(['message' => __('Title or content is required.', 'msc')], 400);
         }
 
-        $post_id = wp_insert_post([
+        if (!in_array($post_type, ['post', 'page'], true)) {
+            $post_type = 'post';
+        }
+
+        $post_data = [
             'post_title'   => $title !== '' ? $title : __('AI Generated Draft', 'msc'),
             'post_content' => $content,
             'post_status'  => 'draft',
-            'post_type'    => 'post',
-        ], true);
+            'post_type'    => $post_type,
+        ];
+
+        $post_id = wp_insert_post($post_data, true);
 
         if (is_wp_error($post_id)) {
             wp_send_json_error(['message' => $post_id->get_error_message()], 500);
+        }
+
+        // Set category if provided
+        if ($category > 0 && $post_type === 'post') {
+            wp_set_post_categories($post_id, [$category]);
         }
 
         wp_send_json_success([
@@ -326,17 +423,24 @@ add_action('plugins_loaded', function () {
 
 // Activation hook - set defaults
 register_activation_hook(__FILE__, function () {
-    if (!get_option('msc_api_url')) {
-        add_option('msc_api_url', '');
-    }
-    if (!get_option('msc_api_token')) {
-        add_option('msc_api_token', '');
-    }
-    if (!get_option('msc_default_status')) {
-        add_option('msc_default_status', 'draft');
-    }
-    if (!get_option('msc_auto_push')) {
-        add_option('msc_auto_push', false);
+    $defaults = [
+        'msc_api_url'              => '',
+        'msc_api_token'            => '',
+        'msc_default_status'       => 'draft',
+        'msc_default_post_type'    => 'post',
+        'msc_auto_push'            => false,
+        'msc_auto_push_types'      => 'post',
+        'msc_sync_categories'      => true,
+        'msc_sync_tags'            => true,
+        'msc_sync_featured_images' => true,
+        'msc_ai_enabled'           => true,
+        'msc_webhooks_enabled'     => true,
+    ];
+
+    foreach ($defaults as $key => $value) {
+        if (!get_option($key)) {
+            add_option($key, $value);
+        }
     }
 });
 

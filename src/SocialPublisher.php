@@ -1268,6 +1268,488 @@ final class SocialPublisher
         return isset($decoded['id']) ? (int)$decoded['id'] : null;
     }
 
+    /**
+     * Update an existing WordPress post via the WP REST API.
+     */
+    public function updateWordPressPost(array $account, int $wpPostId, array $fields): array
+    {
+        try {
+            $meta    = $account['meta_json'] ?? [];
+            $siteUrl = rtrim((string)($meta['site_url'] ?? ''), '/');
+            $creds   = (string)($account['access_token'] ?? '');
+
+            if ($siteUrl === '' || $creds === '') {
+                return ['success' => false, 'error' => 'WordPress site_url or credentials missing'];
+            }
+
+            $authHeaders = ['Authorization: Basic ' . base64_encode($creds)];
+            $data = $this->postJson("{$siteUrl}/wp-json/wp/v2/posts/{$wpPostId}", $authHeaders, $fields);
+
+            if (!empty($data['id'])) {
+                return ['success' => true, 'post' => $data, 'error' => null];
+            }
+
+            return ['success' => false, 'error' => $data['message'] ?? 'Update failed'];
+        } catch (\Throwable $e) {
+            return ['success' => false, 'error' => "WordPress exception: {$e->getMessage()}"];
+        }
+    }
+
+    /**
+     * Delete a WordPress post via the WP REST API.
+     */
+    public function deleteWordPressPost(array $account, int $wpPostId, bool $force = false): array
+    {
+        try {
+            $meta    = $account['meta_json'] ?? [];
+            $siteUrl = rtrim((string)($meta['site_url'] ?? ''), '/');
+            $creds   = (string)($account['access_token'] ?? '');
+
+            if ($siteUrl === '' || $creds === '') {
+                return ['success' => false, 'error' => 'WordPress site_url or credentials missing'];
+            }
+
+            $url = "{$siteUrl}/wp-json/wp/v2/posts/{$wpPostId}";
+            if ($force) {
+                $url .= '?force=true';
+            }
+
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_CUSTOMREQUEST  => 'DELETE',
+                CURLOPT_HTTPHEADER     => [
+                    'Authorization: Basic ' . base64_encode($creds),
+                    'Content-Type: application/json',
+                ],
+                CURLOPT_TIMEOUT        => self::TIMEOUT,
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_SSL_VERIFYHOST => 2,
+            ]);
+
+            $raw = curl_exec($ch);
+            $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode >= 200 && $httpCode < 300) {
+                return ['success' => true, 'error' => null];
+            }
+
+            $decoded = is_string($raw) ? json_decode($raw, true) : [];
+            return ['success' => false, 'error' => $decoded['message'] ?? "HTTP {$httpCode}"];
+        } catch (\Throwable $e) {
+            return ['success' => false, 'error' => "WordPress exception: {$e->getMessage()}"];
+        }
+    }
+
+    /**
+     * Fetch posts from a WordPress site via the WP REST API.
+     *
+     * @param array $account Social account with WordPress credentials
+     * @param array $params  Query parameters: per_page, page, status, search, categories, tags, after, before, orderby, order
+     * @return array{success: bool, posts: array, total: int, total_pages: int, error: string|null}
+     */
+    public function fetchWordPressPosts(array $account, array $params = []): array
+    {
+        try {
+            $meta    = $account['meta_json'] ?? [];
+            $siteUrl = rtrim((string)($meta['site_url'] ?? ''), '/');
+            $creds   = (string)($account['access_token'] ?? '');
+
+            if ($siteUrl === '' || $creds === '') {
+                return ['success' => false, 'posts' => [], 'total' => 0, 'total_pages' => 0, 'error' => 'WordPress site_url or credentials missing'];
+            }
+
+            $defaults = [
+                'per_page' => 20,
+                'page'     => 1,
+                'status'   => 'any',
+                'orderby'  => 'date',
+                'order'    => 'desc',
+                '_embed'   => '1',
+            ];
+            $query = array_merge($defaults, array_filter($params, fn($v) => $v !== '' && $v !== null));
+            $url   = "{$siteUrl}/wp-json/wp/v2/posts?" . http_build_query($query);
+
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER     => [
+                    'Authorization: Basic ' . base64_encode($creds),
+                    'Accept: application/json',
+                ],
+                CURLOPT_TIMEOUT        => self::TIMEOUT,
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_SSL_VERIFYHOST => 2,
+                CURLOPT_HEADER         => true,
+            ]);
+
+            $response = curl_exec($ch);
+            $headerSize = (int) curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+            $httpCode   = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if (!is_string($response)) {
+                return ['success' => false, 'posts' => [], 'total' => 0, 'total_pages' => 0, 'error' => 'No response from WordPress'];
+            }
+
+            $headers = substr($response, 0, $headerSize);
+            $body    = substr($response, $headerSize);
+
+            if ($httpCode >= 400) {
+                $decoded = json_decode($body, true);
+                return ['success' => false, 'posts' => [], 'total' => 0, 'total_pages' => 0, 'error' => $decoded['message'] ?? "HTTP {$httpCode}"];
+            }
+
+            $total      = 0;
+            $totalPages = 0;
+            if (preg_match('/X-WP-Total:\s*(\d+)/i', $headers, $m)) {
+                $total = (int) $m[1];
+            }
+            if (preg_match('/X-WP-TotalPages:\s*(\d+)/i', $headers, $m)) {
+                $totalPages = (int) $m[1];
+            }
+
+            $posts = json_decode($body, true) ?: [];
+
+            return ['success' => true, 'posts' => $posts, 'total' => $total, 'total_pages' => $totalPages, 'error' => null];
+        } catch (\Throwable $e) {
+            return ['success' => false, 'posts' => [], 'total' => 0, 'total_pages' => 0, 'error' => "WordPress exception: {$e->getMessage()}"];
+        }
+    }
+
+    /**
+     * Fetch pages from a WordPress site via the WP REST API.
+     */
+    public function fetchWordPressPages(array $account, array $params = []): array
+    {
+        try {
+            $meta    = $account['meta_json'] ?? [];
+            $siteUrl = rtrim((string)($meta['site_url'] ?? ''), '/');
+            $creds   = (string)($account['access_token'] ?? '');
+
+            if ($siteUrl === '' || $creds === '') {
+                return ['success' => false, 'pages' => [], 'total' => 0, 'total_pages' => 0, 'error' => 'WordPress site_url or credentials missing'];
+            }
+
+            $defaults = ['per_page' => 20, 'page' => 1, 'status' => 'any', 'orderby' => 'date', 'order' => 'desc', '_embed' => '1'];
+            $query = array_merge($defaults, array_filter($params, fn($v) => $v !== '' && $v !== null));
+            $url   = "{$siteUrl}/wp-json/wp/v2/pages?" . http_build_query($query);
+
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER     => ['Authorization: Basic ' . base64_encode($creds), 'Accept: application/json'],
+                CURLOPT_TIMEOUT        => self::TIMEOUT,
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_SSL_VERIFYHOST => 2,
+                CURLOPT_HEADER         => true,
+            ]);
+
+            $response = curl_exec($ch);
+            $headerSize = (int) curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+            $httpCode   = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if (!is_string($response)) {
+                return ['success' => false, 'pages' => [], 'total' => 0, 'total_pages' => 0, 'error' => 'No response'];
+            }
+
+            $headers = substr($response, 0, $headerSize);
+            $body    = substr($response, $headerSize);
+
+            if ($httpCode >= 400) {
+                $decoded = json_decode($body, true);
+                return ['success' => false, 'pages' => [], 'total' => 0, 'total_pages' => 0, 'error' => $decoded['message'] ?? "HTTP {$httpCode}"];
+            }
+
+            $total = 0;
+            $totalPages = 0;
+            if (preg_match('/X-WP-Total:\s*(\d+)/i', $headers, $m)) $total = (int) $m[1];
+            if (preg_match('/X-WP-TotalPages:\s*(\d+)/i', $headers, $m)) $totalPages = (int) $m[1];
+
+            return ['success' => true, 'pages' => json_decode($body, true) ?: [], 'total' => $total, 'total_pages' => $totalPages, 'error' => null];
+        } catch (\Throwable $e) {
+            return ['success' => false, 'pages' => [], 'total' => 0, 'total_pages' => 0, 'error' => "WordPress exception: {$e->getMessage()}"];
+        }
+    }
+
+    /**
+     * Fetch categories from a WordPress site.
+     */
+    public function fetchWordPressCategories(array $account, array $params = []): array
+    {
+        return $this->fetchWordPressTaxonomy($account, 'categories', $params);
+    }
+
+    /**
+     * Fetch tags from a WordPress site.
+     */
+    public function fetchWordPressTags(array $account, array $params = []): array
+    {
+        return $this->fetchWordPressTaxonomy($account, 'tags', $params);
+    }
+
+    /**
+     * Generic taxonomy fetcher for WordPress (categories or tags).
+     */
+    private function fetchWordPressTaxonomy(array $account, string $taxonomy, array $params = []): array
+    {
+        try {
+            $meta    = $account['meta_json'] ?? [];
+            $siteUrl = rtrim((string)($meta['site_url'] ?? ''), '/');
+            $creds   = (string)($account['access_token'] ?? '');
+
+            if ($siteUrl === '' || $creds === '') {
+                return ['success' => false, 'items' => [], 'error' => 'WordPress site_url or credentials missing'];
+            }
+
+            $defaults = ['per_page' => 100, 'page' => 1, 'orderby' => 'name', 'order' => 'asc', 'hide_empty' => 'false'];
+            $query = array_merge($defaults, array_filter($params, fn($v) => $v !== '' && $v !== null));
+            $url   = "{$siteUrl}/wp-json/wp/v2/{$taxonomy}?" . http_build_query($query);
+
+            $data = $this->getJson($url, ['Authorization: Basic ' . base64_encode($creds)]);
+
+            if (isset($data['code'])) {
+                return ['success' => false, 'items' => [], 'error' => $data['message'] ?? 'Fetch failed'];
+            }
+
+            if (!is_array($data) || (isset($data[0]) && !is_array($data[0]))) {
+                return ['success' => false, 'items' => [], 'error' => 'Unexpected response'];
+            }
+
+            return ['success' => true, 'items' => $data, 'error' => null];
+        } catch (\Throwable $e) {
+            return ['success' => false, 'items' => [], 'error' => "WordPress exception: {$e->getMessage()}"];
+        }
+    }
+
+    /**
+     * Create a category on a WordPress site.
+     */
+    public function createWordPressCategory(array $account, string $name, ?int $parent = null, string $description = ''): array
+    {
+        try {
+            $meta    = $account['meta_json'] ?? [];
+            $siteUrl = rtrim((string)($meta['site_url'] ?? ''), '/');
+            $creds   = (string)($account['access_token'] ?? '');
+
+            if ($siteUrl === '' || $creds === '') {
+                return ['success' => false, 'error' => 'WordPress site_url or credentials missing'];
+            }
+
+            $payload = ['name' => $name, 'description' => $description];
+            if ($parent !== null) {
+                $payload['parent'] = $parent;
+            }
+
+            $data = $this->postJson(
+                "{$siteUrl}/wp-json/wp/v2/categories",
+                ['Authorization: Basic ' . base64_encode($creds)],
+                $payload
+            );
+
+            if (!empty($data['id'])) {
+                return ['success' => true, 'item' => $data, 'error' => null];
+            }
+
+            return ['success' => false, 'error' => $data['message'] ?? 'Create failed'];
+        } catch (\Throwable $e) {
+            return ['success' => false, 'error' => "WordPress exception: {$e->getMessage()}"];
+        }
+    }
+
+    /**
+     * Create a tag on a WordPress site.
+     */
+    public function createWordPressTag(array $account, string $name, string $description = ''): array
+    {
+        try {
+            $meta    = $account['meta_json'] ?? [];
+            $siteUrl = rtrim((string)($meta['site_url'] ?? ''), '/');
+            $creds   = (string)($account['access_token'] ?? '');
+
+            if ($siteUrl === '' || $creds === '') {
+                return ['success' => false, 'error' => 'WordPress site_url or credentials missing'];
+            }
+
+            $data = $this->postJson(
+                "{$siteUrl}/wp-json/wp/v2/tags",
+                ['Authorization: Basic ' . base64_encode($creds)],
+                ['name' => $name, 'description' => $description]
+            );
+
+            if (!empty($data['id'])) {
+                return ['success' => true, 'item' => $data, 'error' => null];
+            }
+
+            return ['success' => false, 'error' => $data['message'] ?? 'Create failed'];
+        } catch (\Throwable $e) {
+            return ['success' => false, 'error' => "WordPress exception: {$e->getMessage()}"];
+        }
+    }
+
+    /**
+     * Fetch a single WordPress post by ID (with embedded data).
+     */
+    public function fetchWordPressPost(array $account, int $wpPostId): array
+    {
+        try {
+            $meta    = $account['meta_json'] ?? [];
+            $siteUrl = rtrim((string)($meta['site_url'] ?? ''), '/');
+            $creds   = (string)($account['access_token'] ?? '');
+
+            if ($siteUrl === '' || $creds === '') {
+                return ['success' => false, 'post' => null, 'error' => 'WordPress site_url or credentials missing'];
+            }
+
+            $data = $this->getJson(
+                "{$siteUrl}/wp-json/wp/v2/posts/{$wpPostId}?_embed=1",
+                ['Authorization: Basic ' . base64_encode($creds)]
+            );
+
+            if (!empty($data['id'])) {
+                return ['success' => true, 'post' => $data, 'error' => null];
+            }
+
+            return ['success' => false, 'post' => null, 'error' => $data['message'] ?? 'Post not found'];
+        } catch (\Throwable $e) {
+            return ['success' => false, 'post' => null, 'error' => "WordPress exception: {$e->getMessage()}"];
+        }
+    }
+
+    /**
+     * Publish a Marketing Suite post to WordPress, creating or updating as appropriate.
+     * Unlike publishToWordPress() which takes raw text, this takes structured post data.
+     */
+    public function publishStructuredToWordPress(array $account, array $postData): array
+    {
+        try {
+            $meta    = $account['meta_json'] ?? [];
+            $siteUrl = rtrim((string)($meta['site_url'] ?? ''), '/');
+            $creds   = (string)($account['access_token'] ?? '');
+
+            if ($siteUrl === '' || $creds === '') {
+                return ['success' => false, 'external_id' => null, 'error' => 'WordPress site_url or credentials missing'];
+            }
+
+            $authHeaders = ['Authorization: Basic ' . base64_encode($creds)];
+
+            $payload = [
+                'title'   => $postData['title'] ?? '',
+                'content' => $postData['body'] ?? $postData['content'] ?? '',
+                'status'  => $postData['wp_status'] ?? ($meta['status'] ?? 'draft'),
+                'excerpt' => $postData['excerpt'] ?? '',
+            ];
+
+            if (!empty($postData['categories']) && is_array($postData['categories'])) {
+                $payload['categories'] = array_map('intval', $postData['categories']);
+            }
+            if (!empty($postData['tags']) && is_array($postData['tags'])) {
+                $payload['tags'] = array_map('intval', $postData['tags']);
+            }
+            if (!empty($postData['slug'])) {
+                $payload['slug'] = $postData['slug'];
+            }
+            if (!empty($postData['date'])) {
+                $payload['date'] = $postData['date'];
+            }
+
+            // Upload featured image if provided
+            if (!empty($postData['media_path']) && is_file($postData['media_path'])) {
+                $mediaId = $this->wordPressUploadMedia($siteUrl, $authHeaders, $postData['media_path']);
+                if ($mediaId !== null) {
+                    $payload['featured_media'] = $mediaId;
+                }
+            }
+
+            // Determine if we're creating or updating
+            $wpPostId = (int)($postData['wp_post_id'] ?? 0);
+
+            if ($wpPostId > 0) {
+                $data = $this->postJson("{$siteUrl}/wp-json/wp/v2/posts/{$wpPostId}", $authHeaders, $payload);
+            } else {
+                $data = $this->postJson("{$siteUrl}/wp-json/wp/v2/posts", $authHeaders, $payload);
+            }
+
+            if (!empty($data['id'])) {
+                return ['success' => true, 'external_id' => (string)$data['id'], 'post' => $data, 'error' => null];
+            }
+
+            return ['success' => false, 'external_id' => null, 'error' => $data['message'] ?? 'Publish failed'];
+        } catch (\Throwable $e) {
+            return ['success' => false, 'external_id' => null, 'error' => "WordPress exception: {$e->getMessage()}"];
+        }
+    }
+
+    /**
+     * Fetch WordPress site info (name, description, URL, timezone, etc.)
+     */
+    public function fetchWordPressSiteInfo(array $account): array
+    {
+        try {
+            $meta    = $account['meta_json'] ?? [];
+            $siteUrl = rtrim((string)($meta['site_url'] ?? ''), '/');
+            $creds   = (string)($account['access_token'] ?? '');
+
+            if ($siteUrl === '') {
+                return ['success' => false, 'error' => 'Site URL missing'];
+            }
+
+            // Site info doesn't always need auth, but we include it for private sites
+            $headers = $creds !== '' ? ['Authorization: Basic ' . base64_encode($creds)] : [];
+            $data = $this->getJson("{$siteUrl}/wp-json", $headers);
+
+            if (!empty($data['name'])) {
+                return [
+                    'success'     => true,
+                    'name'        => $data['name'] ?? '',
+                    'description' => $data['description'] ?? '',
+                    'url'         => $data['url'] ?? $siteUrl,
+                    'home'        => $data['home'] ?? $siteUrl,
+                    'gmt_offset'  => $data['gmt_offset'] ?? 0,
+                    'timezone'    => $data['timezone_string'] ?? '',
+                    'namespaces'  => $data['namespaces'] ?? [],
+                    'error'       => null,
+                ];
+            }
+
+            return ['success' => false, 'error' => 'Could not fetch site info'];
+        } catch (\Throwable $e) {
+            return ['success' => false, 'error' => "WordPress exception: {$e->getMessage()}"];
+        }
+    }
+
+    /**
+     * Fetch WordPress media library items.
+     */
+    public function fetchWordPressMedia(array $account, array $params = []): array
+    {
+        try {
+            $meta    = $account['meta_json'] ?? [];
+            $siteUrl = rtrim((string)($meta['site_url'] ?? ''), '/');
+            $creds   = (string)($account['access_token'] ?? '');
+
+            if ($siteUrl === '' || $creds === '') {
+                return ['success' => false, 'items' => [], 'error' => 'Credentials missing'];
+            }
+
+            $defaults = ['per_page' => 20, 'page' => 1, 'orderby' => 'date', 'order' => 'desc'];
+            $query = array_merge($defaults, array_filter($params, fn($v) => $v !== '' && $v !== null));
+            $url   = "{$siteUrl}/wp-json/wp/v2/media?" . http_build_query($query);
+
+            $data = $this->getJson($url, ['Authorization: Basic ' . base64_encode($creds)]);
+
+            if (isset($data['code'])) {
+                return ['success' => false, 'items' => [], 'error' => $data['message'] ?? 'Fetch failed'];
+            }
+
+            return ['success' => true, 'items' => is_array($data) ? $data : [], 'error' => null];
+        } catch (\Throwable $e) {
+            return ['success' => false, 'items' => [], 'error' => "WordPress exception: {$e->getMessage()}"];
+        }
+    }
+
     // =========================================================================
     //  Medium  (REST API)
     // =========================================================================

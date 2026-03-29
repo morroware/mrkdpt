@@ -108,6 +108,26 @@ Day 4-7:
 - Iterate copy with enhanced quality mode
 - Add shared memory notes from what performed best
 
+
+## 9) Run functional verification before production
+
+Run baseline checks:
+
+```bash
+find . -name '*.php' -print0 | xargs -0 -n1 php -l
+find public/assets/js landing/assets -name '*.js' -print0 | xargs -0 -n1 node --check
+```
+
+Then validate runtime:
+
+- `/api/setup-status`
+- login/logout
+- one AI generation request
+- one scheduled/queue operation
+- one cron run (`/cron.php?key=...`)
+
+See **[Code Audit (2026-03-29)](code-audit-2026-03-29.md)** for the full audit workflow and release checklist.
+
 ---
 
 **Next:** [AI System](ai-system.md) | [Content Management](content-management.md) | [Configuration](configuration.md)

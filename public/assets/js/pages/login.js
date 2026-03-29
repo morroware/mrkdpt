@@ -44,8 +44,17 @@ export async function checkSession() {
     try {
       const status = await api('/api/setup-status');
       if (status.needs_setup) {
-        showApp();
-        return true;
+        // Show login page with setup message directing to install.php
+        showLogin();
+        const form = $('loginForm');
+        if (form) {
+          const banner = document.createElement('div');
+          banner.className = 'setup-banner';
+          banner.innerHTML = '<p><strong>Welcome!</strong> No admin account exists yet.</p>'
+            + '<p>Please run the <a href="install.php">web installer</a> to complete setup.</p>';
+          form.insertBefore(banner, form.firstChild);
+        }
+        return false;
       }
     } catch (err) { error('Failed to check setup status: ' + err.message); }
     showLogin();

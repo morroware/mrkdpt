@@ -55,6 +55,11 @@ if (is_file($envPath)) {
             continue;
         }
         [$key, $value] = array_map('trim', explode('=', $line, 2));
+        // Strip surrounding quotes (same logic as bootstrap.php env_value())
+        if (strlen($value) >= 2 && (($value[0] === '"' && $value[-1] === '"') || ($value[0] === "'" && $value[-1] === "'"))) {
+            $value = substr($value, 1, -1);
+            $value = str_replace(['\\"', '\\\\'], ['"', '\\'], $value);
+        }
         if (array_key_exists($key, $values)) {
             $values[$key] = $value;
         }

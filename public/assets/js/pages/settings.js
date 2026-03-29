@@ -23,6 +23,7 @@ async function refreshSettingsInfo() {
   try {
     const data = await api('/api/settings');
     currentSettings = data;
+    syncComplianceControls();
     const el = $('settingsInfo');
     if (el) {
       el.innerHTML = `
@@ -163,6 +164,53 @@ async function refreshSettingsInfo() {
     }
   } catch (err) {
     error('Failed to load settings: ' + err.message);
+  }
+}
+
+function syncComplianceControls() {
+  const gdprSelect = $('settingGdpr');
+  if (gdprSelect) gdprSelect.value = String(currentSettings.gdpr_consent_required || '0');
+  const cookieSelect = $('settingCookieBanner');
+  if (cookieSelect) cookieSelect.value = String(currentSettings.cookie_banner_enabled || '0');
+}
+
+async function saveComplianceSettings() {
+  const gdprSelect = $('settingGdpr');
+  const cookieSelect = $('settingCookieBanner');
+  if (!gdprSelect || !cookieSelect) return;
+  const payload = {
+    GDPR_CONSENT_REQUIRED: gdprSelect.value === '1' ? '1' : '0',
+    COOKIE_BANNER_ENABLED: cookieSelect.value === '1' ? '1' : '0',
+  };
+  await api('/api/settings', { method: 'PUT', body: JSON.stringify(payload) });
+  currentSettings.gdpr_consent_required = payload.GDPR_CONSENT_REQUIRED;
+  currentSettings.cookie_banner_enabled = payload.COOKIE_BANNER_ENABLED;
+}
+
+async function runComplianceAudit() {
+  const btn = $('aiComplianceCheck');
+  const results = $('complianceResults');
+  if (!results) return;
+
+  if (btn) {
+    btn.classList.add('loading');
+    btn.disabled = true;
+  }
+  results.innerHTML = '<div class="flex gap-1"><div class="loading-spinner"></div> <span class="text-muted">Running compliance audit...</span></div>';
+
+  try {
+    const { item } = await api('/api/ai/compliance-check', { method: 'POST', body: '{}' });
+    const analysis = item?.analysis || 'No compliance findings returned.';
+    results.innerHTML = `<pre class="ai-output">${escapeHtml(analysis)}</pre>`;
+    success('Compliance audit complete');
+  } catch (err) {
+    results.innerHTML = '<p class="text-muted">Unable to run compliance audit right now.</p>';
+    error('Compliance audit failed: ' + err.message);
+  } finally {
+    if (btn) {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+    }
   }
 }
 
@@ -314,6 +362,26 @@ export function init() {
       success('Backup downloaded');
     } catch (err) {
       error('Backup failed: ' + err.message);
+    }
+  });
+
+  onClick('aiComplianceCheck', runComplianceAudit);
+  $('settingGdpr')?.addEventListener('change', async () => {
+    try {
+      await saveComplianceSettings();
+      success('GDPR setting saved');
+    } catch (err) {
+      error('Failed to save GDPR setting: ' + err.message);
+      syncComplianceControls();
+    }
+  });
+  $('settingCookieBanner')?.addEventListener('change', async () => {
+    try {
+      await saveComplianceSettings();
+      success('Cookie banner setting saved');
+    } catch (err) {
+      error('Failed to save cookie setting: ' + err.message);
+      syncComplianceControls();
     }
   });
 }

@@ -16,6 +16,8 @@ function register_settings_routes(Router $router, AiService $ai, Scheduler $sche
             'business_name' => app_config('BUSINESS_NAME', 'My Small Business'),
             'business_industry' => app_config('BUSINESS_INDUSTRY', 'Local services'),
             'timezone' => app_config('TIMEZONE', 'America/New_York'),
+            'gdpr_consent_required' => app_config('GDPR_CONSENT_REQUIRED', '0'),
+            'cookie_banner_enabled' => app_config('COOKIE_BANNER_ENABLED', '0'),
             'ai' => $aiStatus,
             'ai_provider' => app_config('AI_PROVIDER', 'openai'),
             'ai_models' => $aiStatus['current_models'] ?? [],
@@ -53,6 +55,7 @@ function register_settings_routes(Router $router, AiService $ai, Scheduler $sche
         $data = request_json();
         $allowedKeys = [
             'BUSINESS_NAME', 'BUSINESS_INDUSTRY', 'TIMEZONE',
+            'GDPR_CONSENT_REQUIRED', 'COOKIE_BANNER_ENABLED',
             'AI_PROVIDER', 'AI_SYSTEM_PROMPT', 'APP_URL',
             'OPENAI_MODEL', 'ANTHROPIC_MODEL', 'GEMINI_MODEL',
             'DEEPSEEK_MODEL', 'GROQ_MODEL', 'MISTRAL_MODEL',

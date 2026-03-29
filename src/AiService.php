@@ -25,25 +25,33 @@ final class AiService
     /** Available models per provider for the frontend model picker. */
     private const MODELS = [
         'openai' => [
-            'gpt-4.1'         => 'GPT-4.1 (Best quality)',
-            'gpt-4.1-mini'    => 'GPT-4.1 Mini (Fast)',
-            'gpt-4.1-nano'    => 'GPT-4.1 Nano (Fastest)',
-            'gpt-4o'          => 'GPT-4o',
-            'gpt-4o-mini'     => 'GPT-4o Mini',
-            'o3-mini'         => 'o3-mini (Reasoning)',
-            'o4-mini'         => 'o4-mini (Latest Reasoning)',
+            'gpt-5.4'         => 'GPT-5.4 (Frontier)',
+            'gpt-5.4-mini'    => 'GPT-5.4 Mini (Balanced)',
+            'gpt-5.4-nano'    => 'GPT-5.4 Nano (Fastest)',
+            'gpt-5'           => 'GPT-5 (Previous flagship)',
+            'gpt-5-mini'      => 'GPT-5 Mini',
+            'gpt-5-nano'      => 'GPT-5 Nano',
+            'gpt-4.1'         => 'GPT-4.1 (High quality fallback)',
+            'gpt-4.1-mini'    => 'GPT-4.1 Mini',
+            'gpt-4.1-nano'    => 'GPT-4.1 Nano',
+            'o4-mini'         => 'o4-mini (Reasoning fallback)',
         ],
         'anthropic' => [
-            'claude-sonnet-4-6-20250627' => 'Claude Sonnet 4.6 (Latest)',
-            'claude-sonnet-4-20250514'   => 'Claude Sonnet 4',
-            'claude-haiku-4-5-20251001'  => 'Claude Haiku 4.5 (Fast)',
-            'claude-opus-4-6-20250627'   => 'Claude Opus 4.6 (Latest, Best)',
-            'claude-opus-4-20250514'     => 'Claude Opus 4',
+            'claude-opus-4-6'            => 'Claude Opus 4.6 (Latest flagship)',
+            'claude-sonnet-4-6'          => 'Claude Sonnet 4.6 (Latest balanced)',
+            'claude-haiku-4-5'           => 'Claude Haiku 4.5 (Fast)',
+            'claude-opus-4-6-20250627'   => 'Claude Opus 4.6 (Pinned snapshot)',
+            'claude-sonnet-4-6-20250627' => 'Claude Sonnet 4.6 (Pinned snapshot)',
+            'claude-haiku-4-5-20251001'  => 'Claude Haiku 4.5 (Pinned snapshot)',
         ],
         'gemini' => [
-            'gemini-2.5-pro'   => 'Gemini 2.5 Pro (Best quality)',
-            'gemini-2.5-flash' => 'Gemini 2.5 Flash (Fast)',
-            'gemini-2.0-flash' => 'Gemini 2.0 Flash (Fastest)',
+            'gemini-3.1-pro-preview'             => 'Gemini 3.1 Pro Preview (Latest frontier)',
+            'gemini-3.1-pro-preview-customtools' => 'Gemini 3.1 Pro Preview (Custom tools)',
+            'gemini-3-flash-preview'             => 'Gemini 3 Flash Preview (Fast multimodal)',
+            'gemini-3.1-flash-lite-preview'      => 'Gemini 3.1 Flash-Lite Preview (Fastest preview)',
+            'gemini-2.5-pro'                     => 'Gemini 2.5 Pro (Stable, high quality)',
+            'gemini-2.5-flash'                   => 'Gemini 2.5 Flash (Stable)',
+            'gemini-2.5-flash-lite'              => 'Gemini 2.5 Flash-Lite (Stable, low cost)',
         ],
         'deepseek' => [
             'deepseek-chat'     => 'DeepSeek V3 (Best quality)',
@@ -64,6 +72,7 @@ final class AiService
         'openrouter' => [
             'anthropic/claude-sonnet-4'     => 'Claude Sonnet 4 via OpenRouter',
             'google/gemini-2.5-flash'       => 'Gemini 2.5 Flash via OpenRouter',
+            'google/gemini-2.5-pro'         => 'Gemini 2.5 Pro via OpenRouter',
             'deepseek/deepseek-chat'        => 'DeepSeek V3 via OpenRouter',
             'meta-llama/llama-3.3-70b'      => 'Llama 3.3 70B via OpenRouter',
             'mistralai/mistral-large'       => 'Mistral Large via OpenRouter',
@@ -147,8 +156,8 @@ final class AiService
     public function providerStatus(): array
     {
         $currentModels = [
-            'openai'     => $this->config['openai_model'] ?? 'gpt-4.1-mini',
-            'anthropic'  => $this->config['anthropic_model'] ?? 'claude-sonnet-4-20250514',
+            'openai'     => $this->config['openai_model'] ?? 'gpt-5.4-mini',
+            'anthropic'  => $this->config['anthropic_model'] ?? 'claude-sonnet-4-6',
             'gemini'     => $this->config['gemini_model'] ?? 'gemini-2.5-flash',
             'deepseek'   => $this->config['deepseek_model'] ?? 'deepseek-chat',
             'groq'       => $this->config['groq_model'] ?? 'llama-3.3-70b-versatile',
@@ -594,7 +603,7 @@ final class AiService
         }
 
         $url = rtrim((string)$this->config['openai_base_url'], '/') . '/chat/completions';
-        $usedModel = $model ?? $this->config['openai_model'] ?? 'gpt-4.1-mini';
+        $usedModel = $model ?? $this->config['openai_model'] ?? 'gpt-5.4-mini';
         $payload = [
             'model'       => $usedModel,
             'messages'    => [
@@ -628,7 +637,7 @@ final class AiService
 
         $url = rtrim((string)$this->config['openai_base_url'], '/') . '/chat/completions';
         $payload = [
-            'model'       => $model ?? $this->config['openai_model'] ?? 'gpt-4.1-mini',
+            'model'       => $model ?? $this->config['openai_model'] ?? 'gpt-5.4-mini',
             'messages'    => $messages,
             'temperature' => $temperature,
         ];
@@ -758,7 +767,7 @@ final class AiService
             return $this->fallback($prompt, 'Anthropic API key not configured. Add ANTHROPIC_API_KEY in .env or install wizard.');
         }
 
-        $usedModel = $model ?? $this->config['anthropic_model'] ?? 'claude-sonnet-4-20250514';
+        $usedModel = $model ?? $this->config['anthropic_model'] ?? 'claude-sonnet-4-6';
         $payload = [
             'model'      => $usedModel,
             'max_tokens' => $maxTokens,
@@ -789,7 +798,7 @@ final class AiService
         }
 
         $payload = [
-            'model'      => $model ?? $this->config['anthropic_model'] ?? 'claude-sonnet-4-20250514',
+            'model'      => $model ?? $this->config['anthropic_model'] ?? 'claude-sonnet-4-6',
             'max_tokens' => 4096,
             'system'     => $system,
             'messages'   => $messages,

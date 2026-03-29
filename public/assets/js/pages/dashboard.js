@@ -8,6 +8,7 @@ import { error, success } from '../core/toast.js';
 import { navigate } from '../core/router.js';
 
 let onboardingChecked = false;
+const DAILY_ACTIONS_CACHE_PREFIX = 'daily_actions_';
 
 export async function refresh() {
   // Check onboarding status on first load
@@ -274,7 +275,26 @@ function updateAssetCount(delta) {
   }
 }
 
-async function loadDailyActions() {
+function getTodayDateKey() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function getDailyActionsCache() {
+  const key = DAILY_ACTIONS_CACHE_PREFIX + getTodayDateKey();
+  try {
+    const cached = JSON.parse(localStorage.getItem(key) || 'null');
+    return (cached && Array.isArray(cached.actions)) ? cached : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function setDailyActionsCache(actions) {
+  const key = DAILY_ACTIONS_CACHE_PREFIX + getTodayDateKey();
+  localStorage.setItem(key, JSON.stringify({ actions }));
+}
+
+async function loadDailyActions(forceRefresh = false) {
   const list = $('actionQueueList');
   const progressEl = $('actionProgress');
   if (!list) return;
@@ -282,20 +302,27 @@ async function loadDailyActions() {
   list.innerHTML = '<div class="flex gap-1"><div class="loading-spinner"></div> <span class="text-muted">AI is planning your day...</span></div>';
 
   try {
-    const { item } = await api('/api/ai/daily-actions', { method: 'POST', body: '{}' });
-    const actions = item?.actions || [];
+    const cached = !forceRefresh ? getDailyActionsCache() : null;
+    const actions = cached?.actions || [];
+    let resolvedActions = actions;
 
-    if (actions.length === 0) {
+    if (resolvedActions.length === 0 || forceRefresh) {
+      const { item } = await api('/api/ai/daily-actions', { method: 'POST', body: '{}' });
+      resolvedActions = item?.actions || [];
+      setDailyActionsCache(resolvedActions);
+    }
+
+    if (resolvedActions.length === 0) {
       list.innerHTML = '<p class="text-muted">No pending actions. You\'re all caught up!</p>';
       return;
     }
 
     // Track completed actions in localStorage
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayDateKey();
     const completedKey = 'actions_completed_' + today;
     const completed = JSON.parse(localStorage.getItem(completedKey) || '[]');
 
-    list.innerHTML = actions.map((a, i) => {
+    list.innerHTML = resolvedActions.map((a, i) => {
       const isDone = completed.includes(i);
       const priorityClass = a.priority === 'high' ? 'text-danger' : a.priority === 'medium' ? 'text-warning' : 'text-muted';
       return `<div class="action-queue-item ${isDone ? 'action-done' : ''}" data-action-idx="${i}" data-action-type="${escapeHtml(a.action_type || '')}" data-entity-id="${a.entity_id || ''}" data-entity-type="${a.entity_type || ''}">
@@ -316,7 +343,7 @@ async function loadDailyActions() {
     // Update progress
     const doneCount = completed.length;
     if (progressEl) {
-      progressEl.innerHTML = `<span>${doneCount} of ${actions.length} done</span>`;
+      progressEl.innerHTML = `<span>${doneCount} of ${resolvedActions.length} done</span>`;
     }
 
     // Wire checkbox handlers
@@ -332,7 +359,7 @@ async function loadDailyActions() {
         }
         localStorage.setItem(completedKey, JSON.stringify(stored));
         cb.closest('.action-queue-item')?.classList.toggle('action-done', cb.checked);
-        if (progressEl) progressEl.innerHTML = `<span>${stored.length} of ${actions.length} done</span>`;
+        if (progressEl) progressEl.innerHTML = `<span>${stored.length} of ${resolvedActions.length} done</span>`;
       });
     });
 
@@ -490,7 +517,7 @@ export function init() {
     refreshActionsBtn.addEventListener('click', () => {
       refreshActionsBtn.classList.add('loading');
       refreshActionsBtn.disabled = true;
-      loadDailyActions().finally(() => {
+      loadDailyActions(true).finally(() => {
         refreshActionsBtn.classList.remove('loading');
         refreshActionsBtn.disabled = false;
       });

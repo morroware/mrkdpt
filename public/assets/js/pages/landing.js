@@ -2,7 +2,7 @@
  * Landing Pages page module.
  * Section-based builder with pre-built blocks (features, testimonials, FAQ, pricing, CTA).
  */
-import { api, getBasePath } from '../core/api.js';
+import { api, getBasePath, getCsrfToken } from '../core/api.js';
 import { $, escapeHtml, formatDate, emptyState, confirm, copyToClipboard } from '../core/utils.js';
 import { toast } from '../core/toast.js';
 
@@ -30,9 +30,9 @@ export function init() {
       previewBtn.classList.add('loading');
       previewBtn.disabled = true;
       try {
-        const resp = await fetch('/api/landing-pages/preview', {
+        const resp = await fetch(getBasePath() + '/api/landing-pages/preview', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '' },
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
           body: JSON.stringify(data),
         });
         const html = await resp.text();

@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Marketing Suite is an all-in-one self-hosted marketing operations platform with AI Studio, CRM, email, social publishing, automations, funnels, analytics, and a full REST API." />
+  <title>Marketing Suite — AI-Powered Marketing Ops, Self-Hosted</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+  <div class="bg-orb orb-1"></div>
+  <div class="bg-orb orb-2"></div>
+
+  <header class="site-header glass">
+    <div class="container nav-wrap">
+      <a class="brand" href="#">Marketing Suite</a>
+      <nav class="nav" id="nav">
+        <a href="#features">Features</a>
+        <a href="#ai">AI System</a>
+        <a href="#api">API</a>
+        <a href="#quickstart">Quick Start</a>
+      </nav>
+      <div class="nav-actions">
+        <button id="themeToggle" class="btn btn-ghost" aria-label="Toggle theme">🌙</button>
+        <a class="btn btn-primary" href="../public/install.php">Launch Installer</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero container reveal">
+      <p class="kicker">Zero dependencies • PHP + SQLite + Vanilla JS</p>
+      <h1>Your entire marketing operation, powered by AI.</h1>
+      <p class="hero-copy">Plan, create, publish, analyze, and automate from one self-hosted app. Marketing Suite unifies AI Studio, AI Brain, CRM, social, email, landing pages, funnels, automations, and analytics with 80+ API endpoints.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="#quickstart">Get Started</a>
+        <a class="btn btn-ghost" href="../docs/api-reference.md">Browse API</a>
+      </div>
+      <div class="hero-metrics">
+        <article><strong data-counter="25">0</strong><span>AI Tools</span></article>
+        <article><strong data-counter="15">0</strong><span>Social Platforms</span></article>
+        <article><strong data-counter="9">0</strong><span>AI Providers</span></article>
+        <article><strong data-counter="80">0</strong><span>API Endpoints</span></article>
+      </div>
+    </section>
+
+    <section id="features" class="section container reveal">
+      <div class="section-head">
+        <h2>All modules. One cohesive platform.</h2>
+        <div class="chip-row" id="featureFilters">
+          <button class="chip active" data-filter="all">All</button>
+          <button class="chip" data-filter="ai">AI</button>
+          <button class="chip" data-filter="growth">Growth</button>
+          <button class="chip" data-filter="ops">Ops</button>
+        </div>
+      </div>
+      <div class="grid cards" id="featureGrid"></div>
+    </section>
+
+    <section id="ai" class="section container reveal split">
+      <div>
+        <h2>AI that actually understands your business context.</h2>
+        <p>Use AI Studio for production, AI Chat for strategic support, AI Brain for ongoing memory and insights, and AI Agents for planning + execution with approval gates.</p>
+        <ul class="checklist">
+          <li>Multi-provider orchestration with model switching</li>
+          <li>Shared memory to align outputs across tools</li>
+          <li>Autopilot onboarding with website auto-research</li>
+          <li>Brand voice and content pipeline support</li>
+        </ul>
+      </div>
+      <div class="terminal glass">
+<pre><code>$ php -S localhost:8080 -t public
+$ open http://localhost:8080/install.php
+
+✔ Installer complete
+✔ AI provider configured
+✔ Autopilot running
+✔ Content pipeline generating assets
+</code></pre>
+      </div>
+    </section>
+
+    <section id="api" class="section container reveal">
+      <div class="section-head">
+        <h2>Developer-friendly API surface</h2>
+        <p>Search core endpoint groups from the built-in REST API.</p>
+      </div>
+      <div class="api-search-wrap">
+        <input id="apiSearch" type="search" placeholder="Search endpoints (campaigns, contacts, landing, social...)" />
+      </div>
+      <div id="apiResults" class="api-results"></div>
+    </section>
+
+    <section id="quickstart" class="section container reveal">
+      <h2>10-minute quick start path</h2>
+      <ol class="timeline">
+        <li><span>1</span><div><h3>Run locally</h3><p><code>php -S localhost:8080 -t public</code></p></div></li>
+        <li><span>2</span><div><h3>Complete setup wizard</h3><p>Business info, admin user, provider keys, SMTP (optional).</p></div></li>
+        <li><span>3</span><div><h3>Launch onboarding + autopilot</h3><p>Auto-research your website, generate context, and start execution.</p></div></li>
+        <li><span>4</span><div><h3>Activate recurring operations</h3><p>Set cron for publishing, recurring posts, and feed processing.</p></div></li>
+      </ol>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-wrap">
+      <p>Marketing Suite • Self-hosted marketing operations platform</p>
+      <p><a href="../README.md">Docs</a> · <a href="../docs/quick-start.md">Quick Start</a> · <a href="../docs/ai-system.md">AI System</a></p>
+    </div>
+  </footer>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>

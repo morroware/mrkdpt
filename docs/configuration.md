@@ -212,4 +212,4 @@ If AI API keys are not configured, the application returns deterministic fallbac
 
 ---
 
-**Next:** [Quick Start](quick-start.md) | [AI System](ai-system.md) | [API Reference](api-reference.md)
+**Next:** [Quick Start](quick-start.md) | [AI System](ai-system.md) | [API Reference](api-reference.md) | [System Reference](system-reference.md) | [Code Audit](code-audit-2026-03-29.md)

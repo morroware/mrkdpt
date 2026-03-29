@@ -88,6 +88,8 @@ For scheduled publishing, recurring content, and RSS feed fetching:
 |----------|-------------|
 | **[Quick Start](docs/quick-start.md)** | End-to-end guide: install, configure AI, onboard your business, generate first content |
 | **[Configuration](docs/configuration.md)** | Environment variables, AI providers, SMTP, deployment options |
+| **[System Reference](docs/system-reference.md)** | Implementation-level architecture and module map reflecting the current codebase |
+| **[Code Audit (2026-03-29)](docs/code-audit-2026-03-29.md)** | Deep-dive functionality audit results, checks run, and release checklist |
 
 ### Features
 

@@ -169,9 +169,13 @@ if ($businessProfile) {
     $ai->setBusinessProfile($businessProfile);
 }
 
-$sharedMemoryRows = $pdo->query('SELECT memory_key, content, source, tags, updated_at FROM ai_shared_memory ORDER BY updated_at DESC LIMIT 50')->fetchAll(PDO::FETCH_ASSOC);
-if (!empty($sharedMemoryRows)) {
-    $ai->setSharedMemory($sharedMemoryRows);
+try {
+    $sharedMemoryRows = $pdo->query('SELECT memory_key, content, source, tags, updated_at FROM ai_shared_memory ORDER BY updated_at DESC LIMIT 50')->fetchAll(PDO::FETCH_ASSOC);
+    if (!empty($sharedMemoryRows)) {
+        $ai->setSharedMemory($sharedMemoryRows);
+    }
+} catch (\Throwable) {
+    // Table may not exist during interrupted migration — safe to skip
 }
 
 // Run memory maintenance occasionally (1% of requests) to avoid per-request overhead

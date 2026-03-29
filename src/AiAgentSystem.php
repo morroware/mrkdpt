@@ -351,7 +351,13 @@ Return ONLY valid JSON, no markdown fences.";
      */
     public function executeAll(int $taskId): array
     {
-        $maxSteps = 10;
+        $task = $this->getTask($taskId);
+        $stepsTotal = 0;
+        if ($task) {
+            $steps = json_decode($task['plan'] ?? '[]', true);
+            $stepsTotal = is_array($steps) ? count($steps) : 0;
+        }
+        $maxSteps = max(10, $stepsTotal);
         $executed = [];
 
         for ($i = 0; $i < $maxSteps; $i++) {

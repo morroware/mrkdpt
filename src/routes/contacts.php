@@ -186,8 +186,11 @@ function register_contact_routes(Router $router, ContactRepository $contacts, Au
             }
 
             $record['source'] = $data['source'] ?? 'csv_import';
+            $existingContact = $contacts->findByEmail($record['email']);
             $contact = $contacts->create($record);
-            $automations->fire('contact.created', ['contact_id' => $contact['id'], 'email' => $contact['email'], 'source' => 'csv_import']);
+            if (!$existingContact) {
+                $automations->fire('contact.created', ['contact_id' => $contact['id'], 'email' => $contact['email'], 'source' => 'csv_import']);
+            }
             $imported++;
         }
 

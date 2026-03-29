@@ -517,6 +517,13 @@ function register_ai_routes(
 
         // Load conversation history
         if ($conversationId > 0) {
+            // Verify conversation exists
+            $exists = $pdo->prepare("SELECT id FROM ai_chat_conversations WHERE id = :id");
+            $exists->execute([':id' => $conversationId]);
+            if (!$exists->fetchColumn()) {
+                json_response(['error' => 'Conversation not found'], 404);
+                return;
+            }
             $stmt = $pdo->prepare("SELECT role, content FROM ai_chat_messages WHERE conversation_id = :id ORDER BY id ASC");
             $stmt->execute([':id' => $conversationId]);
             $history = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -1144,7 +1151,7 @@ function register_ai_routes(
     });
 
     // Calendar Auto-Fill
-    $router->post('/api/ai/calendar-autofill', function () use ($ai, $pdo, $memoryEngine, $logAi) {
+    $router->post('/api/ai/calendar-autofill', function () use ($ai, $pdo, $posts, $memoryEngine, $logAi) {
         $p = request_json();
         $period = ($p['period'] ?? 'week') === 'month' ? 'month' : 'week';
         $startDate = $p['start_date'] ?? date('Y-m-d');
@@ -1158,22 +1165,22 @@ function register_ai_routes(
         $system = "You are a content calendar expert. Create diverse, engaging content. Return ONLY a valid JSON array.";
 
         $result = $ai->generateAdvanced($system, $prompt);
-        $posts = json_decode($result, true);
-        if (!$posts && preg_match('/\[[\s\S]*\]/m', $result, $m)) {
-            $posts = json_decode($m[0], true);
+        $aiPosts = json_decode($result, true);
+        if (!$aiPosts && preg_match('/\[[\s\S]*\]/m', $result, $m)) {
+            $aiPosts = json_decode($m[0], true);
         }
 
         $created = 0;
-        if (is_array($posts)) {
-            $stmt = $pdo->prepare("INSERT INTO posts (title, body, platform, status, content_type, scheduled_for, created_at) VALUES (?, ?, ?, 'draft', ?, ?, datetime('now'))");
-            foreach ($posts as $post) {
+        if (is_array($aiPosts)) {
+            foreach ($aiPosts as $post) {
                 if (!isset($post['title'], $post['body'])) continue;
-                $stmt->execute([
-                    mb_substr($post['title'], 0, 200),
-                    mb_substr($post['body'], 0, 5000),
-                    $post['platform'] ?? 'instagram',
-                    $post['content_type'] ?? 'social_post',
-                    $post['scheduled_for'] ?? null,
+                $posts->create([
+                    'title' => mb_substr($post['title'], 0, 200),
+                    'body' => mb_substr($post['body'], 0, 5000),
+                    'platform' => $post['platform'] ?? 'instagram',
+                    'status' => 'draft',
+                    'content_type' => $post['content_type'] ?? 'social_post',
+                    'scheduled_for' => $post['scheduled_for'] ?? null,
                 ]);
                 $created++;
             }
@@ -1183,7 +1190,7 @@ function register_ai_routes(
     });
 
     // Chat Execute (Slash Commands)
-    $router->post('/api/ai/chat-execute', function () use ($ai, $pdo, $memoryEngine, $logAi) {
+    $router->post('/api/ai/chat-execute', function () use ($ai, $pdo, $posts, $memoryEngine, $logAi) {
         $p = request_json();
         $command = strtolower(trim((string)($p['command'] ?? '')));
         $args = trim((string)($p['args'] ?? ''));
@@ -1200,9 +1207,14 @@ function register_ai_routes(
                 $post = json_decode($result, true);
                 if (!$post && preg_match('/\{[\s\S]*\}/m', $result, $m)) $post = json_decode($m[0], true);
                 if ($post && isset($post['body'])) {
-                    $stmt = $pdo->prepare("INSERT INTO posts (title, body, platform, status, tags, created_at) VALUES (?, ?, ?, 'draft', ?, datetime('now'))");
-                    $stmt->execute([$post['title'] ?? 'AI Post', $post['body'], $post['platform'] ?? 'instagram', $post['tags'] ?? '']);
-                    $id = (int)$pdo->lastInsertId();
+                    $created = $posts->create([
+                        'title' => $post['title'] ?? 'AI Post',
+                        'body' => $post['body'],
+                        'platform' => $post['platform'] ?? 'instagram',
+                        'status' => 'draft',
+                        'tags' => $post['tags'] ?? '',
+                    ]);
+                    $id = (int)$created['id'];
                     $createdIds[] = $id;
                     $message = "Created draft post #{$id}: \"{$post['title']}\" for {$post['platform']}.\n\n**Content:**\n{$post['body']}";
                 } else {
@@ -1214,14 +1226,20 @@ function register_ai_routes(
                 $prompt = "Generate 5 social media posts based on this: {$args}\nReturn JSON array of objects with: title, body, platform, tags, scheduled_for (YYYY-MM-DD HH:MM:SS over the next 7 days at optimal times).";
                 $system = "You are a content scheduler. {$brainCtx}\nReturn ONLY valid JSON array.";
                 $result = $ai->generateAdvanced($system, $prompt);
-                $posts = json_decode($result, true);
-                if (!$posts && preg_match('/\[[\s\S]*\]/m', $result, $m)) $posts = json_decode($m[0], true);
-                if (is_array($posts)) {
-                    $stmt = $pdo->prepare("INSERT INTO posts (title, body, platform, status, tags, scheduled_for, created_at) VALUES (?, ?, ?, 'scheduled', ?, ?, datetime('now'))");
-                    foreach ($posts as $post) {
+                $aiPosts = json_decode($result, true);
+                if (!$aiPosts && preg_match('/\[[\s\S]*\]/m', $result, $m)) $aiPosts = json_decode($m[0], true);
+                if (is_array($aiPosts)) {
+                    foreach ($aiPosts as $post) {
                         if (!isset($post['body'])) continue;
-                        $stmt->execute([$post['title'] ?? 'Scheduled Post', $post['body'], $post['platform'] ?? 'instagram', $post['tags'] ?? '', $post['scheduled_for'] ?? null]);
-                        $createdIds[] = (int)$pdo->lastInsertId();
+                        $created = $posts->create([
+                            'title' => $post['title'] ?? 'Scheduled Post',
+                            'body' => $post['body'],
+                            'platform' => $post['platform'] ?? 'instagram',
+                            'status' => 'scheduled',
+                            'tags' => $post['tags'] ?? '',
+                            'scheduled_for' => $post['scheduled_for'] ?? null,
+                        ]);
+                        $createdIds[] = (int)$created['id'];
                     }
                     $message = "Scheduled " . count($createdIds) . " posts for the next week.";
                 } else {
@@ -1285,12 +1303,19 @@ function register_ai_routes(
         $days = max(7, min(90, (int)($p['days'] ?? 30)));
         $brainCtx = $memoryEngine ? $memoryEngine->buildBrainContext() : '';
 
-        $published = $pdo->query("SELECT COUNT(*) FROM posts WHERE status = 'published' AND created_at >= datetime('now', '-{$days} days')")->fetchColumn();
-        $scheduled = $pdo->query("SELECT COUNT(*) FROM posts WHERE status = 'scheduled' AND created_at >= datetime('now', '-{$days} days')")->fetchColumn();
-        $campaigns = $pdo->query("SELECT COUNT(*) FROM campaigns WHERE created_at >= datetime('now', '-{$days} days')")->fetchColumn();
-        $emailsSent = $pdo->query("SELECT COALESCE(SUM(sent_count), 0) FROM email_campaigns WHERE sent_at >= datetime('now', '-{$days} days')")->fetchColumn();
-        $platforms = $pdo->query("SELECT platform, COUNT(*) as count FROM posts WHERE status = 'published' AND created_at >= datetime('now', '-{$days} days') GROUP BY platform")->fetchAll(PDO::FETCH_ASSOC);
-        $aiCalls = $pdo->query("SELECT COUNT(*) FROM ai_activity_log WHERE created_at >= datetime('now', '-{$days} days')")->fetchColumn();
+        $daysParam = "-{$days} days";
+        $s = $pdo->prepare("SELECT COUNT(*) FROM posts WHERE status = 'published' AND created_at >= datetime('now', :d)");
+        $s->execute([':d' => $daysParam]); $published = $s->fetchColumn();
+        $s = $pdo->prepare("SELECT COUNT(*) FROM posts WHERE status = 'scheduled' AND created_at >= datetime('now', :d)");
+        $s->execute([':d' => $daysParam]); $scheduled = $s->fetchColumn();
+        $s = $pdo->prepare("SELECT COUNT(*) FROM campaigns WHERE created_at >= datetime('now', :d)");
+        $s->execute([':d' => $daysParam]); $campaigns = $s->fetchColumn();
+        $s = $pdo->prepare("SELECT COALESCE(SUM(sent_count), 0) FROM email_campaigns WHERE sent_at >= datetime('now', :d)");
+        $s->execute([':d' => $daysParam]); $emailsSent = $s->fetchColumn();
+        $s = $pdo->prepare("SELECT platform, COUNT(*) as count FROM posts WHERE status = 'published' AND created_at >= datetime('now', :d) GROUP BY platform");
+        $s->execute([':d' => $daysParam]); $platforms = $s->fetchAll(PDO::FETCH_ASSOC);
+        $s = $pdo->prepare("SELECT COUNT(*) FROM ai_activity_log WHERE created_at >= datetime('now', :d)");
+        $s->execute([':d' => $daysParam]); $aiCalls = $s->fetchColumn();
 
         $ctx = "PERIOD: Last {$days} days\nPublished: {$published}, Scheduled: {$scheduled}, Campaigns: {$campaigns}\nEmails sent: {$emailsSent}, AI tool uses: {$aiCalls}\nBy platform:\n";
         foreach ($platforms as $pl) $ctx .= "- {$pl['platform']}: {$pl['count']} posts\n";

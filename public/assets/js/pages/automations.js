@@ -67,6 +67,7 @@ export function init() {
   initDragDrop();
   initCanvasEvents();
   initToolbar();
+  renderCanvas();
 }
 
 export async function refresh() {
@@ -76,6 +77,8 @@ export async function refresh() {
 /* ---- Drag & Drop from palette ---- */
 function initDragDrop() {
   document.querySelectorAll('.automation-block-template').forEach(tpl => {
+    const addFromTemplate = () => addBlock(tpl.dataset.blockType, tpl.dataset.blockEvent);
+
     tpl.addEventListener('dragstart', (e) => {
       dragData = {
         type: tpl.dataset.blockType,
@@ -88,6 +91,18 @@ function initDragDrop() {
     tpl.addEventListener('dragend', () => {
       tpl.style.opacity = '';
       dragData = null;
+    });
+
+    // Click/keyboard fallback for touch devices and keyboard users.
+    tpl.addEventListener('click', addFromTemplate);
+    tpl.tabIndex = 0;
+    tpl.setAttribute('role', 'button');
+    tpl.setAttribute('aria-label', `Add ${getBlockLabel(tpl.dataset.blockType, tpl.dataset.blockEvent)} block`);
+    tpl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        addFromTemplate();
+      }
     });
   });
 
@@ -296,6 +311,8 @@ function renderCanvas() {
   const empty = $('automationEmpty');
   if (!dropZone) return;
 
+  updateBuilderStatus();
+
   if (workflowBlocks.length === 0) {
     dropZone.innerHTML = '';
     if (empty) {
@@ -333,7 +350,7 @@ function createEmptyState() {
   div.innerHTML = `
     <div class="empty-icon">&#9889;</div>
     <strong>Build your automation</strong>
-    <span>Drag trigger, condition, and action blocks from the left panel</span>
+    <span>Drag or click trigger, condition, and action blocks from the left panel</span>
   `;
   return div;
 }
@@ -377,8 +394,25 @@ function createBlockElement(block, idx) {
 }
 
 function showAddMenu() {
-  // Quick add: just show toast with guidance
-  toast('Drag a block from the left panel to add it', 'info');
+  // Quick add: provide guidance
+  toast('Add blocks from the left panel (drag, click, or Enter)', 'info');
+}
+
+function updateBuilderStatus() {
+  const status = $('automationBuilderStatus');
+  if (!status) return;
+
+  const triggerCount = workflowBlocks.filter(b => b.type === 'trigger').length;
+  const conditionCount = workflowBlocks.filter(b => b.type === 'condition').length;
+  const actionCount = workflowBlocks.filter(b => b.type === 'action').length;
+  const isReady = triggerCount === 1 && actionCount > 0;
+
+  status.innerHTML = `
+    <span class="status-chip ${triggerCount === 1 ? 'ok' : 'warn'}">Trigger ${triggerCount}/1</span>
+    <span class="status-chip ${conditionCount > 0 ? 'ok' : ''}">Conditions ${conditionCount}</span>
+    <span class="status-chip ${actionCount > 0 ? 'ok' : 'warn'}">Actions ${actionCount}</span>
+    <span class="status-chip ${isReady ? 'ok' : 'warn'}">${isReady ? 'Ready to save' : 'Needs trigger + action'}</span>
+  `;
 }
 
 /* ---- Save automation ---- */

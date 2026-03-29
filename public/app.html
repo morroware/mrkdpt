@@ -443,7 +443,7 @@
             </div>
             <div id="collabPlanWrap" class="hidden">
               <label>Collaborative plan draft (shared across providers)</label>
-              <textarea id="collabPlanOutput" class="input" rows="9" placeholder="Collaborative plan output will appear here"></textarea>
+              <textarea id="collabPlanOutput" class="input scroll-surface generated-output-field" rows="9" placeholder="Collaborative plan output will appear here"></textarea>
             </div>
             <div class="flex-end">
               <button class="btn btn-ai" type="submit" id="launchCampaignAutopilot"><span class="btn-ai-icon">&#9733;</span> Launch Campaign Autopilot</button>
@@ -639,7 +639,7 @@
             <button class="btn btn-sm btn-ghost" id="closeRepurposeChain" aria-label="Close repurpose panel">&times;</button>
           </div>
           <p class="text-small text-muted mb-1">AI-generated variants for each platform:</p>
-          <div id="repurposeChainResults"></div>
+          <div id="repurposeChainResults" class="scroll-surface"></div>
           <div class="flex gap-1 mt-1" id="repurposeChainActions" style="display:none">
             <button class="btn btn-ai" id="queueAllRepurposed"><span class="btn-ai-icon">&#9733;</span> Queue All</button>
             <button class="btn btn-outline" id="saveAllRepurposed">Save as Drafts</button>
@@ -1376,17 +1376,17 @@
               <div id="searchSynthesis" class="search-synthesis"></div>
             </div>
 
-            <div id="searchInternalResults" class="mt-1 hidden">
+            <div id="searchInternalResults" class="mt-1 hidden scroll-surface">
               <h3>&#128451; Internal Data Matches</h3>
               <div id="searchInternalList" class="stack"></div>
             </div>
 
-            <div id="searchWebResults" class="mt-1 hidden">
+            <div id="searchWebResults" class="mt-1 hidden scroll-surface">
               <h3>&#127760; Web Research</h3>
               <div id="searchWebContent" class="card search-web-content"></div>
             </div>
 
-            <div id="searchWebsiteResults" class="mt-1 hidden">
+            <div id="searchWebsiteResults" class="mt-1 hidden scroll-surface">
               <h3>&#128279; Website Analysis</h3>
               <div id="searchWebsiteContent" class="card search-website-content"></div>
             </div>
@@ -1489,7 +1489,7 @@
             <div id="brainPipelineSteps" class="mb-1"></div>
             <div id="brainPipelineInputs" class="stack mb-1"></div>
             <button class="btn btn-ai" id="brainPipelineRunBtn"><span class="btn-ai-icon">&#9733;</span> Run Pipeline</button>
-            <div id="brainPipelineResults" class="mt-1 hidden"></div>
+            <div id="brainPipelineResults" class="mt-1 hidden scroll-surface"></div>
           </div>
 
           <h3>&#128337; Recent Runs</h3>
@@ -1645,19 +1645,19 @@
               <h3>&#128202; Email Performance Insights</h3>
               <p class="text-small text-muted">AI analyzes your email history to find what works.</p>
               <button class="btn btn-ai" id="aiEmailIntelligence"><span class="btn-ai-icon">&#9733;</span> Analyze</button>
-              <div id="emailIntelResults" class="mt-1"></div>
+              <div id="emailIntelResults" class="mt-1 scroll-surface"></div>
             </div>
             <div class="card">
               <h3>&#9200; Send Time Optimizer</h3>
               <p class="text-small text-muted">Find the best time to send emails to your audience.</p>
               <button class="btn btn-ai" id="aiSendTimeOptimize"><span class="btn-ai-icon">&#9733;</span> Optimize</button>
-              <div id="sendTimeResults" class="mt-1"></div>
+              <div id="sendTimeResults" class="mt-1 scroll-surface"></div>
             </div>
             <div class="card">
               <h3>&#128272; Deliverability Check</h3>
               <p class="text-small text-muted">Check your email setup for deliverability issues.</p>
               <button class="btn btn-ai" id="aiDeliverabilityCheck"><span class="btn-ai-icon">&#9733;</span> Check</button>
-              <div id="deliverabilityResults" class="mt-1"></div>
+              <div id="deliverabilityResults" class="mt-1 scroll-surface"></div>
             </div>
           </div>
         </div>
@@ -1677,7 +1677,7 @@
             <h3>&#128202; AI Analytics Summary</h3>
             <button class="btn btn-sm btn-ai" id="aiAnalyticsSummary"><span class="btn-ai-icon">&#9733;</span> Generate</button>
           </div>
-          <div id="aiAnalyticsResults"><p class="text-muted text-small">Click Generate for an AI-powered analysis of your marketing performance.</p></div>
+          <div id="aiAnalyticsResults" class="scroll-surface"><p class="text-muted text-small">Click Generate for an AI-powered analysis of your marketing performance.</p></div>
         </div>
         <div class="card mt-1">
           <h3>&#128200; Channel Attribution</h3>
@@ -2006,7 +2006,7 @@
           <div class="automation-builder">
             <!-- Block Palette -->
             <div class="automation-palette">
-              <div class="automation-palette-header">Drag blocks to canvas</div>
+              <div class="automation-palette-header">Drag or click blocks to build</div>
               <div class="automation-palette-blocks">
                 <div class="automation-palette-group">
                   <div class="automation-palette-group-label">Triggers (When...)</div>
@@ -2076,6 +2076,7 @@
               <div class="automation-toolbar">
                 <div class="automation-toolbar-left">
                   <input type="text" id="automationName" placeholder="Untitled Automation" value="" />
+                  <div class="automation-builder-status" id="automationBuilderStatus" aria-live="polite"></div>
                 </div>
                 <div class="automation-toolbar-right">
                   <button class="btn btn-sm btn-outline" id="automationClearBtn" title="Clear canvas">Clear</button>
@@ -2087,7 +2088,7 @@
                   <div class="automation-canvas-empty" id="automationEmpty">
                     <div class="empty-icon">&#9889;</div>
                     <strong>Build your automation</strong>
-                    <span>Drag trigger, condition, and action blocks from the left panel</span>
+                    <span>Drag or click trigger, condition, and action blocks from the left panel</span>
                   </div>
                 </div>
               </div>
@@ -2288,7 +2289,7 @@
             </div>
           </div>
           <button class="btn btn-ai mt-1" id="aiComplianceCheck"><span class="btn-ai-icon">&#9733;</span> AI Compliance Audit</button>
-          <div id="complianceResults" class="mt-1"></div>
+          <div id="complianceResults" class="mt-1 scroll-surface"></div>
         </div>
       </section>
 

@@ -22,13 +22,13 @@ function register_automation_routes(Router $router, AutomationRepository $automa
 
     $router->get('/api/automations/{id}', function (array $params) use ($automations) {
         $rule = $automations->find((int)$params['id']);
-        $rule ? json_response($rule) : json_response(['error' => 'Not found'], 404);
+        $rule ? json_response(['item' => $rule]) : json_response(['error' => 'Not found'], 404);
     });
 
     $router->patch('/api/automations/{id}', function (array $params) use ($automations) {
         $data = request_json();
         $rule = $automations->update((int)$params['id'], $data);
-        $rule ? json_response($rule) : json_response(['error' => 'Not found'], 404);
+        $rule ? json_response(['item' => $rule]) : json_response(['error' => 'Not found'], 404);
     });
 
     $router->delete('/api/automations/{id}', function (array $params) use ($automations) {

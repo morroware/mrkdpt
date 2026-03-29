@@ -30,6 +30,10 @@ function register_post_routes(Router $router, PostRepository $posts, Analytics $
         $data = request_json();
         if (!empty($data['status'])) {
             $item = $posts->updateStatus((int)$p['id'], $data['status']);
+            if (!$item) {
+                json_response(['error' => 'Not found'], 404);
+                return;
+            }
             if ($data['status'] === 'published') {
                 $analytics->track('post.published', 'post', (int)$p['id'], ['platform' => $item['platform'] ?? '']);
                 $webhooks->dispatch('post.published', $item);
@@ -53,6 +57,10 @@ function register_post_routes(Router $router, PostRepository $posts, Analytics $
             }
         } else {
             $item = $posts->update((int)$p['id'], $data);
+            if (!$item) {
+                json_response(['error' => 'Not found'], 404);
+                return;
+            }
         }
         json_response(['item' => $item]);
     });
@@ -91,7 +99,7 @@ function register_post_routes(Router $router, PostRepository $posts, Analytics $
             'approved_at' => gmdate(DATE_ATOM),
             'review_notes' => $data['notes'] ?? '',
         ]);
-        json_response(['item' => $item]);
+        $item ? json_response(['item' => $item]) : json_response(['error' => 'Not found'], 404);
     });
 
     $router->post('/api/posts/{id}/reject', function ($p) use ($posts) {
@@ -100,14 +108,14 @@ function register_post_routes(Router $router, PostRepository $posts, Analytics $
             'approval_status' => 'rejected',
             'review_notes' => $data['notes'] ?? 'Content needs revision',
         ]);
-        json_response(['item' => $item]);
+        $item ? json_response(['item' => $item]) : json_response(['error' => 'Not found'], 404);
     });
 
     $router->post('/api/posts/{id}/request-review', function ($p) use ($posts) {
         $item = $posts->update((int)$p['id'], [
             'approval_status' => 'pending',
         ]);
-        json_response(['item' => $item]);
+        $item ? json_response(['item' => $item]) : json_response(['error' => 'Not found'], 404);
     });
 
     // Content notes/comments

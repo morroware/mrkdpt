@@ -17,19 +17,20 @@ function register_ab_test_routes(Router $router, AbTestRepository $abTests): voi
 
     $router->get('/api/ab-tests/{id}', function (array $params) use ($abTests) {
         $test = $abTests->find((int)$params['id']);
-        $test ? json_response($test) : json_response(['error' => 'Not found'], 404);
+        $test ? json_response(['item' => $test]) : json_response(['error' => 'Not found'], 404);
     });
 
     $router->patch('/api/ab-tests/{id}', function (array $params) use ($abTests) {
         $data = request_json();
         $test = $abTests->update((int)$params['id'], $data);
-        $test ? json_response($test) : json_response(['error' => 'Not found'], 404);
+        $test ? json_response(['item' => $test]) : json_response(['error' => 'Not found'], 404);
     });
 
     $router->post('/api/ab-tests/{id}/variants', function (array $params) use ($abTests) {
         $data = request_json();
         $abTests->addVariant((int)$params['id'], $data);
-        json_response($abTests->find((int)$params['id']));
+        $test = $abTests->find((int)$params['id']);
+        $test ? json_response(['item' => $test]) : json_response(['error' => 'Not found'], 404);
     });
 
     $router->patch('/api/ab-tests/variants/{id}', function (array $params) use ($abTests) {

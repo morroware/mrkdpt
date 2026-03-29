@@ -32,6 +32,9 @@ if (is_file($srcDir . '/SocialPublisher.php')) {
 if (is_file($srcDir . '/EmailService.php')) {
     require $srcDir . '/EmailService.php';
 }
+if (is_file($srcDir . '/SmsService.php')) {
+    require $srcDir . '/SmsService.php';
+}
 
 require $srcDir . '/UtmBuilder.php';
 require $srcDir . '/LinkShortener.php';
@@ -93,7 +96,6 @@ $contactRepo    = new ContactRepository($pdo);
 $formRepo       = new FormRepository($pdo);
 $abTests        = new AbTestRepository($pdo);
 $funnels        = new FunnelRepository($pdo);
-$automations    = new AutomationRepository($pdo);
 $segments       = new SegmentRepository($pdo);
 $socialQueue    = new SocialQueue($pdo);
 $emailTemplates = new EmailTemplateRepository($pdo);
@@ -103,7 +105,6 @@ $campaignMetrics = new CampaignMetricsRepository($pdo);
 $auth      = new Auth($pdo);
 $mediaLib  = new MediaLibrary($pdo, $dataDir);
 $scheduler = new Scheduler($pdo, class_exists('SocialPublisher') ? new SocialPublisher($pdo) : null, $dataDir);
-$scheduler->setAutomations($automations);
 $scheduler->setQueue($socialQueue);
 
 $ai = new AiService(
@@ -195,6 +196,17 @@ if (class_exists('EmailService')) {
         'base_url'       => env_value('APP_URL', ''),
     ]);
 }
+$smsService = null;
+if (class_exists('SmsService')) {
+    $smsService = new SmsService([
+        'twilio_account_sid' => app_config('TWILIO_ACCOUNT_SID', ''),
+        'twilio_auth_token' => app_config('TWILIO_AUTH_TOKEN', ''),
+        'twilio_from_number' => app_config('TWILIO_FROM_NUMBER', ''),
+    ]);
+}
+
+$automations = new AutomationRepository($pdo, $emailService, $smsService);
+$scheduler->setAutomations($automations);
 
 $socialPublisher = class_exists('SocialPublisher') ? new SocialPublisher($pdo) : null;
 

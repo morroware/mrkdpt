@@ -42,6 +42,8 @@ POST /api/automations
 | `update_contact_stage` | `stage` | Change contact pipeline stage |
 | `add_score` | `points` | Add score points to contact |
 | `add_to_list` | `list_id` | Add subscriber to email list |
+| `send_email` | `subject`, `body_html`, `body_text` | Send a transactional-style email to the matched contact |
+| `send_sms` | `message` | Send SMS to contact phone via Twilio (requires E.164 phone) |
 | `send_webhook` | `url`, `method` | Send webhook (SSRF-protected) |
 | `log_activity` | `description` | Log activity on contact |
 

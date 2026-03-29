@@ -85,6 +85,13 @@ async function refreshSettingsInfo() {
           <div class="form-group"><label for="set_banana_key">NanoBanana API Key</label><input type="password" id="set_banana_key" name="BANANA_API_KEY" class="input" placeholder="${data.ai_config?.key_flags?.banana_api_key ? 'Saved (enter to replace)' : 'Banana key'}" autocomplete="off" /></div>
           <div class="form-group"><label for="set_banana_base">NanoBanana Base URL</label><input type="text" id="set_banana_base" name="BANANA_BASE_URL" class="input" value="${escapeHtml(data.ai_config?.banana_base_url || '')}" /></div>
           <div class="form-group"><label for="set_banana_model">NanoBanana Model ID</label><input type="text" id="set_banana_model" name="BANANA_MODEL_ID" class="input" value="${escapeHtml(data.ai_config?.banana_model_id || '')}" placeholder="Required for Banana image generation" /></div>
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <h4 style="margin:0.5rem 0 0.25rem;">SMS (Twilio)</h4>
+            <p class="text-muted text-small" style="margin:0;">Configure Twilio credentials to enable SMS actions inside automations.</p>
+          </div>
+          <div class="form-group"><label for="set_twilio_sid">Twilio Account SID</label><input type="text" id="set_twilio_sid" name="TWILIO_ACCOUNT_SID" class="input" value="${escapeHtml(data.twilio_config?.account_sid_set ? '••••••••••' : '')}" placeholder="${data.twilio_config?.account_sid_set ? 'Saved (enter to replace)' : 'AC...'}" /></div>
+          <div class="form-group"><label for="set_twilio_token">Twilio Auth Token</label><input type="password" id="set_twilio_token" name="TWILIO_AUTH_TOKEN" class="input" placeholder="${data.twilio_config?.auth_token_set ? 'Saved (enter to replace)' : 'Twilio auth token'}" autocomplete="off" /></div>
+          <div class="form-group"><label for="set_twilio_from">Twilio From Number</label><input type="text" id="set_twilio_from" name="TWILIO_FROM_NUMBER" class="input" value="${escapeHtml(data.twilio_config?.from_number || '')}" placeholder="+15551234567" /></div>
           <div class="form-group flex" style="align-items: flex-end;">
             <button type="submit" class="btn btn-ai">Save Settings</button>
           </div>
@@ -101,6 +108,7 @@ async function refreshSettingsInfo() {
             }).join(' ')}
           </div>
           <p class="text-muted text-small"><strong>SMTP:</strong> ${data.smtp_configured ? 'Configured' : 'Not configured (set in .env)'}</p>
+          <p class="text-muted text-small"><strong>Twilio SMS:</strong> ${data.twilio_config?.configured ? 'Configured' : 'Not configured'}</p>
         </div>
       `;
 
@@ -144,12 +152,15 @@ async function refreshSettingsInfo() {
             for (const [k, v] of fd.entries()) {
               payload[k] = v;
             }
-            const sensitive = ['OPENAI_API_KEY','ANTHROPIC_API_KEY','GEMINI_API_KEY','DEEPSEEK_API_KEY','GROQ_API_KEY','MISTRAL_API_KEY','OPENROUTER_API_KEY','XAI_API_KEY','TOGETHER_API_KEY','BANANA_API_KEY'];
+            const sensitive = ['OPENAI_API_KEY','ANTHROPIC_API_KEY','GEMINI_API_KEY','DEEPSEEK_API_KEY','GROQ_API_KEY','MISTRAL_API_KEY','OPENROUTER_API_KEY','XAI_API_KEY','TOGETHER_API_KEY','BANANA_API_KEY','TWILIO_AUTH_TOKEN'];
             sensitive.forEach((key) => {
               if ((payload[key] || '').trim() === '') {
                 delete payload[key];
               }
             });
+            if ((payload.TWILIO_ACCOUNT_SID || '').includes('•')) {
+              delete payload.TWILIO_ACCOUNT_SID;
+            }
             await api('/api/settings', { method: 'PUT', body: JSON.stringify(payload) });
             success('Settings saved');
             await refreshSettingsInfo();

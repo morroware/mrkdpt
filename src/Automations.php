@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 final class AutomationRepository
 {
-    public function __construct(private PDO $pdo)
+    public function __construct(
+        private PDO $pdo,
+        private ?EmailService $emailService = null,
+        private ?SmsService $smsService = null
+    )
     {
     }
 
@@ -121,6 +125,8 @@ final class AutomationRepository
             'update_contact_stage' => 'Update Contact Stage',
             'add_score' => 'Add to Contact Score',
             'add_to_list' => 'Add to Email List',
+            'send_email' => 'Send Email to Contact',
+            'send_sms' => 'Send SMS to Contact',
             'send_webhook' => 'Send Webhook',
             'log_activity' => 'Log Activity',
         ];
@@ -145,13 +151,17 @@ final class AutomationRepository
         $actionType = $rule['action_type'];
         $config = json_decode($rule['action_config'] ?? '{}', true) ?: [];
         $contactId = $context['contact_id'] ?? null;
+        $contact = null;
+
+        if ($contactId) {
+            $contactStmt = $this->pdo->prepare('SELECT id, email, first_name, last_name, phone, stage, tags FROM contacts WHERE id = :id LIMIT 1');
+            $contactStmt->execute([':id' => $contactId]);
+            $contact = $contactStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        }
 
         switch ($actionType) {
             case 'tag_contact':
                 if ($contactId && !empty($config['tag'])) {
-                    $stmt = $this->pdo->prepare('SELECT tags FROM contacts WHERE id = :id');
-                    $stmt->execute([':id' => $contactId]);
-                    $contact = $stmt->fetch(PDO::FETCH_ASSOC);
                     if ($contact) {
                         $existing = array_filter(array_map('trim', explode(',', $contact['tags'] ?? '')));
                         $newTag = trim($config['tag']);
@@ -199,6 +209,58 @@ final class AutomationRepository
                             ]);
                         } catch (\PDOException) {
                             // Ignore duplicate
+                        }
+                    }
+                }
+                break;
+
+            case 'send_email':
+                if ($contact && $this->emailService && !empty($contact['email']) && !empty($config['subject']) && !empty($config['body_html'])) {
+                    $email = (string)$contact['email'];
+                    if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                        $contactName = trim((string)($contact['first_name'] ?? '') . ' ' . (string)($contact['last_name'] ?? ''));
+                        $replacements = [
+                            '{{first_name}}' => (string)($contact['first_name'] ?? ''),
+                            '{{last_name}}' => (string)($contact['last_name'] ?? ''),
+                            '{{email}}' => $email,
+                            '{{phone}}' => (string)($contact['phone'] ?? ''),
+                            '{{stage}}' => (string)($contact['stage'] ?? ''),
+                        ];
+                        $subject = strtr((string)$config['subject'], $replacements);
+                        $html = strtr((string)$config['body_html'], $replacements);
+                        $text = trim((string)($config['body_text'] ?? strip_tags($html)));
+                        $this->emailService->sendTestEmail($email, $subject, $html, $text);
+                        if (!empty($config['log_activity'])) {
+                            $this->pdo->prepare('INSERT INTO contact_activities(contact_id, activity_type, description, data_json, created_at) VALUES(:ci,"email_sent",:d,:dj,:c)')->execute([
+                                ':ci' => $contactId,
+                                ':d' => 'Automation email sent to ' . ($contactName !== '' ? $contactName : $email),
+                                ':dj' => json_encode(['rule_id' => $rule['id'], 'subject' => $subject]),
+                                ':c' => gmdate(DATE_ATOM),
+                            ]);
+                        }
+                    }
+                }
+                break;
+
+            case 'send_sms':
+                if ($contact && $this->smsService && $this->smsService->isConfigured() && !empty($config['message'])) {
+                    $phone = trim((string)($contact['phone'] ?? ''));
+                    if (preg_match('/^\+[1-9]\d{7,14}$/', $phone)) {
+                        $message = strtr((string)$config['message'], [
+                            '{{first_name}}' => (string)($contact['first_name'] ?? ''),
+                            '{{last_name}}' => (string)($contact['last_name'] ?? ''),
+                            '{{email}}' => (string)($contact['email'] ?? ''),
+                            '{{phone}}' => $phone,
+                            '{{stage}}' => (string)($contact['stage'] ?? ''),
+                        ]);
+                        $sent = $this->smsService->sendMessage($phone, $message);
+                        if ($sent && !empty($config['log_activity'])) {
+                            $this->pdo->prepare('INSERT INTO contact_activities(contact_id, activity_type, description, data_json, created_at) VALUES(:ci,"sms_sent",:d,:dj,:c)')->execute([
+                                ':ci' => $contactId,
+                                ':d' => 'Automation SMS sent to ' . $phone,
+                                ':dj' => json_encode(['rule_id' => $rule['id']]),
+                                ':c' => gmdate(DATE_ATOM),
+                            ]);
                         }
                     }
                 }

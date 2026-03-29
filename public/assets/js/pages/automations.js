@@ -27,6 +27,8 @@ const ACTION_LABELS = {
   'update_contact_stage': 'Update Stage',
   'add_score': 'Add Score',
   'add_to_list': 'Add to List',
+  'send_email': 'Send Email',
+  'send_sms': 'Send SMS (Twilio)',
   'send_webhook': 'Send Webhook',
   'log_activity': 'Log Activity',
 };
@@ -42,6 +44,12 @@ const ACTION_CONFIG_FIELDS = {
   update_contact_stage: [{ name: 'stage', label: 'Stage', placeholder: 'mql', type: 'select', options: ['lead', 'mql', 'sql', 'opportunity', 'customer'] }],
   add_score: [{ name: 'points', label: 'Points', placeholder: '10', type: 'number' }],
   add_to_list: [{ name: 'list_id', label: 'List ID', placeholder: '1', type: 'number' }],
+  send_email: [
+    { name: 'subject', label: 'Subject', placeholder: 'Thanks for joining, {{first_name}}' },
+    { name: 'body_html', label: 'HTML Body', placeholder: '<p>Hi {{first_name}}, welcome!</p>' },
+    { name: 'body_text', label: 'Text Body (optional)', placeholder: 'Hi {{first_name}}, welcome!' },
+  ],
+  send_sms: [{ name: 'message', label: 'SMS Message', placeholder: 'Hi {{first_name}}, thanks for your interest!' }],
   send_webhook: [{ name: 'url', label: 'Webhook URL', placeholder: 'https://example.com/webhook' }],
   log_activity: [{ name: 'message', label: 'Message', placeholder: 'Automation triggered' }],
 };
@@ -373,6 +381,8 @@ function createBlockElement(block, idx) {
         `<option value="${o}"${block.config[f.name] === o ? ' selected' : ''}>${o}</option>`
       ).join('');
       fieldsHtml += `<div><label>${escapeHtml(f.label)}</label><select data-block-field="${f.name}">${opts}</select></div>`;
+    } else if (f.type === 'textarea' || f.name === 'body_html' || f.name === 'body_text' || f.name === 'message') {
+      fieldsHtml += `<div><label>${escapeHtml(f.label)}</label><textarea data-block-field="${f.name}" rows="3" placeholder="${escapeHtml(f.placeholder || '')}">${val}</textarea></div>`;
     } else {
       const inputType = f.type === 'number' ? 'number' : 'text';
       fieldsHtml += `<div><label>${escapeHtml(f.label)}</label><input type="${inputType}" data-block-field="${f.name}" value="${val}" placeholder="${escapeHtml(f.placeholder || '')}" /></div>`;

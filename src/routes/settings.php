@@ -46,6 +46,12 @@ function register_settings_routes(Router $router, AiService $ai, Scheduler $sche
             ],
             'ai_system_prompt' => $dbSettings['AI_SYSTEM_PROMPT'] ?? '',
             'smtp_configured' => env_value('SMTP_HOST', '') !== '',
+            'twilio_config' => [
+                'configured' => app_config('TWILIO_ACCOUNT_SID', '') !== '' && app_config('TWILIO_AUTH_TOKEN', '') !== '' && app_config('TWILIO_FROM_NUMBER', '') !== '',
+                'account_sid_set' => app_config('TWILIO_ACCOUNT_SID', '') !== '',
+                'auth_token_set' => app_config('TWILIO_AUTH_TOKEN', '') !== '',
+                'from_number' => app_config('TWILIO_FROM_NUMBER', ''),
+            ],
             'cron_key' => env_value('CRON_KEY', ''),
             'app_url' => app_config('APP_URL', ''),
         ]);
@@ -70,11 +76,12 @@ function register_settings_routes(Router $router, AiService $ai, Scheduler $sche
             'XAI_API_KEY', 'XAI_BASE_URL',
             'TOGETHER_API_KEY', 'TOGETHER_BASE_URL',
             'BANANA_API_KEY', 'BANANA_BASE_URL', 'BANANA_MODEL_ID',
+            'TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_FROM_NUMBER',
         ];
         $sensitiveKeys = [
             'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GEMINI_API_KEY', 'DEEPSEEK_API_KEY',
             'GROQ_API_KEY', 'MISTRAL_API_KEY', 'OPENROUTER_API_KEY', 'XAI_API_KEY',
-            'TOGETHER_API_KEY', 'BANANA_API_KEY',
+            'TOGETHER_API_KEY', 'BANANA_API_KEY', 'TWILIO_AUTH_TOKEN',
         ];
         $updated = [];
         foreach ($allowedKeys as $key) {

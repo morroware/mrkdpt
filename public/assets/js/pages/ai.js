@@ -166,6 +166,22 @@ async function loadNextActions(toolName) {
         ${items.map(a => `<button class="btn btn-ai btn-sm" title="${escapeHtml(a.reason)}" style="font-size:11px;padding:3px 10px">${escapeHtml(a.tool)}</button>`).join('')}
       </div>
     </div>`;
+    el.querySelectorAll('.btn-ai').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const name = btn.textContent.trim().toLowerCase();
+        const cards = document.querySelectorAll('.ai-tool-card');
+        for (const card of cards) {
+          const h3 = card.querySelector('h3');
+          if (h3 && h3.textContent.trim().toLowerCase() === name) {
+            card.style.display = '';
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const body = card.querySelector('.ai-tool-card-body');
+            if (body) body.style.display = '';
+            break;
+          }
+        }
+      });
+    });
   } catch {
     el.innerHTML = '';
   }

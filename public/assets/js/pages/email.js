@@ -356,7 +356,7 @@ export function init() {
     try {
       const { item } = await api('/api/ai/smart-times', { method: 'POST', body: JSON.stringify({ platform: 'email' }) });
       if (results) {
-        const times = item?.times || item?.raw || 'No data available';
+        const times = item?.schedule || item?.raw || 'No data available';
         results.innerHTML = `<div class="ai-output text-small">${escapeHtml(typeof times === 'string' ? times : JSON.stringify(times, null, 2))}</div>`;
       }
       success('Send time analysis complete');

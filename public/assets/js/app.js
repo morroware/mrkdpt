@@ -102,7 +102,7 @@ function initInlineAiToolbars() {
     btn.addEventListener('click', async () => {
       const action = btn.dataset.inlineRefine;
       // Find the sibling textarea
-      const container = btn.closest('div').parentElement || btn.closest('.stack');
+      const container = btn.closest('div')?.parentElement || btn.closest('.stack');
       const textarea = container?.querySelector('textarea');
       if (!textarea || !textarea.value.trim()) {
         const { error: showError } = await import('./core/toast.js');

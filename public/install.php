@@ -70,6 +70,71 @@ $status = [];
 $errors = [];
 $success = false;
 
+/**
+ * Validate host system requirements for installation.
+ *
+ * @return array{checks: array<int, array{label: string, ok: bool, detail: string}>, has_errors: bool}
+ */
+function installer_system_checks(string $dataDir, string $envPath): array
+{
+    $checks = [];
+
+    $requiredExtensions = ['pdo_sqlite', 'curl', 'mbstring'];
+    foreach ($requiredExtensions as $ext) {
+        $ok = extension_loaded($ext);
+        $checks[] = [
+            'label' => "PHP extension: {$ext}",
+            'ok' => $ok,
+            'detail' => $ok ? 'Loaded' : 'Missing (required)',
+        ];
+    }
+
+    $optionalExtensions = ['gd'];
+    foreach ($optionalExtensions as $ext) {
+        $ok = extension_loaded($ext);
+        $checks[] = [
+            'label' => "PHP extension: {$ext}",
+            'ok' => true,
+            'detail' => $ok ? 'Loaded (optional)' : 'Missing (optional: image thumbnails disabled)',
+        ];
+    }
+
+    $appRootWritable = is_writable(APP_ROOT);
+    $checks[] = [
+        'label' => 'App root writable',
+        'ok' => $appRootWritable,
+        'detail' => $appRootWritable ? 'Writable' : 'Not writable (needed to create/update .env)',
+    ];
+
+    $dataDirReady = is_dir($dataDir) ? is_writable($dataDir) : is_writable(dirname($dataDir));
+    $checks[] = [
+        'label' => 'Data directory writable',
+        'ok' => $dataDirReady,
+        'detail' => $dataDirReady ? 'Writable' : 'Not writable (needed for SQLite and uploads)',
+    ];
+
+    $envExists = is_file($envPath);
+    if ($envExists) {
+        $checks[] = [
+            'label' => '.env writable',
+            'ok' => is_writable($envPath),
+            'detail' => is_writable($envPath) ? 'Writable' : 'Not writable (cannot update configuration)',
+        ];
+    }
+
+    $hasErrors = false;
+    foreach ($checks as $check) {
+        if (!$check['ok']) {
+            $hasErrors = true;
+            break;
+        }
+    }
+
+    return ['checks' => $checks, 'has_errors' => $hasErrors];
+}
+
+$systemCheckResults = installer_system_checks($dataDir, $envPath);
+
 // CSRF protection
 session_start();
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
@@ -107,6 +172,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($values[$required] === '') {
             $errors[] = "{$required} is required.";
         }
+    }
+
+    if ($systemCheckResults['has_errors']) {
+        $errors[] = 'System requirements are not met. Resolve failed checks before continuing.';
     }
 
     if (!in_array($values['AI_PROVIDER'], ['openai', 'anthropic', 'gemini', 'deepseek', 'groq', 'mistral', 'openrouter', 'xai', 'together'], true)) {
@@ -246,6 +315,21 @@ if ($installed) {
 <div class="wrap">
   <h1>Marketing Suite Installer</h1>
   <p>Configure your marketing platform. Creates <code>.env</code>, initializes the database, and sets up your admin account.</p>
+
+  <?php if ($systemCheckResults['checks'] !== []): ?>
+    <h2>System Checks</h2>
+    <div class="msg <?= $systemCheckResults['has_errors'] ? 'err' : 'ok' ?>">
+      <ul>
+        <?php foreach ($systemCheckResults['checks'] as $check): ?>
+          <li>
+            <strong><?= esc($check['label']) ?>:</strong>
+            <?= $check['ok'] ? '✅' : '❌' ?>
+            <?= esc($check['detail']) ?>
+          </li>
+        <?php endforeach; ?>
+      </ul>
+    </div>
+  <?php endif; ?>
 
   <?php if ($installed && !$success): ?>
     <div class="msg warn">Existing installation detected. This form will update your configuration.</div>
